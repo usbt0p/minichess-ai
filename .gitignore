@@ -1,0 +1,11 @@
+variant-nnue-tools/
+data/
+data.back/
+blog/
+papers/
+*.wiki
+
+
+*.bin
+*.log
+*.png

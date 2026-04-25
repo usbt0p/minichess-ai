@@ -1,0 +1,1 @@
+- analizar edge cases de los datos: ver cuantas promotions hay y como están distribuidas para saber si es importante representarlas
