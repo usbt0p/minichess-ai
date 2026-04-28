@@ -1,3 +1,14 @@
+# cache
+.cache
+__pycache__
+*.pyc
+
+# general python ignores
+.env
+*.env
+.venv
+
+# project-specific
 variant-nnue-tools/
 data/
 data.back/
@@ -5,7 +16,7 @@ blog/
 papers/
 *.wiki
 
-
+# misc
 *.bin
 *.log
 *.png
