@@ -54,7 +54,7 @@ def test_performance():
 
     # Benchmark DataLoader iteration
     batch_size = 512
-    train_loader, _ = get_dataloaders(file_path, batch_size=batch_size, num_workers=0)
+    train_loader, _ = get_dataloaders(dataset, batch_size=batch_size, num_workers=0)
 
     start_time = time.time()
     num_batches = 0

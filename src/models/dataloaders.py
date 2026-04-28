@@ -1,6 +1,10 @@
 import torch
 from torch.utils.data import Dataset, DataLoader
 
+from src.utils.utils import time_this
+
+import os
+import numpy as np
 
 class MinichessTextDataset(Dataset):
     """
@@ -19,31 +23,53 @@ class MinichessTextDataset(Dataset):
     - Result: -1.0 for white win, 0.0 for draw, 1.0 for black win
     """
 
-    def __init__(self, file_path):
+    @time_this
+    def __init__(self, file_path, use_cache=True):
         super().__init__()
-        features_list = []
-        moves_list = []
-        results_list = []
-        scores_list = []
-        plys_list = []
+        
+        # Check for cached binary version (loads in milliseconds instead of minutes)
+        cache_path = file_path + ".pt"
+        if use_cache and os.path.exists(cache_path):
+            print(f">> Loading cached dataset from {cache_path}...")
+            cached_data = torch.load(cache_path, weights_only=True)
+            self.features = cached_data['features']
+            self.moves = cached_data['moves']
+            self.results = cached_data['results']
+            self.scores = cached_data['scores']
+            return
 
+        print(f">> Parsing dataset from text: {file_path}")
         piece_map = {
-            "P": 0,
-            "N": 1,
-            "B": 2,
-            "R": 3,
-            "Q": 4,
-            "K": 5,
-            "p": 6,
-            "n": 7,
-            "b": 8,
-            "r": 9,
-            "q": 10,
-            "k": 11,
+            "P": 0, "N": 1, "B": 2, "R": 3, "Q": 4, "K": 5,
+            "p": 6, "n": 7, "b": 8, "r": 9, "q": 10, "k": 11,
         }
+
+        # 1. Fast pass to count blocks
+        with open(file_path, "r") as f:
+            lines_count = sum(1 for line in f if line.strip())
+        num_samples = lines_count // 6
+        
+        # 2. Pre-allocate compact NumPy arrays
+        # previously, it was:
+        # Casilla 0: 
+        # [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0] (13 floats = 52 bytes)
+        # Casilla 1: 
+        # [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0] (13 floats = 52 bytes)
+        # ...
+        # which ended up being 325 floats per sample, so 325*4 bytes = 1.3kB per sample, 
+        # times 1.8M instances => ~2.4 GB
+
+        # now we store the board as 25 bytes (0-12 indices) instead of 325 floats!
+        # 1.8M instances * 25 bytes = ~45 MB in RAM
+        
+        features_arr = np.full((num_samples, 25), 12, dtype=np.uint8) # 12 is 'empty'
+        moves_arr = np.zeros(num_samples, dtype=np.int16) # cant use int8, need 600 vals
+        results_arr = np.zeros(num_samples, dtype=np.int8)
+        scores_arr = np.zeros(num_samples, dtype=np.int16) # TODO verify this is fine
 
         with open(file_path, "r") as f:
             lines = []
+            idx = 0
             for line in f:
                 line = line.strip()
                 if not line:
@@ -54,44 +80,29 @@ class MinichessTextDataset(Dataset):
                     fen_line = lines[0]
                     move_line = lines[1]
                     score_line = lines[2]
-                    ply_line = lines[3]
                     result_line = lines[4]
 
                     if fen_line.startswith("fen"):
-                        # 1. Parse FEN
-                        fen = fen_line[4:].strip()
-                        board_part = fen.split(" ")[0]
-                        rows = board_part.split("/")
-
-                        # One-hot encoded board (5^2 * 13)
-                        tensor = torch.zeros((25, 13), dtype=torch.float32)
-                        for r_idx, row in enumerate(rows):
+                        # Parse FEN
+                        board_part = fen_line[4:].strip().split(" ")[0]
+                        for r_idx, row in enumerate(board_part.split("/")):
                             rank = 4 - r_idx  # FEN gives rank 5 down to 1
                             file_idx = 0
                             for char in row:
                                 if char.isdigit():
-                                    empty_count = int(char)
-                                    for _ in range(empty_count):
-                                        tensor[rank * 5 + file_idx, 12] = 1.0
-                                        file_idx += 1
+                                    file_idx += int(char) # Skip empty squares
                                 else:
-                                    piece_idx = piece_map[char]
-                                    tensor[rank * 5 + file_idx, piece_idx] = 1.0
+                                    features_arr[idx, rank * 5 + file_idx] = piece_map[char]
                                     file_idx += 1
 
-                        features_list.append(tensor.flatten())
-
-                        # 2. Parse Move (e.g., "move d1e2" or "move a4a5q")
-                        move = move_line[5:].strip()[
-                            :4
-                        ]  # handle promotion by taking only first 4 chars
-                        # ord('a') is 97, so 'a' becomes 0, and the rest get indexed
+                        # Parse Move
+                        move = move_line[5:].strip()[:4] # TODO change when we i implement promotion
                         file_from = ord(move[0]) - ord("a")
                         rank_from = int(move[1]) - 1
                         file_to = ord(move[2]) - ord("a")
                         rank_to = int(move[3]) - 1
 
-                        # move is e3b5 in the original format,
+                        # move looks like e3b5 in the original format,
                         # and we encode it as a number from 0 to 599.
                         # from_sq is the index of the starting square (0-24).
                         # to_sq_idx is the index of the ending square relative to the starting square (0-23).
@@ -109,47 +120,59 @@ class MinichessTextDataset(Dataset):
                         # but a2a1 is move 120 (5*24 + 0)
                         # the biggest move has idx 599, which is 24*24 + 23, or e5d5
                         to_sq_idx = to_sq - 1 if to_sq > from_sq else to_sq
-                        move_idx = from_sq * 24 + to_sq_idx
-                        moves_list.append(move_idx)
-
-                        # 3. Parse Result (target value)
-                        result = int(result_line[7:].strip())
-                        results_list.append(result)
-
-                        # 4. parse score
-                        score_line = score_line[6:].strip()
-                        score = int(score_line)
-                        scores_list.append(score)
-
-                        # ply is not useful yet
+                        
+                        moves_arr[idx] = from_sq * 24 + to_sq_idx
+                        results_arr[idx] = int(result_line[7:].strip()) + 1
+                        scores_arr[idx] = float(score_line[6:].strip())
+                        
+                        idx += 1
 
                     lines.clear()
 
-        if features_list:
-            self.features = torch.stack(features_list)
-            self.moves = torch.tensor(moves_list, dtype=torch.long)
-            # Map results from (-1, 0, 1) to class indices (0, 1, 2) for use in cross entropy
-            self.results = torch.tensor([r + 1 for r in results_list], dtype=torch.long)
-            self.scores = torch.tensor(scores_list, dtype=torch.float32).unsqueeze(1)
-        else:
-            self.features = torch.empty((0, 325), dtype=torch.float32)
-            self.moves = torch.empty((0,), dtype=torch.long)
-            self.results = torch.empty((0,), dtype=torch.long)
-            self.scores = torch.empty((0, 1), dtype=torch.float32)
+        # Slice to actual size just in case there were invalid lines
+        features_arr = features_arr[:idx]
+        moves_arr = moves_arr[:idx]
+        results_arr = results_arr[:idx]
+        scores_arr = scores_arr[:idx]
+
+        # TODO check dtypes, for correctness
+        self.features = torch.from_numpy(features_arr)
+        self.moves = torch.from_numpy(moves_arr).long()
+        self.results = torch.from_numpy(results_arr).long()
+        self.scores = torch.from_numpy(scores_arr).long().unsqueeze(1)
+
+        if use_cache:
+            print(f">> Saving cached dataset to {cache_path}...")
+            torch.save({
+                'features': self.features,
+                'moves': self.moves,
+                'results': self.results,
+                'scores': self.scores
+            }, cache_path)
 
     def __len__(self):
         return len(self.features)
 
     def __getitem__(self, idx):
-        return self.features[idx], self.moves[idx], self.results[idx], self.scores[idx]
+        '''
+        Thanks to this, we keep the one-hot reconstruction on the fly because it is faster
+        to just load 25 uint8 values instead of 25*13 floats. Avoid memory bound issues since
+        computing this with broadcasting is basically free.
+        '''
+        compact_board = self.features[idx] # Shape: (25,) of uint8 (0-12 values)
+        
+        # Reconstruct the one-hot float tensor on the fly!
+        one_hot = torch.zeros((25, 13), dtype=torch.float32)
+        one_hot.scatter_(1, compact_board.unsqueeze(1).long(), 1.0)
+        
+        return one_hot.flatten(), self.moves[idx], self.results[idx], self.scores[idx]
 
-
-def get_dataloaders(file_path, batch_size=128, train_ratio=0.96, num_workers=0):
+@time_this
+def get_dataloaders(dataset, batch_size=128, train_ratio=0.96, num_workers=0):
     """
     Returns train and validation dataloaders for the MinichessTextDataset.
     """
-    dataset = MinichessTextDataset(file_path)
-
+    
     train_size = int(len(dataset) * train_ratio)
     val_size = len(dataset) - train_size
 
