@@ -6,6 +6,7 @@ import torch.optim as optim
 import matplotlib.pyplot as plt
 
 import time
+from src.utils.utils import time_this
 
 from src.models.dataloaders import get_dataloaders, MinichessTextDataset
 
@@ -25,7 +26,7 @@ class BaselineNet(nn.Module):
     
     TODO promotion still has no encoding.
     """
-    def __init__(self, input_size=325, hidden_size=256, policy_size=600):
+    def __init__(self, input_size=325, hidden_size=512, policy_size=600):
         super().__init__()
 
         self.fc1 = nn.Linear(input_size, hidden_size)
@@ -60,26 +61,23 @@ class BaselineNet(nn.Module):
 
         return policy_logits, value_result
 
-
+@time_this
 def train_model(
-    data_path,
+    train_loader, 
+    val_loader,
     num_epochs=10,
     patience=5, 
-    batch_size=128,
-    lr=1e-3,
-    weight_decay=0,
+    lr=2e-3,
+    weight_decay=2e-5,
     device="cuda" if torch.cuda.is_available() else "cpu",
 ):
     '''
     - Patience: number of epochs worsened validation loss until early stopping
     '''
 
-    print(f"Using device: {device}")
-
-    train_loader, val_loader = get_dataloaders(data_path, batch_size=batch_size)
-
     model = BaselineNet().to(device)
     optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+    print(f"Using device: {device}")
 
     policy_criterion = nn.CrossEntropyLoss()
     value_result_criterion = nn.CrossEntropyLoss()
@@ -89,11 +87,16 @@ def train_model(
 
     train_losses = [] # list of train loss per epoch, for all the three losses
     val_losses = []
+    prev_validation_loss = float("-inf")
+
     val_move_accs = []
     val_res_accs = []
+    
     patience_count = 0
-    prev_validation_loss = float("-inf")
     debug_flag = True
+    
+    best_move_acc = float("-inf")
+    best_result_acc = float("-inf")
 
     for epoch in range(num_epochs):
         model.train()
@@ -173,6 +176,13 @@ def train_model(
         print(f"  Train Loss: {total_loss:.4f} (Policy: {total_policy_loss:.4f}, Value: {total_value_loss:.4f})")
         print(f"  Val Loss:   {val_loss:.4f} | Val Move Acc: {val_move_acc*100:.2f}% | Val Result Acc: {val_res_acc*100:.2f}%")
         
+        # consider the best model as the one with the best mean acc
+        if (val_move_acc + val_res_acc)/2 > (best_move_acc + best_result_acc)/2:
+            best_move_acc = val_move_acc
+            best_result_acc = val_res_acc
+            best_epoch = epoch + 1
+            torch.save(model.state_dict(), "best_model.pth")
+            
         # early stopping based on validation loss
         if patience > 0:
             if val_loss > prev_validation_loss:
@@ -183,6 +193,10 @@ def train_model(
             else:
                 patience_count = 0
                 prev_validation_loss = val_loss
+
+    print(f"Best mean accuracy: {(best_move_acc + best_result_acc)/2*100:.2f}% achieved at epoch {best_epoch}")
+    print(f"Best move accuracy: {best_move_acc*100:.2f}%")
+    print(f"Best result accuracy: {best_result_acc*100:.2f}%")
 
     return train_losses, val_losses, val_move_accs, val_res_accs, model
 
@@ -200,7 +214,7 @@ def plot_loss(train_losses, val_losses, val_move_accs, val_res_accs):
     plt.ylabel('Loss')
     plt.title('Training and Validation Loss')
     plt.legend()
-    plt.savefig('train_val_loss.png')
+    plt.savefig('train_loss.png')
     plt.show()
     
     plt.figure(figsize=(10, 5))
@@ -208,67 +222,14 @@ def plot_loss(train_losses, val_losses, val_move_accs, val_res_accs):
     plt.plot(range(len(val_res_accs)), val_res_accs, label='Val Result Acc')
     plt.xlabel('Epoch')
     plt.ylabel('Accuracy')
-    plt.title('Validation Move Accuracy')
+    plt.title('Validation Accuracy')
     plt.legend()
-    plt.savefig('val_move_accuracy.png')
+    plt.savefig('val_accuracy.png')
     plt.show()
 
-def check_model_outputs_against_ground_truth(model, data_path, device="cuda", print_debugging=True):
-    '''
-    This is bad because it tests on the training set.
-    The only way to check if the model is actually learning is to test it on the test set. 
-    '''
+def validation_test(model, val_loader, device="cuda"):
     model = model.to(device)
     model.eval()
-    
-    dataset = MinichessTextDataset(data_path)
-    
-    # for the first 20 instances 
-    total = 500
-    correct_moves = 0
-    correct_results = 0
-    with torch.no_grad():
-        for i in range(total):
-
-            if print_debugging:
-                print("----------------------------- \n")
-            features, move, result, score = dataset[i]
-            features, move, result, score = features.to(device), move.to(device), result.to(device), score.to(device)
-            policy_logits, value_result = model(features)
-
-            # decode move from the logits
-            if print_debugging:
-                print("policy_logits: ", policy_logits.shape)
-                print(policy_logits[:10]) # this is dim (600,), so max: gives a single value
-            _, predicted_move = torch.max(policy_logits.unsqueeze(0), 1)
-            
-            if print_debugging:
-                print("predicted_move: ", predicted_move)
-                print("move: ", move)
-                print("RESULT:", "CORRECT" if predicted_move.item() == move.item() else "WRONG")
-            if predicted_move.item() == move.item():
-                correct_moves += 1
-            if print_debugging:
-                print("\n")
-
-            _, predicted_result = torch.max(value_result.unsqueeze(0), 1)
-            if print_debugging:
-                print("predicted_result: ", predicted_result)
-                print("result: ", result)
-                print("RESULT:", "CORRECT" if predicted_result.item() == result.item() else "WRONG")
-            if predicted_result.item() == result.item():
-                correct_results += 1
-            if print_debugging:
-                print("\n")
-
-    print("Move Accuracy: ", correct_moves / total)
-    print("Result Accuracy: ", correct_results / total)
-
-def validation_test(model, data_path, device="cuda", print_debugging=True):
-    model = model.to(device)
-    model.eval()
-    
-    _, val_loader = get_dataloaders(data_path, batch_size=128)
     
     correct_moves = 0
     correct_results = 0
@@ -285,17 +246,26 @@ def validation_test(model, data_path, device="cuda", print_debugging=True):
 
             _, predicted_results = torch.max(value_result, 1)
             correct_results += (predicted_results == results).sum().item()
-            
-    print("Total samples: ", total_val_samples)
-    print("Move Accuracy: ", correct_moves / total_val_samples)
-    print("Result Accuracy: ", correct_results / total_val_samples)
+    print("\n\nValidation test results:\n")
+    print("\tTotal samples: ", total_val_samples)
+    print("\tMove Accuracy: ", correct_moves / total_val_samples)
+    print("\tResult Accuracy: ", correct_results / total_val_samples)
 
 
 if __name__ == '__main__':
     import sys
-    data_path = sys.argv[1] if len(sys.argv) > 1 else 'data/training_data_sample.txt'
-    train_losses, val_losses, val_move_accs, val_res_accs, model = train_model(data_path, num_epochs=40, patience=-1) 
+
+    data_path = sys.argv[1] if len(sys.argv) > 1 else "data/training_data_sample.txt"
+
+    # load dataset
+    dataset = MinichessTextDataset(data_path, time=True)
+
+    # get dataloaders
+    train_loader, val_loader = get_dataloaders(dataset, batch_size=256, num_workers=8, time=True)
+
+    train_losses, val_losses, val_move_accs, val_res_accs, model = train_model(
+        train_loader, val_loader, num_epochs=20, patience=4, time=True
+    )
     plot_loss(train_losses, val_losses, val_move_accs, val_res_accs)
-    
-    check_model_outputs_against_ground_truth(model, data_path, device="cuda", print_debugging=False)
-    validation_test(model, data_path, device="cuda", print_debugging=False)
+
+    validation_test(model, val_loader, device="cuda")
