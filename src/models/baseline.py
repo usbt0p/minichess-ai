@@ -6,7 +6,7 @@ import torch.optim as optim
 import matplotlib.pyplot as plt
 
 import time
-from src.utils.utils import time_this
+from src.utils.utils import time_this, count_params
 
 from src.models.dataloaders import get_dataloaders, MinichessTextDataset
 
@@ -26,7 +26,8 @@ class BaselineNet(nn.Module):
     
     TODO promotion still has no encoding.
     """
-    def __init__(self, input_size=325, hidden_size=512, policy_size=600):
+    
+    def __init__(self, input_size=325, hidden_size=512, policy_size=600, result_mode= "classification"):
         super().__init__()
 
         self.fc1 = nn.Linear(input_size, hidden_size)
@@ -34,14 +35,20 @@ class BaselineNet(nn.Module):
         self.fc3 = nn.Linear(hidden_size*2, hidden_size)
 
         # value head predicts both the game result (-1/0/1) -> mapped to (0,1,2) for classes
-        # and the score of the evaluation function, positive or negative.
-        # for this we make two separate heads:
+        # and the score of the evaluation function, positive or negative. for this we make two separate heads:
         
         # NOTE this might not be te bes, since we are making a very "similar" signal to the target, but with different scale.
         # a better idea might be to have the result be predicted as categorical with 3 classes
-    
-        self.value_result_head = nn.Linear(hidden_size, 3)
-        # and we combine the losses in the training loop.
+
+        self.result_mode = result_mode
+        if result_mode == "classification":
+            self.out_result_size = 3
+        elif result_mode == "regression":
+            self.out_result_size = 1
+        else:
+            raise ValueError(f"Invalid result_mode: {result_mode}")
+
+        self.value_result_head = nn.Linear(hidden_size, self.out_result_size)
 
         # policy head predicts the probability of each move (600 possible moves)
         self.policy_head = nn.Linear(hidden_size, policy_size)
@@ -52,7 +59,11 @@ class BaselineNet(nn.Module):
         x = F.relu(self.fc2(x))
         x = F.relu(self.fc3(x))
 
-        value_result = self.value_result_head(x) # logits without tanh because we predict 0/1/2
+        value_result = self.value_result_head(x) # logits without tanh if we predict 0/1/2
+        if self.result_mode == "regression":
+            # apply tanh to map values to (-1, 1) if doing regression
+            value_result = torch.tanh(value_result)
+
         # value_score = self.value_score_head(x) # no activation because it's an unbounded regression  
         # value = value_result + value_score # combine the two heads
 
@@ -63,6 +74,7 @@ class BaselineNet(nn.Module):
 
 @time_this
 def train_model(
+    model,
     train_loader, 
     val_loader,
     num_epochs=10,
@@ -75,13 +87,14 @@ def train_model(
     - Patience: number of epochs worsened validation loss until early stopping
     '''
 
-    model = BaselineNet().to(device)
     optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     print(f"Using device: {device}")
 
     policy_criterion = nn.CrossEntropyLoss()
-    value_result_criterion = nn.CrossEntropyLoss()
-    # value_score_criterion = nn.MSELoss()
+    if model.result_mode == "classification":
+        value_result_criterion = nn.CrossEntropyLoss()
+    else:
+        value_result_criterion = nn.MSELoss()
 
     # TODO wandb logging after everything else is done
 
@@ -120,7 +133,10 @@ def train_model(
                 debug_flag = False
 
             policy_loss = policy_criterion(policy_logits, moves)
-            value_result_loss = value_result_criterion(value_result, results)
+            if model.result_mode == "classification":
+                value_result_loss = value_result_criterion(value_result, results.long())
+            else:
+                value_result_loss = value_result_criterion(value_result.squeeze(-1), results.float())
             #value_score_loss = value_score_criterion(value_score, scores)
             # value_loss = value_result_loss + value_score_loss
 
@@ -149,19 +165,22 @@ def train_model(
                 policy_logits, value_result = model(features)
 
                 policy_loss = policy_criterion(policy_logits, moves)
-                value_result_loss = value_result_criterion(value_result, results)
-                #value_score_loss = value_score_criterion(value_score, scores)
-                # value_loss = value_result_loss + value_score_loss
+                
+                if model.result_mode == "classification":
+                    value_result_loss = value_result_criterion(value_result, results.long())
+                    _, predicted_results = torch.max(value_result, 1)
+                    correct_results += (predicted_results == results).sum().item()
+                else:
+                    value_result_loss = value_result_criterion(value_result.squeeze(-1), results.float())
+                    # For regression, mapping [-1, 1] back to class integers to check correctness
+                    predicted_results = torch.round(value_result.squeeze(-1))
+                    correct_results += (predicted_results == results).sum().item()
 
                 val_loss += (policy_loss + value_result_loss).item()
 
                 _, predicted_moves = torch.max(policy_logits, 1)
                 correct_moves += (predicted_moves == moves).sum().item()
                 total_val_samples += moves.size(0)
-
-                _, predicted_results = torch.max(value_result, 1)
-                correct_results += (predicted_results == results).sum().item()
-                
 
         val_move_acc = correct_moves / total_val_samples if total_val_samples > 0 else 0 
         val_res_acc = correct_results / total_val_samples if total_val_samples > 0 else 0 
@@ -256,16 +275,21 @@ if __name__ == '__main__':
     import sys
 
     data_path = sys.argv[1] if len(sys.argv) > 1 else "data/training_data_sample.txt"
+    
+    model = BaselineNet(result_mode="classification").to("cuda")
+    count_params(model)
 
     # load dataset
-    dataset = MinichessTextDataset(data_path, time=True)
+    dataset = MinichessTextDataset(data_path, use_cache=True, time=True)
 
     # get dataloaders
     train_loader, val_loader = get_dataloaders(dataset, batch_size=256, num_workers=8, time=True)
 
-    train_losses, val_losses, val_move_accs, val_res_accs, model = train_model(
-        train_loader, val_loader, num_epochs=20, patience=4, time=True
-    )
-    plot_loss(train_losses, val_losses, val_move_accs, val_res_accs)
 
+    train_losses, val_losses, val_move_accs, val_res_accs, model = train_model(
+        model, train_loader, val_loader, num_epochs=10, patience=4, time=True
+    )
+    #plot_loss(train_losses, val_losses, val_move_accs, val_res_accs)
+    # use best model for validation test
+    model.load_state_dict(torch.load("best_model.pth"))
     validation_test(model, val_loader, device="cuda")

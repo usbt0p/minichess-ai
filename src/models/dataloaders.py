@@ -24,7 +24,12 @@ class MinichessTextDataset(Dataset):
     """
 
     @time_this
-    def __init__(self, file_path, use_cache=True):
+    def __init__(self, file_path, use_cache=True, result_mode="classification"):
+        '''
+        The result_mode can be:
+        - "classification": the result is treated as categorical, with 3 classes (white win(0), draw(1), black win(2))
+        - "regression": the result is treated as a continuous value between -1 and 1
+        '''
         super().__init__()
         
         # Check for cached binary version (loads in milliseconds instead of minutes)
@@ -64,8 +69,11 @@ class MinichessTextDataset(Dataset):
         
         features_arr = np.full((num_samples, 25), 12, dtype=np.uint8) # 12 is 'empty'
         moves_arr = np.zeros(num_samples, dtype=np.int16) # cant use int8, need 600 vals
-        results_arr = np.zeros(num_samples, dtype=np.int8)
-        scores_arr = np.zeros(num_samples, dtype=np.int16) # TODO verify this is fine
+        if result_mode == "classification":
+            results_arr = np.zeros(num_samples, dtype=np.int8)
+        elif result_mode == "regression":
+            results_arr = np.zeros(num_samples, dtype=np.float16)
+        scores_arr = np.zeros(num_samples, dtype=np.float32) # TODO verify this is fine
 
         with open(file_path, "r") as f:
             lines = []
@@ -122,7 +130,12 @@ class MinichessTextDataset(Dataset):
                         to_sq_idx = to_sq - 1 if to_sq > from_sq else to_sq
                         
                         moves_arr[idx] = from_sq * 24 + to_sq_idx
-                        results_arr[idx] = int(result_line[7:].strip()) + 1
+                        if result_mode == "classification":
+                            results_arr[idx] = int(result_line[7:].strip()) + 1
+                        elif result_mode == "regression":
+                            results_arr[idx] = int(result_line[7:].strip())
+                        else:
+                            raise ValueError(f"Invalid result_mode: {result_mode}")
                         scores_arr[idx] = float(score_line[6:].strip())
                         
                         idx += 1
@@ -138,8 +151,12 @@ class MinichessTextDataset(Dataset):
         # TODO check dtypes, for correctness
         self.features = torch.from_numpy(features_arr)
         self.moves = torch.from_numpy(moves_arr).long()
-        self.results = torch.from_numpy(results_arr).long()
-        self.scores = torch.from_numpy(scores_arr).long().unsqueeze(1)
+        # in case we switch result_mode, the cached results might be of the wrong type
+        if result_mode == "classification":
+            self.results = torch.from_numpy(results_arr).float()#.long()
+        elif result_mode == "regression":
+            self.results = torch.from_numpy(results_arr).float()
+        self.scores = torch.from_numpy(scores_arr).float().unsqueeze(1)
 
         if use_cache:
             print(f">> Saving cached dataset to {cache_path}...")
