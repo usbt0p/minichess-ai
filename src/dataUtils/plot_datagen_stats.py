@@ -102,10 +102,13 @@ def parse_stats(filepath):
     return data
 
 
-def plot_3d_histogram(matrix, title):
-    # Utilizamos un histograma 3d (barras en 3d) para los tableros porque asimila topológicamente
-    # nuestro tablero 2D; donde la altura y el color denotan la densidad conjunta.
-    # Es ideal para identificar "hotspots" (puntos calientes) de forma bastante intuitiva.
+def plot_3d_histogram(matrix, title, flip=False):
+    '''histograma 3d (barras en 3d) para los tableros porque asimila topológicamente
+    el tablero 2D; donde la altura y el color denotan la densidad conjunta.
+    Es ideal para identificar "hotspots" (puntos calientes) de forma bastante intuitiva.
+
+    flip: si es True, invierte el eje y para que el histograma se vea como el tablero desde la perspectiva del jugador de negras
+    '''
     fig = plt.figure(figsize=(8, 6))
     ax = fig.add_subplot(111, projection="3d")
 
@@ -122,7 +125,29 @@ def plot_3d_histogram(matrix, title):
     dx = np.ones(rows * cols) * 0.8
     dy = np.ones(rows * cols) * 0.8
 
-    # Colormap 'jet' mapeado a las alturas (emulando la imagen pedida)
+    
+    # TODO esto hay que mirarlo, me parece que los datos vienen en 
+    # espejo, así que no se muy bien como hacerlo
+    
+    # si flip es True, invertimos el eje y para que el histograma se vea como 
+    # el tablero desde la perspectiva del jugador de negras
+    # if flip:
+    #     # set x ticks to match columns a, b, c, d, e
+    #     ax.set_xticks(np.arange(cols))
+    #     ax.set_xticklabels(["a", "b", "c", "d", "e"])
+    #     y_data = rows - y_data - 1
+    #     # and set y ticks to be inverted
+    #     ax.set_yticks(np.arange(rows))
+    #     ax.set_yticklabels(["1", "2", "3", "4", "5"])
+    #     ax.invert_yaxis()
+    # else:
+    #     # set x ticks to match columns a, b, c, d, e
+    #     ax.set_xticks(np.arange(cols))
+    #     ax.set_xticklabels(["e", "d", "c", "b", "a"])
+    #     ax.set_yticks(np.arange(rows))
+    #     ax.set_yticklabels(["5", "4", "3", "2", "1"])
+
+    # colormap 'jet' mapeado a las alturas (emulando la imagen pedida)
     cmap = plt.get_cmap("jet")
     max_val = np.max(dz) if np.max(dz) > 0 else 1
     colors = cmap(dz / max_val)
@@ -141,6 +166,9 @@ def plot_bar_chart(data_dict, title, xlabel, ylabel):
     categories = list(data_dict.keys())
     values = list(data_dict.values())
 
+    # add the exact values inside the bars
+    for i, v in enumerate(values):
+        plt.text(i, v + 0.5, str(v), ha='center', va='bottom')
     plt.bar(categories, values, color="skyblue", edgecolor="black")
     plt.title(title)
     plt.xlabel(xlabel)
@@ -159,6 +187,9 @@ def plot_line_chart(data_dict, title, xlabel, ylabel):
     x = [item[0] for item in sorted_items]
     y = [item[1] for item in sorted_items]
 
+    # use integer ticks and rotate them for better visibility
+    plt.xticks(np.arange(min(x), max(x)+1, 1))
+    plt.xticks(rotation=45, ha="right")
     plt.plot(x, y, marker="o", linestyle="-", color="indigo")
     plt.fill_between(x, y, color="indigo", alpha=0.1)
     plt.title(title)
@@ -173,12 +204,7 @@ def main():
     if len(sys.argv) > 1:
         filepath = sys.argv[1]
     else:
-        # Fallback a la ruta actual que ha devuelto el comando \`find\`
-        # Ajustamos a la ruta específica o buscamos global si no la hay
-        filepath = "data/gardner_depth4/stats_corrected_names.txt"
-        if not os.path.exists(filepath):
-            # Posible estructura alternativa
-            filepath = "logs/stats_corrected_names.txt"
+        filepath = input("Ingrese la ruta del archivo de estadísticas: ")
 
     if not os.path.exists(filepath):
         print(f"Error: {filepath} no existe.")
@@ -188,7 +214,10 @@ def main():
 
     # Graficar histogramas 3d para los tableros
     for name, matrix in data["boards"].items():
-        plot_3d_histogram(matrix, name)
+        if "Black" in name:
+            plot_3d_histogram(matrix, name, flip=True)
+        else:
+            plot_3d_histogram(matrix, name)
 
     # Graficar datos categóricos puros
     if data["moves_by_type"]:
