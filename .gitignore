@@ -16,7 +16,12 @@ blog/
 papers/
 *.wiki
 
+# torch / weight related
+*.pth
+*.pt
+
 # misc
 *.bin
 *.log
 *.png
+*.txt
