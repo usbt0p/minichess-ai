@@ -34,6 +34,13 @@ class BaselineNet(nn.Module):
         self.fc2 = nn.Linear(hidden_size, hidden_size*2)
         self.fc3 = nn.Linear(hidden_size*2, hidden_size)
 
+        dropout_prob = 0.1
+        self.dropout = nn.Dropout(dropout_prob)
+        
+        self.bn1 = nn.BatchNorm1d(hidden_size)
+        self.bn2 = nn.BatchNorm1d(hidden_size*2)
+        self.bn3 = nn.BatchNorm1d(hidden_size)
+
         # value head predicts both the game result (-1/0/1) -> mapped to (0,1,2) for classes
         # and the score of the evaluation function, positive or negative. for this we make two separate heads:
         
@@ -55,9 +62,13 @@ class BaselineNet(nn.Module):
 
     def forward(self, x):
         # x shape: (Batch, 325)
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = F.relu(self.fc3(x))
+        x = self.bn1(self.fc1(x))
+        x = F.relu(x)
+        x = self.bn2(self.fc2(x))
+        x = F.relu(x)
+        x = self.bn3(self.fc3(x))
+        x = F.relu(x)
+        x = self.dropout(x) # ensure dropout after all bn to prevent instabilities
 
         value_result = self.value_result_head(x) # logits without tanh if we predict 0/1/2
         if self.result_mode == "regression":
@@ -283,7 +294,8 @@ if __name__ == '__main__':
     dataset = MinichessTextDataset(data_path, use_cache=True, time=True)
 
     # get dataloaders
-    train_loader, val_loader = get_dataloaders(dataset, batch_size=256, num_workers=8, time=True)
+    train_loader, val_loader = get_dataloaders(
+        dataset, batch_size=256, train_ratio=0.98, num_workers=8, time=True)
 
 
     train_losses, val_losses, val_move_accs, val_res_accs, model = train_model(
