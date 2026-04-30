@@ -13,6 +13,7 @@ def parse_stats(filepath):
         "eval_imbalances": {},
         "results": {},
         "positions_by_piece_count": {},
+        "score_distribution": {},
     }
 
     with open(filepath, "r") as f:
@@ -94,6 +95,19 @@ def parse_stats(filepath):
                 parts = lines[i].strip().split(": ")
                 if len(parts) == 2:
                     data["positions_by_piece_count"][int(parts[0])] = int(parts[1])
+                i += 1
+            continue
+
+        if line.startswith("Score distribution:"):
+            i += 1
+            while i < len(lines) and lines[i].startswith("    "):
+                parts = lines[i].strip().split(": ")
+                if len(parts) == 2:
+                    key = parts[0]
+                    # Solo nos interesan los valores numéricos, Min y Max los ignoramos 
+                    # porque podemos sacarlos de las keys.
+                    if key not in ["Min Score", "Max Score"]:
+                        data["score_distribution"][int(key)] = int(parts[1])
                 i += 1
             continue
 
@@ -199,6 +213,44 @@ def plot_line_chart(data_dict, title, xlabel, ylabel):
     plt.tight_layout()
 
 
+def plot_binned_histogram(data_dict, title, xlabel, ylabel, num_bins=30):
+    fig = plt.figure(figsize=(10, 6))
+    
+    if not data_dict:
+        return
+        
+    # Extraer todos los scores y multiplicarlos por su frecuencia
+    # (data_dict tiene formato {score: frecuencia})
+    scores = list(data_dict.keys())
+    min_score = min(scores)
+    max_score = max(scores)
+    
+    # Asegurarnos de que los bins estén centrados en 0 simétricamente
+    abs_max = max(abs(min_score), abs(max_score))
+    
+    # Creamos un array plano repitiendo los valores para matplotlib.hist
+    # o mejor aún, calculamos los bines directamente con numpy usando weights.
+    bins = np.linspace(-abs_max, abs_max, num_bins + 1)
+    
+    values = list(data_dict.values())
+    
+    n, bins_out, patches = plt.hist(scores, bins=bins, weights=values, color="coral", edgecolor="black", alpha=0.8)
+    
+    # Anotar el número exacto de conteos en cada bin
+    for i in range(len(patches)):
+        count = int(n[i])
+        if count > 0:
+            x_center = patches[i].get_x() + patches[i].get_width() / 2
+            plt.text(x_center, count, f'{count}', ha='center', va='bottom', fontsize=8, rotation=90)
+            
+    plt.title(f"{title} (Min: {min_score}, Max: {max_score})")
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.grid(True, linestyle="--", alpha=0.4)
+    plt.tight_layout()
+
+
+
 def main():
     # Intenta leer argumento de linea de comandos, sino buscará el archivo por defecto.
     if len(sys.argv) > 1:
@@ -247,6 +299,14 @@ def main():
             "Posiciones por Cantidad de Piezas",
             "Nº de Piezas",
             "Cantidad",
+        )
+    if data["score_distribution"]:
+        plot_binned_histogram(
+            data["score_distribution"],
+            "Distribución de Evaluación (Score)",
+            "Score",
+            "Frecuencia",
+            num_bins=30
         )
 
     # guardar en imágenes en la carpeta de origen de los datos
