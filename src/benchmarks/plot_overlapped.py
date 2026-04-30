@@ -48,9 +48,10 @@ def parse_logs(directory):
 def main():
     base_dir = "src/benchmarks"
     
-    # Define the runs and their labels
     runs = {
+        "random_baseline": "Random Baseline",
         "d2": "Depth 2",
+        "d2_bn_drop": "Depth 2 + Batchnorm + Dropout",
         "d3": "Depth 3",
         "d4": "Depth 4",
         "big1": "Merged (d4+d3+d2)"
@@ -58,7 +59,9 @@ def main():
     
     # Colors and markers for clarity
     styles = {
+        "random_baseline": {"color": "tab:gray", "marker": "x", "linestyle": "--"},
         "d2": {"color": "tab:blue", "marker": "o"},
+        "d2_bn_drop": {"color": "tab:purple", "marker": "P"},
         "d3": {"color": "tab:orange", "marker": "s"},
         "d4": {"color": "tab:green", "marker": "^"},
         "big1": {"color": "tab:red", "marker": "D"},
@@ -79,12 +82,13 @@ def main():
         res_accs = [d[2] for d in data]
         
         style = styles[run_dir]
+        linestyle = style.get("linestyle", "-")
         
         # Plot Move Accuracy
-        ax1.plot(sizes, move_accs, label=label, color=style["color"], marker=style["marker"], markersize=6, linewidth=2)
+        ax1.plot(sizes, move_accs, label=label, color=style["color"], marker=style["marker"], markersize=6, linewidth=2, linestyle=linestyle)
         
         # Plot Result Accuracy
-        ax2.plot(sizes, res_accs, label=label, color=style["color"], marker=style["marker"], markersize=6, linewidth=2)
+        ax2.plot(sizes, res_accs, label=label, color=style["color"], marker=style["marker"], markersize=6, linewidth=2, linestyle=linestyle)
 
     # Styling ax1 (Move Accuracy)
     ax1.set_xscale('log')
