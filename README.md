@@ -1,3 +1,12 @@
+# Deep Learning Applied to Minichess
+
+A study on applying Deep Learning to minichess (Gardner variant). Experimenting with first supervised learning followed by self-play.
+
+![minichess-svg](minichess.svg "minichess")
+
+---
+
+
 ## TIL
 ### 250426
 - export environment variables in fish: `set --export PYTHONPATH /home/usbt0p/TFG/`. To make this permanent, put `set -xg PYTHONPATH /path/to/test/folder $PYTHONPATH` at the end of `~/.config/fish/config.fish`
