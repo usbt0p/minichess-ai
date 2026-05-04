@@ -147,13 +147,17 @@ def plot_results(results):
 
 if __name__ == "__main__":
     # --- AJUSTA ESTOS PARÁMETROS SI ES NECESARIO ---
+    # SOURCE_FILE = "data/merged/merged_gardner.txt"
+    # TARGET_DIR = "data/subsets_merged"
+    
+    # Tamaños de los subsets en instancias.
+    # SIZES = [50_000, 100_000, 500_000, 1_000_000, 1_800_000, 3_000_000, 6_000_000, 10_000_000, 
+    # 20_000_000, 25_445_963]
+
     SOURCE_FILE = "data/gardner_depth2/gen_gardner_d2.txt"
     TARGET_DIR = "data/subsets_d2"
-    
-    # Tamaños de los subsets en instancias. 
-    # Sugerencia: 10k, 50k, 100k, 500k, 1M, y 1.8M (máximo)
-    SIZES = [50_000, 100_000, 500_000, 1_000_000, 1_800_000, 3_000_000, 6_000_000,]
-             #6_000_000, 10_000_000]
+
+    SIZES = [50_000, 100_000, 500_000, 1_000_000, 1_800_000, 3_000_000, 6_000_000, 10_000_000]
     
     print("[1] Creando subsets de datos...")
     subset_files = create_subsets(SOURCE_FILE, TARGET_DIR, SIZES)

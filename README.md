@@ -24,6 +24,29 @@ quit
 EOF
 ```
 
+## 020526
+
+descargo una librería. no tengo autocompletado por lo tanto no tengo ni idea ni de las funciones que hay disponibles en la librería. mirando en .venv/.../site-packages/ parece que la librería es un binario de cpython . cómo puedo hacer para que tenga autocompletado?
+
+Para solucionar este problema con las librerías compiladas en C (.so), he utilizado una herramienta estándar llamada stubgen (del paquete mypy).Esta herramienta inspecciona dinámicamente el binario de CPython importado y genera un archivo de "stubs" de tipado con extensión .pyi.
+
+Pero a veces visual studio y sus forks siguen dando por culo:
+
+```
+Cannot find module `...`
+  Looked in these locations (from default config for project root marked by `/home/usbt0p/project/pyproject.toml`):
+  Import root (inferred from project layout): "/home/usbt0p/project/src"
+  Site package path queried from interpreter: ["/home/usbt0p/project/.venv/lib/python3.14/site-packages"] 
+```
+
+Esto es una cuestión de rutas. asegúrate de que el entorno virtual esté activado (ej: `source .venv/bin/activate`) y que la ruta sea la correcta.
+
+
+
+---
+
+
+
 ## Data Pipeline: Cómo generar, procesar y unir los datasets
 
 Para conseguir el gran dataset final unificado (el fichero *merged* sin duplicados), el flujo de trabajo paso a paso es el siguiente, combinando las utilidades de Fairy-Stockfish con los scripts custom creados en el proyecto:

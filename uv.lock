@@ -676,6 +676,55 @@ wheels = [
 ]
 
 [[package]]
+name = "minichess-with-deep-learning"
+version = "0.1.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "dotenv" },
+    { name = "keras" },
+    { name = "matplotlib" },
+    { name = "numpy" },
+    { name = "nvidia-ml-py" },
+    { name = "onnx" },
+    { name = "onnxscript" },
+    { name = "optuna" },
+    { name = "pandas" },
+    { name = "psutil" },
+    { name = "pyffish" },
+    { name = "requests" },
+    { name = "scikit-learn" },
+    { name = "setuptools" },
+    { name = "tensorboard" },
+    { name = "torch" },
+    { name = "tqdm" },
+    { name = "transformers" },
+    { name = "wandb" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "dotenv", specifier = ">=0.9.9" },
+    { name = "keras", specifier = ">=3.13.2" },
+    { name = "matplotlib", specifier = ">=3.10.8" },
+    { name = "numpy", specifier = ">=2.4.2" },
+    { name = "nvidia-ml-py", specifier = ">=12.570.86" },
+    { name = "onnx" },
+    { name = "onnxscript" },
+    { name = "optuna", specifier = ">=4.8.0" },
+    { name = "pandas", specifier = ">=3.0.1" },
+    { name = "psutil", specifier = ">=6.0.0" },
+    { name = "pyffish", specifier = ">=0.0.88" },
+    { name = "requests", specifier = ">=2.32.5" },
+    { name = "scikit-learn", specifier = ">=1.8.0" },
+    { name = "setuptools", specifier = "<81.0.0" },
+    { name = "tensorboard", specifier = ">=2.17.0" },
+    { name = "torch", specifier = ">=2.10.0" },
+    { name = "tqdm", specifier = ">=4.67.3" },
+    { name = "transformers", specifier = ">=5.3.0" },
+    { name = "wandb", specifier = ">=0.25.1" },
+]
+
+[[package]]
 name = "ml-dtypes"
 version = "0.5.4"
 source = { registry = "https://pypi.org/simple" }
@@ -1196,6 +1245,12 @@ wheels = [
 ]
 
 [[package]]
+name = "pyffish"
+version = "0.0.88"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/c2/65/35e51084e8a2e03e8f0dee710d2ca95be957ed6a959279c6a59f03f4b3bd/pyffish-0.0.88.tar.gz", hash = "sha256:2e9a95b2cbafa21c583032c23cb728570e3c61783a74ecd0fe4cf1653e1e8fbe", size = 321947, upload-time = "2025-05-23T15:40:14.204Z" }
+
+[[package]]
 name = "pygments"
 version = "2.20.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1522,53 +1577,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/7a/13/e503968fefabd4c6b2650af21e110aa8466fe21432cd7c43a84577a89438/tensorboard_data_server-0.7.2-py3-none-any.whl", hash = "sha256:7e0610d205889588983836ec05dc098e80f97b7e7bbff7e994ebb78f578d0ddb", size = 2356, upload-time = "2023-10-23T21:23:32.16Z" },
     { url = "https://files.pythonhosted.org/packages/b7/85/dabeaf902892922777492e1d253bb7e1264cadce3cea932f7ff599e53fea/tensorboard_data_server-0.7.2-py3-none-macosx_10_9_x86_64.whl", hash = "sha256:9fe5d24221b29625dbc7328b0436ca7fc1c23de4acf4d272f1180856e32f9f60", size = 4823598, upload-time = "2023-10-23T21:23:33.714Z" },
     { url = "https://files.pythonhosted.org/packages/73/c6/825dab04195756cf8ff2e12698f22513b3db2f64925bdd41671bfb33aaa5/tensorboard_data_server-0.7.2-py3-none-manylinux_2_31_x86_64.whl", hash = "sha256:ef687163c24185ae9754ed5650eb5bc4d84ff257aabdc33f0cc6f74d8ba54530", size = 6590363, upload-time = "2023-10-23T21:23:35.583Z" },
-]
-
-[[package]]
-name = "tfg"
-version = "0.1.0"
-source = { virtual = "." }
-dependencies = [
-    { name = "dotenv" },
-    { name = "keras" },
-    { name = "matplotlib" },
-    { name = "numpy" },
-    { name = "nvidia-ml-py" },
-    { name = "onnx" },
-    { name = "onnxscript" },
-    { name = "optuna" },
-    { name = "pandas" },
-    { name = "psutil" },
-    { name = "requests" },
-    { name = "scikit-learn" },
-    { name = "setuptools" },
-    { name = "tensorboard" },
-    { name = "torch" },
-    { name = "tqdm" },
-    { name = "transformers" },
-    { name = "wandb" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "dotenv", specifier = ">=0.9.9" },
-    { name = "keras", specifier = ">=3.13.2" },
-    { name = "matplotlib", specifier = ">=3.10.8" },
-    { name = "numpy", specifier = ">=2.4.2" },
-    { name = "nvidia-ml-py", specifier = ">=12.570.86" },
-    { name = "onnx" },
-    { name = "onnxscript" },
-    { name = "optuna", specifier = ">=4.8.0" },
-    { name = "pandas", specifier = ">=3.0.1" },
-    { name = "psutil", specifier = ">=6.0.0" },
-    { name = "requests", specifier = ">=2.32.5" },
-    { name = "scikit-learn", specifier = ">=1.8.0" },
-    { name = "setuptools", specifier = "<81.0.0" },
-    { name = "tensorboard", specifier = ">=2.17.0" },
-    { name = "torch", specifier = ">=2.10.0" },
-    { name = "tqdm", specifier = ">=4.67.3" },
-    { name = "transformers", specifier = ">=5.3.0" },
-    { name = "wandb", specifier = ">=0.25.1" },
 ]
 
 [[package]]
