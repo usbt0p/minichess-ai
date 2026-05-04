@@ -134,15 +134,14 @@ def _get_piece_svg_b64(char):
         data = base64.b64encode(f.read()).decode('utf-8')
     return f"data:image/svg+xml;base64,{data}"
 
-def export_svg(fen: str, filename: str = "tablero.svg"):
-    """Exporta el FEN actual a un archivo de imagen vectorial SVG con las piezas oficiales."""
+def get_svg_board(fen: str) -> str:
+    """Devuelve el string del contenido SVG del tablero (sin la etiqueta <svg> envolvente externa)"""
     board_part = fen.split()[0]
     rows = board_part.split('/')
     
     sq = 60 # Tamaño de la casilla
-    width, height = 5 * sq, 5 * sq
     
-    svg = [f'<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg">']
+    svg = []
     
     # Dibujar el tablero a cuadros
     for r in range(5):
@@ -172,6 +171,16 @@ def export_svg(fen: str, filename: str = "tablero.svg"):
                     )
                 c += 1
                 
+    return "\n".join(svg)
+
+def export_svg(fen: str, filename: str = "tablero.svg"):
+    """Exporta el FEN actual a un archivo de imagen vectorial SVG con las piezas oficiales."""
+    sq = 60
+    width, height = 5 * sq, 5 * sq
+    
+    svg = [f'<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg">']
+    svg.append(get_svg_board(fen))
+    
     svg.append('</svg>')
     
     with open(filename, "w") as f:

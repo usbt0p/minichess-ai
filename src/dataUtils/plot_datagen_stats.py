@@ -2,6 +2,8 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import random
+from src.utils.utils import export_svg
 
 
 def parse_stats(filepath):
@@ -14,6 +16,7 @@ def parse_stats(filepath):
         "results": {},
         "positions_by_piece_count": {},
         "score_distribution": {},
+        "endgame_configurations": {},
     }
 
     with open(filepath, "r") as f:
@@ -111,6 +114,22 @@ def parse_stats(filepath):
                 i += 1
             continue
 
+        if line.startswith("Distribution of endgame configurations"):
+            i += 1
+            while i < len(lines) and lines[i].startswith("    "):
+                parts = lines[i].split("):")
+                if len(parts) == 2:
+                    config_part = parts[0].split("(")[0].strip()
+                    config = " ".join(config_part.split())
+                    counts = parts[1].strip().split()
+                    if counts:
+                        data["endgame_configurations"][config] = {
+                            "count": int(counts[0]),
+                            "perf": counts[-1]
+                        }
+                i += 1
+            continue
+
         i += 1
 
     return data
@@ -190,6 +209,26 @@ def plot_bar_chart(data_dict, title, xlabel, ylabel):
     plt.xticks(rotation=45, ha="right")
     plt.tight_layout()
 
+def plot_endgame_bar_chart(endgames_dict, title, xlabel, ylabel):
+    fig = plt.figure(figsize=(10, 6))
+    categories = list(endgames_dict.keys())
+    counts = [v["count"] for v in endgames_dict.values()]
+    perfs = [v["perf"] for v in endgames_dict.values()]
+
+    bars = plt.bar(categories, counts, color="skyblue", edgecolor="black")
+    for i, bar in enumerate(bars):
+        height = bar.get_height()
+        # perf% en el centro
+        plt.text(bar.get_x() + bar.get_width() / 2, height / 2, perfs[i], ha='center', va='center', color='black', fontweight='bold', fontsize=10)
+        # conteo arriba
+        plt.text(bar.get_x() + bar.get_width() / 2, height, f"{counts[i]}", ha='center', va='bottom', fontsize=9)
+        
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.xticks(rotation=45, ha="right")
+    plt.tight_layout()
+
 
 def plot_line_chart(data_dict, title, xlabel, ylabel):
     # Un gráfico de líneas con gradiente funciona perfectamente para distribuciones secuenciales,
@@ -251,6 +290,124 @@ def plot_binned_histogram(data_dict, title, xlabel, ylabel, num_bins=30):
 
 
 
+def get_endgame_str(fen):
+    board_part = fen.split()[0]
+    white, black = [], []
+    for char in board_part:
+        if char.isalpha():
+            if char.isupper():
+                white.append(char)
+            else:
+                black.append(char.upper())
+    
+    order = {'K': 0, 'P': 1, 'N': 2, 'B': 3, 'R': 4, 'Q': 5}
+    white.sort(key=lambda x: order[x])
+    black.sort(key=lambda x: order[x])
+    
+    return "".join(white) + " v" + "".join(black)
+
+def generate_fen_visualizations(data_dict, stats_filepath):
+    from src.utils.utils import get_svg_board
+    if not data_dict.get("endgame_configurations"):
+        return
+        
+    output_dir = os.path.dirname(stats_filepath)
+    dataset_file = None
+    for f in os.listdir(output_dir):
+        if f.endswith(".txt") and "stats" not in f:
+            dataset_file = os.path.join(output_dir, f)
+            break
+            
+    if not dataset_file:
+        print("No se encontró archivo de dataset raw para exportar FENs.")
+        return
+        
+    print(f"Buscando FENs en {dataset_file}...")
+    
+    # 1. Los top 10 endgame configurations
+    top_endgames = sorted(data_dict["endgame_configurations"].items(), key=lambda x: x[1]["count"], reverse=True)[:10]
+    top_endgame_names = [x[0] for x in top_endgames]
+    found_endgames = {name: [] for name in top_endgame_names}
+    random_fens = []
+    
+    with open(dataset_file, "r") as f:
+        for line in f:
+            if line.startswith("fen "):
+                fen = line[4:].strip()
+                
+                if random.random() < 0.001 and len(random_fens) < 6:
+                    random_fens.append(fen)
+                    
+                endgame_str = get_endgame_str(fen)
+                if endgame_str in found_endgames and len(found_endgames[endgame_str]) < 1:
+                    found_endgames[endgame_str].append(fen)
+                    
+                all_done = len(random_fens) >= 6 and all(len(v) >= 1 for v in found_endgames.values())
+                if all_done:
+                    break
+                    
+    svg_out_dir = os.path.join(output_dir, "fens_svg")
+    os.makedirs(svg_out_dir, exist_ok=True)
+    
+    def save_svg_grid(items_list, filename, main_title):
+        board_size = 300
+        margin = 60
+        text_height = 80
+        cell_width = board_size + margin
+        cell_height = board_size + text_height + margin
+
+        total_items = len(items_list)
+        cols = 4 
+        if total_items == 6: cols = 3
+        elif total_items == 10: cols = 5
+        rows = (total_items + cols - 1) // cols
+
+        width = cols * cell_width
+        height = rows * cell_height + 100
+
+        svg = [f'<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg" style="background-color: white;">']
+        svg.append(f'<text x="{width/2}" y="60" font-size="36" font-family="Arial" text-anchor="middle" font-weight="bold">{main_title}</text>')
+
+        for idx, item in enumerate(items_list):
+            fen = item["fen"]
+            title = item["title"]
+            subtitle = item.get("subtitle", "")
+            
+            x_idx = idx % cols
+            y_idx = idx // cols
+            
+            x_pos = margin/2 + x_idx * cell_width
+            y_pos = 120 + y_idx * cell_height
+            
+            svg.append(f'<text x="{x_pos + board_size/2}" y="{y_pos - 35}" font-size="22" font-family="Arial" text-anchor="middle" font-weight="bold">{title}</text>')
+            if subtitle:
+                svg.append(f'<text x="{x_pos + board_size/2}" y="{y_pos - 10}" font-size="16" font-family="Arial" text-anchor="middle" fill="#555">{subtitle}</text>')
+            
+            board_svg = get_svg_board(fen)
+            svg.append(f'<g transform="translate({x_pos}, {y_pos})">')
+            svg.append(board_svg)
+            svg.append('</g>')
+
+        svg.append('</svg>')
+        
+        with open(filename, 'w') as f:
+            f.write("\n".join(svg))
+        print(f"[*] Imagen conjunta guardada en: {filename}")
+
+    endgame_items = []
+    for endgame, fens in found_endgames.items():
+        perf = data_dict["endgame_configurations"][endgame]["perf"]
+        count = data_dict["endgame_configurations"][endgame]["count"]
+        for fen in fens:
+            endgame_items.append({"fen": fen, "title": f"{endgame} (WR: {perf})", "subtitle": f"Muestras: {count:,}"})
+            
+    random_items = []
+    for i, fen in enumerate(random_fens):
+        random_items.append({"fen": fen, "title": f"Random #{i+1}"})
+        
+    save_svg_grid(endgame_items, os.path.join(svg_out_dir, "top_endgames.svg"), "Top 10 Finales Frecuentes")
+    save_svg_grid(random_items, os.path.join(svg_out_dir, "random_fens.svg"), "Posiciones Aleatorias (Random)")
+
 def main():
     # Intenta leer argumento de linea de comandos, sino buscará el archivo por defecto.
     if len(sys.argv) > 1:
@@ -308,6 +465,18 @@ def main():
             "Frecuencia",
             num_bins=30
         )
+
+    if data.get("endgame_configurations"):
+        top_endgames = dict(sorted(data["endgame_configurations"].items(), key=lambda x: x[1]["count"], reverse=True)[:10])
+        plot_endgame_bar_chart(
+            top_endgames,
+            "Top 10 Finales Frecuentes",
+            "Final",
+            "Cantidad"
+        )
+
+    # Extraer FENs de muestra y visualizarlos en SVG
+    generate_fen_visualizations(data, filepath)
 
     # guardar en imágenes en la carpeta de origen de los datos
     output_dir = os.path.dirname(filepath)
