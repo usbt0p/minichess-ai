@@ -39,6 +39,11 @@ descargo una librería. no tengo autocompletado por lo tanto no tengo ni idea ni
 
 Para solucionar este problema con las librerías compiladas en C (.so), he utilizado una herramienta estándar llamada stubgen (del paquete mypy).Esta herramienta inspecciona dinámicamente el binario de CPython importado y genera un archivo de "stubs" de tipado con extensión .pyi.
 
+```
+uv add mypy
+.venv/bin/stubgen -m pyffish -o <your-output-dir>
+```
+
 Pero a veces visual studio y sus forks siguen dando por culo:
 
 ```
@@ -101,3 +106,10 @@ Puesto que nuestro DataLoader personalizado (`MinichessTextDataset`) parsea text
 ./src/dataUtils/convert.sh data/merged/merged_gardner.bin data/merged/merged_gardner.txt
 ```
 Ese archivo final `.txt` es el que usará la red neuronal y cacheará en formato `.pt` automáticamente.
+
+## Generar los Stubs de pyffish
+Si tu editor tiene problemas con los imports o el autocompletado de pyffish:
+```bash
+uv add mypy
+.venv/bin/stubgen -m pyffish -o <your-output-dir>
+```

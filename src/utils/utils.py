@@ -37,6 +37,17 @@ def time_this(func):
             return func(*arg, **kw)
     return wrapper
 
+def pretty_time(seconds: int) -> str:
+    """Format total seconds into HH:MM:SS"""
+    hours, remainder = divmod(seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    if hours > 0:
+        return f"{hours:02d}h {minutes:02d}m {seconds:02d}s"
+    elif minutes > 0:
+        return f"{minutes:02d}m {seconds:02d}s"
+    else:
+        return f"{seconds:02d}s"
+
 def save_and_export(model, dummy_input, target_path="best_model.pth"):
     '''Save model in PyTorch format and export to ONNX.
     - Dummy input is needed to trace the model's operations. Must be of the proper size.
