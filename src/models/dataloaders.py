@@ -1,10 +1,76 @@
 import torch
 from torch.utils.data import Dataset, DataLoader
+import pyffish
 
-from src.utils.utils import time_this
+from src.utils.utils import time_this, pretty_time
 
+import time
 import os
 import numpy as np
+
+def uci_to_index(move_str: str, promotions: bool) -> int:
+    """Helper to decode a UCI string into our custom indexing system."""
+    file_from = ord(move_str[0]) - ord("a")
+    rank_from = int(move_str[1]) - 1
+    file_to = ord(move_str[2]) - ord("a")
+    rank_to = int(move_str[3]) - 1
+    
+    # move looks like e3b5 in the original format,
+    # and we encode it as a number from 0 to 599.
+    # from_sq is the index of the starting square (0-24).
+    # to_sq_idx is the index of the ending square relative to the starting square (0-23).
+    from_sq = rank_from * 5 + file_from
+    to_sq = rank_to * 5 + file_to
+    
+    # this results in this board indexing:
+    # | 20 | 21 | 22 | 23 | 24 |
+    # | 15 | 16 | 17 | 18 | 19 |
+    # | 10 | 11 | 12 | 13 | 14 |
+    # | 5  | 6  | 7  | 8  | 9  |
+    # | 0  | 1  | 2  | 3  | 4  |
+
+    # Policy size is 600 (5^2 * (5^2 - 1)). We adjust the to_sq index.
+    # so this makes a1b1 the smallest move (0), a1e1 is move (3), a1a2 is move (4),
+    # but a2a1 is move 120 (5*24 + 0)
+    # the biggest move has idx 599, which is 24*24 + 23, or e5d5
+    to_sq_idx = to_sq - 1 if to_sq > from_sq else to_sq
+    
+    if promotions and len(move_str) > 4:
+        # promotions need to be handled separately
+        # on a 5x5 board there are 104 possible promotion moves:
+        # moves from a and e files have two options (move or pawn capture), and bcd have 3
+        # and we have 4 possible promotions and two players, so (2+3+3+3+2)*4*2 = 13*4*2 = 104
+        promo_char = move_str[4].lower()
+        promo_types = {'q': 0, 'r': 1, 'b': 2, 'n': 3}
+        p_idx = promo_types[promo_char]
+        is_black = from_sq < 10
+        dx = file_to - file_from
+        base_idx = [0, 2, 5, 8, 11][file_from]
+        offset = dx if file_from == 0 else dx + 1
+        traversal_idx = base_idx + offset
+        if is_black:
+            traversal_idx += 13
+            
+        # this is the offset: (13*2) * p, where p in [0,3], plus the black offset +
+        # traversal (moving encodes from where to where it moved) + 1 for the move
+        # so max would be 600 + 103 (black pawn promoting to knight from e2 to d1)
+        # 600 + (3*26) + 11 + 13 + 1 = 703
+        return 600 + p_idx * 26 + traversal_idx
+    else:
+        return from_sq * 24 + to_sq_idx
+
+def parse_fen_to_features(fen_str: str, piece_map: dict, features_out: np.ndarray):
+    """Parses a Gardner FEN string and populates the features_out array in place."""
+    board_part = fen_str.split(" ")[0]
+    for r_idx, row in enumerate(board_part.split("/")):
+        rank = 4 - r_idx  # FEN gives rank 5 down to 1
+        file_idx = 0
+        for char in row:
+            if char.isdigit():
+                file_idx += int(char) # Skip empty squares
+            else:
+                features_out[rank * 5 + file_idx] = piece_map[char]
+                file_idx += 1
 
 class MinichessTextDataset(Dataset):
     """
@@ -24,7 +90,7 @@ class MinichessTextDataset(Dataset):
     """
 
     @time_this
-    def __init__(self, file_path, use_cache=True, result_mode="classification"):
+    def __init__(self, file_path, promotions=False,use_cache=True, result_mode="classification"):
         '''
         The result_mode can be:
         - "classification": the result is treated as categorical, with 3 classes (white win(0), draw(1), black win(2))
@@ -69,15 +135,23 @@ class MinichessTextDataset(Dataset):
         
         features_arr = np.full((num_samples, 25), 12, dtype=np.uint8) # 12 is 'empty'
         moves_arr = np.zeros(num_samples, dtype=np.int16) # cant use int8, need 600 vals
+        masks_arr = np.zeros((num_samples, 704 if promotions else 600), dtype=np.bool_)
+        
         if result_mode == "classification":
             results_arr = np.zeros(num_samples, dtype=np.int8)
         elif result_mode == "regression":
             results_arr = np.zeros(num_samples, dtype=np.float16)
         scores_arr = np.zeros(num_samples, dtype=np.float32) # TODO verify this is fine
-
+        scores_arr = np.zeros(num_samples, dtype=np.float32) # TODO verify this is fine
         with open(file_path, "r") as f:
             lines = []
             idx = 0
+            
+            num_lines = sum(1 for _ in f)
+            # set the stream position at start since we consumed it in the prev loop
+            f.seek(0) 
+
+            start_time = time.time()
             for line in f:
                 line = line.strip()
                 if not line:
@@ -91,45 +165,34 @@ class MinichessTextDataset(Dataset):
                     result_line = lines[4]
 
                     if fen_line.startswith("fen"):
-                        # Parse FEN
-                        board_part = fen_line[4:].strip().split(" ")[0]
-                        for r_idx, row in enumerate(board_part.split("/")):
-                            rank = 4 - r_idx  # FEN gives rank 5 down to 1
-                            file_idx = 0
-                            for char in row:
-                                if char.isdigit():
-                                    file_idx += int(char) # Skip empty squares
-                                else:
-                                    features_arr[idx, rank * 5 + file_idx] = piece_map[char]
-                                    file_idx += 1
+                        fen_str = fen_line[4:].strip()
+                        # Parse FEN into features_arr
+                        parse_fen_to_features(fen_str, piece_map, features_arr[idx])
+                                    
+                        # Calculate legal moves mask (legals are True)
+                        legal_moves = pyffish.legal_moves("gardner", fen_str, [])
+                        for m in legal_moves:
+                            m_idx = uci_to_index(m, promotions)
+                            masks_arr[idx, m_idx] = True                           
 
                         # Parse Move
-                        move = move_line[5:].strip()[:4] # TODO change when we i implement promotion
-                        file_from = ord(move[0]) - ord("a")
-                        rank_from = int(move[1]) - 1
-                        file_to = ord(move[2]) - ord("a")
-                        rank_to = int(move[3]) - 1
-
-                        # move looks like e3b5 in the original format,
-                        # and we encode it as a number from 0 to 599.
-                        # from_sq is the index of the starting square (0-24).
-                        # to_sq_idx is the index of the ending square relative to the starting square (0-23).
-                        from_sq = rank_from * 5 + file_from
-                        to_sq = rank_to * 5 + file_to
-                        # this results in this board indexing:
-                        # | 20 | 21 | 22 | 23 | 24 |
-                        # | 15 | 16 | 17 | 18 | 19 |
-                        # | 10 | 11 | 12 | 13 | 14 |
-                        # | 5  | 6  | 7  | 8  | 9  |
-                        # | 0  | 1  | 2  | 3  | 4  |
-
-                        # Policy size is 600 (5^2 * (5^2 - 1)). We adjust the to_sq index.
-                        # so this makes a1b1 the smallest move (0), a1e1 is move (3), a1a2 is move (4),
-                        # but a2a1 is move 120 (5*24 + 0)
-                        # the biggest move has idx 599, which is 24*24 + 23, or e5d5
-                        to_sq_idx = to_sq - 1 if to_sq > from_sq else to_sq
+                        move = move_line[5:].strip()
                         
-                        moves_arr[idx] = from_sq * 24 + to_sq_idx
+                        # Infer promotion character 'q' if dataset omitted it for a pawn promotion
+                        if promotions and len(move) == 4:
+                            # for now fail cause this shouldn happen
+                            raise ValueError(f"Bad promotion move in {move}")
+                            # file_from = ord(move[0]) - ord("a")
+                            # rank_from = int(move[1]) - 1
+                            # rank_to = int(move[3]) - 1
+                            # from_sq = rank_from * 5 + file_from
+                            # piece = features_arr[idx, from_sq]
+                            # if piece in (0, 6) and (rank_to == 4 or rank_to == 0):
+                            #     move += 'q'
+                        
+                        moves_arr[idx] = uci_to_index(move, promotions)
+                        
+                        # clf task expects 0,1,2; reg expects -1,0,1
                         if result_mode == "classification":
                             results_arr[idx] = int(result_line[7:].strip()) + 1
                         elif result_mode == "regression":
@@ -139,18 +202,28 @@ class MinichessTextDataset(Dataset):
                         scores_arr[idx] = float(score_line[6:].strip())
                         
                         idx += 1
+                        
+                        # Print progress and replace the same line                        
+                        if idx % 10_000 == 0:
+                            eta = (time.time() - start_time) / (idx / (num_lines // 6) + 1e-9)
+                            time_left = eta * (num_lines // 6 - idx)
+                            percent = (idx / (num_lines // 6)) * 100
+                            print(f">> Processing sample {idx} ({percent:.2f}%) in {time.time() - start_time:.1f}s | Time Left: {pretty_time(int(time_left))} | ETA: {pretty_time(int(eta))}", end="\r", flush=True)
 
                     lines.clear()
+            print() # Salto de línea final al terminar el bucle
 
         # Slice to actual size just in case there were invalid lines
         features_arr = features_arr[:idx]
         moves_arr = moves_arr[:idx]
+        masks_arr = masks_arr[:idx]
         results_arr = results_arr[:idx]
         scores_arr = scores_arr[:idx]
 
         # TODO check dtypes, for correctness
         self.features = torch.from_numpy(features_arr)
         self.moves = torch.from_numpy(moves_arr).long()
+        self.masks = torch.from_numpy(masks_arr).bool()
         # in case we switch result_mode, the cached results might be of the wrong type
         if result_mode == "classification":
             self.results = torch.from_numpy(results_arr).float()#.long()
@@ -163,6 +236,7 @@ class MinichessTextDataset(Dataset):
             torch.save({
                 'features': self.features,
                 'moves': self.moves,
+                'masks': self.masks,
                 'results': self.results,
                 'scores': self.scores
             }, cache_path)
@@ -182,7 +256,7 @@ class MinichessTextDataset(Dataset):
         one_hot = torch.zeros((25, 13), dtype=torch.float32)
         one_hot.scatter_(1, compact_board.unsqueeze(1).long(), 1.0)
         
-        return one_hot.flatten(), self.moves[idx], self.results[idx], self.scores[idx]
+        return one_hot.flatten(), self.moves[idx], self.results[idx], self.scores[idx], self.masks[idx]
 
 @time_this
 def get_dataloaders(dataset, batch_size=128, train_ratio=0.96, num_workers=0):
