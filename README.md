@@ -55,6 +55,20 @@ Cannot find module `...`
 
 Esto es una cuestión de rutas. asegúrate de que el entorno virtual esté activado (ej: `source .venv/bin/activate`) y que la ruta sea la correcta.
 
+## 050526
+
+Existe [esto](https://docs.python.org/3/library/functools.html#functools.lru_cache), que es la ostia:
+
+``` 
+@functools.lru_cache(user_function)
+@functools.lru_cache(maxsize=128, typed=False)
+
+    Decorator to wrap a function with a memoizing callable that saves up to the maxsize most recent calls. It can save time when an expensive or I/O bound function is periodically called with the same arguments.
+
+    The cache is threadsafe so that the wrapped function can be used in multiple threads. This means that the underlying data structure will remain coherent during concurrent updates.
+
+    It is possible for the wrapped function to be called more than once if another thread makes an additional call before the initial call has been completed and cached.
+```
 
 
 ---

@@ -4,6 +4,8 @@ import time
 import re
 import signal
 import sys
+import json
+import argparse
 import matplotlib.pyplot as plt
 
 def handle_interrupt(sig, frame):
@@ -34,14 +36,30 @@ def create_subsets(source_file, target_dir, sizes_in_samples):
 
 def run_benchmark(subset_files):
     results = []
+    results_file = "src/benchmarks/benchmark_promotion_masking_results.json"
+    
+    # Cargar resultados previos si existen para poder retomar el benchmark
+    if os.path.exists(results_file):
+        with open(results_file, "r") as f:
+            try:
+                results = json.load(f)
+                print(f"[*] Se han cargado {len(results)} resultados previos desde el JSON.")
+            except json.JSONDecodeError:
+                results = []
+                
+    completed_sizes = [r['size'] for r in results]
     
     for size, file_path in subset_files:
+        if size in completed_sizes:
+            print(f"\n[*] Saltando benchmark para tamaño {size} (ya ejecutado previamente).")
+            continue
+            
         print(f"\n{'='*50}\nBenchmarking tamaño del dataset: {size}\n{'='*50}")
         
-        log_file = f"src/benchmarks/logs_{size}.txt"
+        log_file = f"src/benchmarks/logs_promotion_masking_{size}.txt"
         
-        # Ejecutamos el baseline, asumiendo que el venv se carga con PYTHONPATH=. 
-        cmd = ["python3", "src/models/baseline.py", file_path]
+        # Ejecutamos el modelo de Promotion Masking
+        cmd = ["python3", "src/models/fnnPromotionMasking.py", file_path]
         
         start_time = time.time()
         
@@ -49,9 +67,8 @@ def run_benchmark(subset_files):
         total_time_str = ""
         epochs = 0
         
-        # Guardamos en un log pero también imprimimos por pantalla (como 'tee')
+        # Guardamos en un log pero también imprimimos por pantalla
         with open(log_file, "w") as f_log:
-            # Usamos PYTHONPATH=. por si hace falta para que Python encuentre los módulos
             env = os.environ.copy()
             env["PYTHONPATH"] = "." 
             
@@ -92,12 +109,14 @@ def run_benchmark(subset_files):
                 process.wait()
                 raise KeyboardInterrupt
                 
-        # Parsear el tiempo (formato H:MM:SS.xxx)
+        # Parsear el tiempo
         try:
-            h, m, s = total_time_str.split(':')
-            total_seconds = int(h) * 3600 + int(m) * 60 + float(s)
+            if total_time_str:
+                h, m, s = total_time_str.split(':')
+                total_seconds = int(h) * 3600 + int(m) * 60 + float(s)
+            else:
+                total_seconds = time.time() - start_time
         except Exception:
-            # Fallback por si acaso
             total_seconds = time.time() - start_time
             
         time_per_epoch = total_seconds / epochs if epochs > 0 else 0
@@ -111,9 +130,27 @@ def run_benchmark(subset_files):
             'time_per_epoch': time_per_epoch
         })
         
+        # Guardar progreso inmediatamente para no perder datos si se cancela
+        with open(results_file, "w") as f:
+            json.dump(results, f, indent=4)
+        
     return results
 
-def plot_results(results):
+def plot_results(results_file="src/benchmarks/benchmark_promotion_masking_results.json"):
+    if not os.path.exists(results_file):
+        print(f"[!] No se encontró el archivo de resultados: {results_file}")
+        return
+        
+    with open(results_file, "r") as f:
+        results = json.load(f)
+        
+    if not results:
+        print("[!] No hay resultados para graficar.")
+        return
+        
+    # Ordenar por tamaño
+    results.sort(key=lambda x: x['size'])
+        
     sizes = [r['size'] for r in results]
     move_accs = [r['move_acc'] for r in results]
     res_accs = [r['res_acc'] for r in results]
@@ -124,17 +161,14 @@ def plot_results(results):
     # Plot Accuracy
     ax1.plot(sizes, move_accs, marker='o', label='Move Accuracy (%)')
     ax1.plot(sizes, res_accs, marker='s', label='Result Accuracy (%)')
-    #ax1.set_xscale('log')
     ax1.set_xlabel('Tamaño del Dataset (instancias)')
     ax1.set_ylabel('Validation Accuracy (%)')
-    ax1.set_title('Precisión vs Datos de Entrenamiento')
+    ax1.set_title('Precisión vs Datos (Promotion Masking)')
     ax1.grid(True, which="both", ls="--")
     ax1.legend()
     
     # Plot Time
     ax2.plot(sizes, times_per_epoch, marker='^', color='r', label='Tiempo por Época (s)')
-    # ax2.set_xscale('log')
-    # ax2.set_yscale('log')
     ax2.set_xlabel('Tamaño del Dataset (instancias)')
     ax2.set_ylabel('Tiempo (segundos)')
     ax2.set_title('Escalado del Tiempo de Entrenamiento')
@@ -142,34 +176,35 @@ def plot_results(results):
     ax2.legend()
     
     plt.tight_layout()
-    plt.savefig("src/benchmarks/scaling_results.png")
-    print("\n[*] Gráficas guardadas en src/benchmarks/scaling_results.png")
+    plt.savefig("src/benchmarks/scaling_results_promotion_masking.png")
+    print("\n[*] Gráficas guardadas en src/benchmarks/scaling_results_promotion_masking.png")
 
 if __name__ == "__main__":
-    # --- AJUSTA ESTOS PARÁMETROS SI ES NECESARIO ---
-    # SOURCE_FILE = "data/merged/merged_gardner.txt"
-    # TARGET_DIR = "data/subsets_merged"
-    
-    # Tamaños de los subsets en instancias.
-    # SIZES = [50_000, 100_000, 500_000, 1_000_000, 1_800_000, 3_000_000, 6_000_000, 10_000_000, 
-    # 20_000_000, 25_445_963]
+    parser = argparse.ArgumentParser(description="Benchmark para el escalado del tamaño del dataset")
+    parser.add_argument('--plot-only', action='store_true', help="Solo generar las gráficas a partir de resultados en el JSON")
+    args = parser.parse_args()
 
-    SOURCE_FILE = "data/gardner_depth2/gen_gardner_d2.txt"
-    TARGET_DIR = "data/subsets_d2"
+    # Usar el dataset que SÍ tiene coronaciones en vez del generico
+    SOURCE_FILE = "data/gardner_depth2/d2_with_promotions.txt"
+    TARGET_DIR = "data/subsets_d2_promotions"
 
     SIZES = [50_000, 100_000, 500_000, 1_000_000, 1_800_000, 3_000_000, 6_000_000, 10_000_000]
     
-    print("[1] Creando subsets de datos...")
-    subset_files = create_subsets(SOURCE_FILE, TARGET_DIR, SIZES)
-    
-    print("\n[2] Ejecutando entrenamientos en serie...")
-    results = run_benchmark(subset_files)
-    
-    print("\n[3] Generando gráficas de resultados...")
-    plot_results(results)
-    
-    print("\n" + "="*50)
-    print("Resumen Final:")
-    print("="*50)
-    for r in results:
-        print(f"Size: {r['size']:<8} | Mean Acc: {r['mean_acc']:5.2f}% | Best Move Acc: {r['move_acc']:5.2f}% | Best Result Acc: {r['res_acc']:5.2f}% | Time/Epoch: {r['time_per_epoch']:.2f}s")
+    if args.plot_only:
+        print("\n[1] Generando gráficas de resultados a partir de JSON...")
+        plot_results()
+    else:
+        print("[1] Creando subsets de datos...")
+        subset_files = create_subsets(SOURCE_FILE, TARGET_DIR, SIZES)
+        
+        print("\n[2] Ejecutando entrenamientos en serie...")
+        results = run_benchmark(subset_files)
+        
+        print("\n[3] Generando gráficas de resultados...")
+        plot_results()
+        
+        print("\n" + "="*50)
+        print("Resumen Final:")
+        print("="*50)
+        for r in results:
+            print(f"Size: {r['size']:<8} | Mean Acc: {r['mean_acc']:5.2f}% | Best Move Acc: {r['move_acc']:5.2f}% | Best Result Acc: {r['res_acc']:5.2f}% | Time/Epoch: {r['time_per_epoch']:.2f}s")

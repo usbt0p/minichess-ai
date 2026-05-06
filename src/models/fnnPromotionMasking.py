@@ -284,7 +284,7 @@ if __name__ == '__main__':
     count_params(model)
 
     # load dataset
-    dataset = MinichessTextDataset(data_path, promotions=True, use_cache=False, time=True)
+    dataset = MinichessTextDataset(data_path, promotions=True, use_cache=True, time=True)
 
     # get dataloaders
     train_loader, val_loader = get_dataloaders(
