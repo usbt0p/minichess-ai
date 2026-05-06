@@ -1,4 +1,3 @@
-
 '''
 After using the benchmark_dataset_size.py script, we have a list of logs for each dataset size.
 This script parses the logs and plots the results in two graphs, allowing us to compare
@@ -23,6 +22,8 @@ def parse_logs(directory):
             try:
                 size = int(size_str)
             except ValueError:
+                print(f"Warning: Could not parse size from {filename}")
+                print(f"Probably wrong filename: {filename}")
                 continue
                 
             filepath = os.path.join(directory, filename)
@@ -31,15 +32,17 @@ def parse_logs(directory):
             
             with open(filepath, 'r') as f:
                 for line in f:
-                    if "Best move accuracy:" in line:
+                    if "move accuracy:" in line:
                         m = re.search(r"([\d\.]+)%", line)
                         if m: move_acc = float(m.group(1))
-                    elif "Best result accuracy:" in line:
+                    elif "result accuracy:" in line:
                         m = re.search(r"([\d\.]+)%", line)
                         if m: res_acc = float(m.group(1))
                         
             if move_acc > 0 and res_acc > 0:
                 results.append((size, move_acc, res_acc))
+            else:
+                print(f"Warning: Could not parse accuracy from {filename}")
                 
     # Sort by size
     results.sort(key=lambda x: x[0])
@@ -54,7 +57,9 @@ def main():
         "d2_bn_drop": "Depth 2 + Batchnorm + Dropout",
         "d3": "Depth 3",
         "d4": "Depth 4",
-        "big1": "Merged (d4+d3+d2)"
+        "big1": "Merged (d4+d3+d2)",
+        "d2_masking_promotion": "Depth 2 + Promotions + Masking",
+        "random_mask_prom": "Random Baseline (Promotions + Masking)"
     }
     
     # Colors and markers for clarity
@@ -65,6 +70,8 @@ def main():
         "d3": {"color": "tab:orange", "marker": "s"},
         "d4": {"color": "tab:green", "marker": "^"},
         "big1": {"color": "tab:red", "marker": "D"},
+        "d2_masking_promotion": {"color": "tab:cyan", "marker": "*"},
+        "random_mask_prom": {"color": "tab:olive", "marker": "H"},
     }
     
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
@@ -96,7 +103,7 @@ def main():
     ax1.set_ylabel('Move Accuracy (%)', fontsize=12)
     ax1.set_title('Move Accuracy vs Datos de Entrenamiento', fontsize=14)
     ax1.grid(True, which="both", ls="--", alpha=0.6)
-    ax1.legend(fontsize=10)
+    #ax1.legend(fontsize=10)
     
     # Styling ax2 (Result Accuracy)
     ax2.set_xscale('log')

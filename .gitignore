@@ -27,3 +27,6 @@ papers/
 *.png
 *.txt
 *.mmd
+
+# specific allows
+!overlapped_results.png

@@ -82,6 +82,12 @@ def run_benchmark(subset_files):
             
             try:
                 for line in process.stdout:
+                    # Evitar ensuciar el log y la terminal con cientos de líneas de progreso
+                    if line.startswith(">> Processing"):
+                        sys.stdout.write("\r" + line.strip())
+                        sys.stdout.flush()
+                        continue
+                        
                     sys.stdout.write(line)
                     sys.stdout.flush()
                     f_log.write(line)

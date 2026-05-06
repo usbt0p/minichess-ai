@@ -142,7 +142,7 @@ class MinichessTextDataset(Dataset):
     """
 
     @time_this
-    def __init__(self, file_path, promotions=False,use_cache=True, result_mode="classification"):
+    def __init__(self, file_path, promotions=False, use_cache=True, result_mode="classification"):
         '''
         The result_mode can be:
         - "classification": the result is treated as categorical, with 3 classes (white win(0), draw(1), black win(2))
@@ -159,6 +159,7 @@ class MinichessTextDataset(Dataset):
             self.moves = cached_data['moves']
             self.results = cached_data['results']
             self.scores = cached_data['scores']
+            self.masks = cached_data['masks']
             return
 
         print(f">> Parsing dataset from text: {file_path}")
