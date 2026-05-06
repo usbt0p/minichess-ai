@@ -7,7 +7,12 @@ from src.utils.utils import time_this, pretty_time
 import time
 import os
 import numpy as np
+from functools import lru_cache
 
+import multiprocessing as mp
+from functools import partial
+
+@lru_cache(maxsize=1024)
 def uci_to_index(move_str: str, promotions: bool) -> int:
     """Helper to decode a UCI string into our custom indexing system."""
     file_from = ord(move_str[0]) - ord("a")
@@ -72,6 +77,53 @@ def parse_fen_to_features(fen_str: str, piece_map: dict, features_out: np.ndarra
                 features_out[rank * 5 + file_idx] = piece_map[char]
                 file_idx += 1
 
+def _parse_chunk(chunk_data, promotions, result_mode, piece_map):
+
+    # now we store the board as 25 bytes (0-12 indices) instead of 325 floats!
+    # 1.8M instances * 25 bytes = ~45 MB in RAM
+    num_samples = len(chunk_data)
+    features_arr = np.full((num_samples, 25), 12, dtype=np.uint8)
+    moves_arr = np.zeros(num_samples, dtype=np.int16)
+    masks_arr = np.zeros((num_samples, 704 if promotions else 600), dtype=np.bool_)
+    
+    if result_mode == "classification":
+        results_arr = np.zeros(num_samples, dtype=np.int8)
+    elif result_mode == "regression":
+        results_arr = np.zeros(num_samples, dtype=np.float16)
+    else:
+        results_arr = np.zeros(num_samples, dtype=np.float32)
+    scores_arr = np.zeros(num_samples, dtype=np.float32)
+
+    for i, lines in enumerate(chunk_data):
+        fen_str = lines[0][4:].strip()
+        parse_fen_to_features(fen_str, piece_map, features_arr[i])
+        
+        legal_moves = pyffish.legal_moves("gardner", fen_str, [])
+        for m in legal_moves:
+            m_idx = uci_to_index(m, promotions)
+            masks_arr[i, m_idx] = True                           
+
+        move = lines[1][5:].strip()
+        if promotions and len(move) == 4:
+            file_from = ord(move[0]) - ord("a")
+            rank_from = int(move[1]) - 1
+            rank_to = int(move[3]) - 1
+            from_sq = rank_from * 5 + file_from
+            piece = features_arr[i, from_sq]
+            if piece in (0, 6) and (rank_to == 4 or rank_to == 0):
+                move += 'q'
+        
+        moves_arr[i] = uci_to_index(move, promotions)
+        
+        if result_mode == "classification":
+            results_arr[i] = int(lines[4][7:].strip()) + 1
+        elif result_mode == "regression":
+            results_arr[i] = int(lines[4][7:].strip())
+            
+        scores_arr[i] = float(lines[2][6:].strip())
+        
+    return features_arr, moves_arr, masks_arr, results_arr, scores_arr
+
 class MinichessTextDataset(Dataset):
     """
     Parses a text file with Minichess data blocks.
@@ -119,106 +171,54 @@ class MinichessTextDataset(Dataset):
         with open(file_path, "r") as f:
             lines_count = sum(1 for line in f if line.strip())
         num_samples = lines_count // 6
+
+        def chunk_generator():
+            chunk_size = 10000
+            chunk = []
+            with open(file_path, "r") as f:
+                lines = []
+                for line in f:
+                    line = line.strip()
+                    if not line: continue
+                    lines.append(line)
+                    if len(lines) == 6:
+                        chunk.append(lines)
+                        lines = []
+                        if len(chunk) == chunk_size:
+                            yield chunk
+                            chunk = []
+                if chunk:
+                    yield chunk
+
+        start_time = time.time()
+    
+        # use partial because _parse_chunk has 5 arguments, and we can only pass one to the pool
+        worker = partial(_parse_chunk, promotions=promotions, result_mode=result_mode, piece_map=piece_map)
         
-        # 2. Pre-allocate compact NumPy arrays
-        # previously, it was:
-        # Casilla 0: 
-        # [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0] (13 floats = 52 bytes)
-        # Casilla 1: 
-        # [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0] (13 floats = 52 bytes)
-        # ...
-        # which ended up being 325 floats per sample, so 325*4 bytes = 1.3kB per sample, 
-        # times 1.8M instances => ~2.4 GB
-
-        # now we store the board as 25 bytes (0-12 indices) instead of 325 floats!
-        # 1.8M instances * 25 bytes = ~45 MB in RAM
+        features_list, moves_list, masks_list, results_list, scores_list = [], [], [], [], []
+        processed_samples = 0
         
-        features_arr = np.full((num_samples, 25), 12, dtype=np.uint8) # 12 is 'empty'
-        moves_arr = np.zeros(num_samples, dtype=np.int16) # cant use int8, need 600 vals
-        masks_arr = np.zeros((num_samples, 704 if promotions else 600), dtype=np.bool_)
-        
-        if result_mode == "classification":
-            results_arr = np.zeros(num_samples, dtype=np.int8)
-        elif result_mode == "regression":
-            results_arr = np.zeros(num_samples, dtype=np.float16)
-        scores_arr = np.zeros(num_samples, dtype=np.float32) # TODO verify this is fine
-        scores_arr = np.zeros(num_samples, dtype=np.float32) # TODO verify this is fine
-        with open(file_path, "r") as f:
-            lines = []
-            idx = 0
-            
-            num_lines = sum(1 for _ in f)
-            # set the stream position at start since we consumed it in the prev loop
-            f.seek(0) 
+        with mp.Pool(processes=mp.cpu_count()) as pool:
+            for f_arr, m_arr, mask_arr, r_arr, s_arr in pool.imap(worker, chunk_generator()):
+                features_list.append(f_arr)
+                moves_list.append(m_arr)
+                masks_list.append(mask_arr)
+                results_list.append(r_arr)
+                scores_list.append(s_arr)
+                
+                processed_samples += len(f_arr)
+                eta = (time.time() - start_time) / (processed_samples / num_samples + 1e-9)
+                time_left = eta * (num_samples - processed_samples) / num_samples
+                percent = (processed_samples / num_samples) * 100
+                print(f">> Processing sample {processed_samples} ({percent:.2f}%) in {time.time() - start_time:.1f}s | Time Left: {pretty_time(int(time_left))} | ETA: {pretty_time(int(eta))}", end="\r", flush=True)
 
-            start_time = time.time()
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                lines.append(line)
+        print() # Salto de línea final al terminar el bucle
 
-                if len(lines) == 6:
-                    fen_line = lines[0]
-                    move_line = lines[1]
-                    score_line = lines[2]
-                    result_line = lines[4]
-
-                    if fen_line.startswith("fen"):
-                        fen_str = fen_line[4:].strip()
-                        # Parse FEN into features_arr
-                        parse_fen_to_features(fen_str, piece_map, features_arr[idx])
-                                    
-                        # Calculate legal moves mask (legals are True)
-                        legal_moves = pyffish.legal_moves("gardner", fen_str, [])
-                        for m in legal_moves:
-                            m_idx = uci_to_index(m, promotions)
-                            masks_arr[idx, m_idx] = True                           
-
-                        # Parse Move
-                        move = move_line[5:].strip()
-                        
-                        # Infer promotion character 'q' if dataset omitted it for a pawn promotion
-                        if promotions and len(move) == 4:
-                            # for now fail cause this shouldn happen
-                            raise ValueError(f"Bad promotion move in {move}")
-                            # file_from = ord(move[0]) - ord("a")
-                            # rank_from = int(move[1]) - 1
-                            # rank_to = int(move[3]) - 1
-                            # from_sq = rank_from * 5 + file_from
-                            # piece = features_arr[idx, from_sq]
-                            # if piece in (0, 6) and (rank_to == 4 or rank_to == 0):
-                            #     move += 'q'
-                        
-                        moves_arr[idx] = uci_to_index(move, promotions)
-                        
-                        # clf task expects 0,1,2; reg expects -1,0,1
-                        if result_mode == "classification":
-                            results_arr[idx] = int(result_line[7:].strip()) + 1
-                        elif result_mode == "regression":
-                            results_arr[idx] = int(result_line[7:].strip())
-                        else:
-                            raise ValueError(f"Invalid result_mode: {result_mode}")
-                        scores_arr[idx] = float(score_line[6:].strip())
-                        
-                        idx += 1
-                        
-                        # Print progress and replace the same line                        
-                        if idx % 10_000 == 0:
-                            eta = (time.time() - start_time) / (idx / (num_lines // 6) + 1e-9)
-                            time_left = eta * (num_lines // 6 - idx)
-                            percent = (idx / (num_lines // 6)) * 100
-                            print(f">> Processing sample {idx} ({percent:.2f}%) in {time.time() - start_time:.1f}s | Time Left: {pretty_time(int(time_left))} | ETA: {pretty_time(int(eta))}", end="\r", flush=True)
-
-                    lines.clear()
-            print() # Salto de línea final al terminar el bucle
-
-        # Slice to actual size just in case there were invalid lines
-        features_arr = features_arr[:idx]
-        moves_arr = moves_arr[:idx]
-        masks_arr = masks_arr[:idx]
-        results_arr = results_arr[:idx]
-        scores_arr = scores_arr[:idx]
+        features_arr = np.concatenate(features_list)
+        moves_arr = np.concatenate(moves_list)
+        masks_arr = np.concatenate(masks_list)
+        results_arr = np.concatenate(results_list)
+        scores_arr = np.concatenate(scores_list)
 
         # TODO check dtypes, for correctness
         self.features = torch.from_numpy(features_arr)
