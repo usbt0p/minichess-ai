@@ -17,6 +17,19 @@ blog/
 papers/
 *.wiki
 
+# tex and documentation
+doc/aux
+*.dvi
+*.aux
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+*.lof
+*.lot
+*.bbl
+*.bcf
+*.toc
+
 # torch / weight related
 *.pth
 *.pt

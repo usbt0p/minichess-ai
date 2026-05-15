@@ -127,3 +127,23 @@ Si tu editor tiene problemas con los imports o el autocompletado de pyffish:
 uv add mypy
 .venv/bin/stubgen -m pyffish -o <your-output-dir>
 ```
+
+## Compilar documentación en LaTeX
+Dependencias:
+```
+sudo apt update
+sudo apt install texlive texlive-bibtex-extra biber
+sudo apt install latexmk texlive-latex-extra
+```
+Compilación:
+```
+latexmk -outdir=doc -auxdir=doc/aux -pdf doc/docs.tex
+```
+O utilizar la extensión de `LaTeX Workshop` en VSCode. 
+En ese caso, para evitar contaminar el directorio con archivos auxiliares, añadir al `.vscode/settings.json`:
+```json
+{
+    "latex-workshop.latex.auxDir": "${workspaceFolder}/doc/aux",
+    "latex-workshop.latex.outDir": "${workspaceFolder}/doc"
+}
+```

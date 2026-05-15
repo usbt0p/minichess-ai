@@ -1,0 +1,115 @@
+\documentclass[12pt, a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[spanish, es-noquoting, galician]{babel}
+\usepackage{csquotes}
+\usepackage{graphicx}
+\usepackage{fancyhdr}
+\usepackage{hyperref}
+\usepackage{pdfpages}
+% Ajuste de márgenes: 2.5cm es el estándar equilibrado.
+\usepackage[top=2.5cm, bottom=2.5cm, left=3cm, right=2.5cm]{geometry} 
+\usepackage[style=ieee]{biblatex}
+\addbibresource{referencias.bib}
+
+% Configuración de encabezado y pie de página
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{Agente de IA para Minichess 5x5 mediante Transformers y RL}
+\fancyfoot[C]{\thepage}
+
+\begin{document}
+
+% 5.1. Portada oficial
+% Inserción directa del modelo oficial del Centro para no alterar la maquetación.
+\includepdf[pages=-]{/home/usbt0p/TFG/doc/PortadaTFG-1.pdf} 
+\begin{titlepage}
+    \centering
+    \vspace*{5cm}
+    {\Huge \textbf{Agente de IA para Minichess 5x5 mediante Transformers y RL}}\\
+    \vspace{2cm}
+    {\Large Lucas}\\
+    \vfill
+    {\large 23 de junio de 2026}
+\end{titlepage}
+\newpage
+\tableofcontents
+\newpage
+
+% 5.3. Agradecementos (opcional)
+\newpage
+\section*{Agradecementos}
+[Texto]
+
+% Índices generados automáticamente (5.4, 5.5, 5.6)
+\newpage
+\tableofcontents
+\newpage
+\listoffigures
+\newpage
+\listoftables
+\newpage
+
+% 5.7. Introdución
+\section{Introdución}
+Minichess 5x5 blabla blaba asdjfasdkfa
+Blablablabla citation here \cite{vaswani2017attention} and here \cite{sutton2018reinforcement}
+%put sample references here from the .bib
+
+\newpage
+\newpage
+
+% 5.8. Obxectivos
+\section{Obxectivos}
+\subsection{Obxectivo principal}
+\subsection{Obxectivos específicos}
+
+\newpage
+
+% 5.9. Antecedentes e contexto
+\section{Antecedentes e contexto}
+
+% 5.10. Resumo da solución proposta
+\section{Resumo da solución proposta}
+
+% 5.11. Marco teórico ou práctico
+\section{Marco teórico ou práctico. Ferramentas empregadas}
+\subsection{Hipótese}
+\subsection{Deseño Experimental}
+\subsection{Resultados}
+
+% Placeholder tipo marco (sin relleno)
+\begin{figure}[h]
+    \centering
+    \setlength{\fboxsep}{0pt} % Elimina el espacio entre el marco y el contenido
+    \fbox{
+        \begin{minipage}[c][7cm][c]{0.8\textwidth}
+            \centering \textit{Placeholder: Gráfica de resultados / Experimentos}
+        \end{minipage}
+    }
+    \caption{Descripción del experimento y métricas obtenidas.}
+    \label{fig:resultados_hollow}
+\end{figure}
+
+% 5.12. Planificación e seguimento
+\section{Planificación e seguimento}
+
+% 5.13. Principais aportacións
+\section{Principais aportacións}
+
+% 5.14. Conclusións
+\section{Conclusións}
+
+% 5.15. Vías de traballo futuro
+\section{Vías de traballo futuro}
+
+% 5.16. Referencias
+\newpage
+\printbibliography[heading=bibintoc, title={Referencias}]
+
+% 5.17. Anexos (opcionais)
+\newpage
+\appendix
+\section{Anexos}
+
+\end{document}
