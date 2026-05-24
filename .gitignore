@@ -18,6 +18,7 @@ papers/
 *.wiki
 
 # tex and documentation
+!doc/figures/minichess.png
 doc/aux
 *.dvi
 *.aux
@@ -29,6 +30,9 @@ doc/aux
 *.bbl
 *.bcf
 *.toc
+*.blg
+*.out
+*.xml
 
 # torch / weight related
 *.pth

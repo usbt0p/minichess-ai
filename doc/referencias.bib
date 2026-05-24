@@ -6,6 +6,60 @@
   pages     = {5998--6008}
 }
 
+# --------------------------------------------------------------------
+# chess transformer stuff
+
+@misc{monroe2026chessformerunifiedarchitecturechess,
+  title         = {Chessformer: A Unified Architecture for Chess Modeling},
+  author        = {Daniel Monroe and George Eilender and Philip Chalmers and Zhenwei Tang and Ashton Anderson},
+  year          = {2026},
+  eprint        = {2605.19091},
+  archiveprefix = {arXiv},
+  primaryclass  = {cs.LG},
+  url           = {https://arxiv.org/abs/2605.19091}
+}
+
+@misc{monroe2024masteringchesstransformermodel,
+  title         = {Mastering Chess with a Transformer Model},
+  author        = {Daniel Monroe and Philip A. Chalmers},
+  year          = {2024},
+  eprint        = {2409.12272},
+  archiveprefix = {arXiv},
+  primaryclass  = {cs.LG},
+  url           = {https://arxiv.org/abs/2409.12272}
+}
+
+# https://lczero.org/blog/2024/02/transformer-progress/
+@online{lczero2024transformerprogress,
+  author = {{Daniel Monroe}},
+  title  = {Transformer Progress in Leela Zero},
+  year   = {2024},
+  url    = {https://lczero.org/blog/2024/02/transformer-progress/}
+}
+
+@misc{ruoss2024amortizedplanninglargescaletransformers,
+  title         = {Amortized Planning with Large-Scale Transformers: A Case Study on Chess},
+  author        = {Anian Ruoss and Grégoire Delétang and Sourabh Medapati and Jordi Grau-Moya and Li Kevin Wenliang and Elliot Catt and John Reid and Cannada A. Lewis and Joel Veness and Tim Genewein},
+  year          = {2024},
+  eprint        = {2402.04494},
+  archiveprefix = {arXiv},
+  primaryclass  = {cs.LG},
+  url           = {https://arxiv.org/abs/2402.04494}
+}
+
+@misc{jenner2024evidencelearnedlookaheadchessplaying,
+  title         = {Evidence of Learned Look-Ahead in a Chess-Playing Neural Network},
+  author        = {Erik Jenner and Shreyas Kapur and Vasil Georgiev and Cameron Allen and Scott Emmons and Stuart Russell},
+  year          = {2024},
+  eprint        = {2406.00877},
+  archiveprefix = {arXiv},
+  primaryclass  = {cs.LG},
+  url           = {https://arxiv.org/abs/2406.00877}
+}
+
+# --------------------------------------------------------------------
+# general RL stuff
+
 @book{sutton2018reinforcement,
   author    = {Sutton, Richard S. and Barto, Andrew G.},
   title     = {Reinforcement Learning: An Introduction},
@@ -15,10 +69,79 @@
   address   = {Cambridge, MA}
 }
 
-@online{esei2025guia,
-  author    = {{Escola Superior de Enxeñaría Informática}},
-  title     = {Guía para a elaboración e estrutura da documentación do TFG},
-  year      = {2024},
-  url       = {https://esei.uvigo.es},
-  note      = {Consultado o 15 de maio de 2026}
+# --------------------------------------------------------------------
+# general stuff
+
+# shannon's estimate for game tree complexity
+# https://www.tandfonline.com/doi/abs/10.1080/14786445008521796
+@article{shannon1950programming,
+  author  = {Shannon, Claude E.},
+  title   = {Programming a Computer for Playing Chess},
+  journal = {Philosophical Magazine},
+  year    = {1950},
+  volume  = {41},
+  number  = {314},
+  pages   = {304--317}
 }
+
+@online{sutton2019bitter,
+  author = {Sutton, Richard S.},
+  title  = {The Bitter Lesson},
+  year   = {2019},
+  url    = {http://www.incompleteideas.net/IncIdeas/BitterLesson.html}
+}
+
+@online{esei2025guia,
+  author = {{Escola Superior de Enxeñaría Informática}},
+  title  = {Guía para a elaboración e estrutura da documentación do TFG},
+  year   = {2024},
+  url    = {https://esei.uvigo.es},
+  note   = {Consultado o 15 de maio de 2026}
+}
+
+@article{silver2016mastering,
+  title     = {Mastering the game of {Go} with deep neural networks and tree search},
+  author    = {Silver, David and Huang, Aja and Maddison, Chris J and Guez, Arthur and Sifre, Laurent and Van Den Driessche, George and Schrittwieser, Julian and Antonoglou, Ioannis and Panneershelvam, Veda and Lanctot, Marc and Dieleman, Sander and Grewe, Dominik and Nham, John and Kalchbrenner, Nal and Sutskever, Ilya and Lillicrap, Timothy and Leach, Madeleine and Kavukcuoglu, Koray and Graepel, Thore and Hassabis, Demis},
+  journal   = {Nature},
+  volume    = {529},
+  number    = {7587},
+  pages     = {484--489},
+  year      = {2016},
+  publisher = {Nature Publishing Group},
+  doi       = {10.1038/nature16961},
+  url       = {https://www.nature.com/articles/nature16961}
+}
+
+@article{silver2018general,
+  author  = {Silver, David and Hubert, Thomas and Schrittwieser, Julian and Antonoglou, Ioannis and Lai, Matthew and Guez, Arthur and Lanctot, Marc and Sifre, Laurent and Kumaran, Dharshan and Graepel, Thore and Lillicrap, Timothy and Simonyan, Karen and Hassabis, Demis},
+  title   = {A general reinforcement learning algorithm that masters chess, shogi, and {Go} through self-play},
+  journal = {Science},
+  volume  = {362},
+  number  = {6419},
+  pages   = {1140--1144},
+  year    = {2018},
+  doi     = {10.1126/science.aar6404},
+  url     = {https://www.science.org/doi/10.1126/science.aar6404}
+}
+
+@article{jumper2021highly,
+  title     = {Highly accurate protein structure prediction with {AlphaFold}},
+  author    = {Jumper, John and Evans, Richard and Pritzel, Alexander and Green, Tim and Figurnov, Michael and Ronneberger, Olaf and Tunyasuvunakool, Kathryn and Bates, Russ and {\v{Z}}{\'\i}dek, Augustin and Potapenko, Anna and others},
+  journal   = {Nature},
+  volume    = {596},
+  number    = {7873},
+  pages     = {583--589},
+  year      = {2021},
+  publisher = {Nature Publishing Group},
+  url       = {https://www.nature.com/articles/s41586-021-03819-2}
+}
+
+@inproceedings{nasu2018efficiently,
+  title     = {Efficiently Updatable Neural-Network-based Evaluation Functions for Computer Shogi},
+  author    = {Nasu, Yu},
+  booktitle = {Proceedings of the AAAI Conference on Artificial Intelligence},
+  year      = {2018},
+  pages     = {1--7},
+  url       = {https://github.com/asdfjkl/nnue}
+}
+
