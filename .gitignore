@@ -18,7 +18,7 @@ papers/
 *.wiki
 
 # tex and documentation
-!doc/figures/minichess.png
+!doc/figures
 doc/aux
 *.dvi
 *.aux
@@ -41,7 +41,6 @@ doc/aux
 # misc
 *.bin
 *.log
-*.png
 *.txt
 *.mmd
 

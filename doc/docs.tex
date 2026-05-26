@@ -4,24 +4,34 @@
 \usepackage[spanish, es-noquoting, galician]{babel}
 \usepackage{csquotes}
 \usepackage{graphicx}
-\usepackage{fancyhdr}
+\graphicspath{{doc/}{./doc/}{./}}
 \usepackage{hyperref}
 \usepackage{pdfpages}
-% Ajuste de márgenes: 2.5cm es el estándar equilibrado.
+
+% paquetes para estilo
+% Ajuste de márgenes: 2.5cm es el estándar pero es mucho
+\usepackage{fancyhdr}
 \usepackage[top=2.5cm, bottom=2.5cm, left=2.2cm, right=2.2cm]{geometry} 
+\usepackage{parskip} % Elimina el sangrado por defecto y añade espacio entre párrafos
+\usepackage[style=ieee]{biblatex}
+\let\cite\supercite
+\usepackage{epigraph}
+\usepackage{tcolorbox}
+\usepackage{xcolor}
+
+% paquetes para mates y algos
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{algorithm}
 \usepackage{algpseudocode}
-\usepackage{parskip} % Elimina el sangrado por defecto y añade espacio entre párrafos
-\usepackage[style=ieee]{biblatex}
-\addbibresource{referencias.bib}
+\addbibresource{doc/referencias.bib}
 
 % Comando para generar placeholders de figuras fácilmente
 \newcommand{\placeholderfig}[3]{
     \begin{figure}[htbp]
         \centering
         \setlength{\fboxsep}{0pt}
+        % habra que usar \includegraphics[]{}
         \fbox{
             \begin{minipage}[c][7cm][c]{0.8\textwidth}
                 \centering \textit{#1}
@@ -41,8 +51,7 @@
 \begin{document}
 
 % 5.1. Portada oficial
-% Inserción directa del modelo oficial del Centro para no alterar la maquetación.
-% \includepdf[pages=-]{/home/usbt0p/TFG/doc/PortadaTFG-1.pdf} 
+\includepdf[pages=-]{doc/PortadaTFG-1.pdf} 
 % \begin{titlepage}
 %     \centering
 %     \vspace*{5cm}
@@ -72,11 +81,22 @@
 % 5.7. Introducción
 \section{Introducción}\label{sec:introduccion}
 
+% una frase de introducción:
+\epigraph{``Chess is a game of luck. 
+
+If you have a good opponent you have bad luck, and if you have a bad opponent you have good luck.''\cite{Segal_2007}}{\textit{Jacob Segal, 7 años}}
+
+\vspace{30pt}
+
 Este Trabajo de Fin de Grado consiste en la aplicación y estudio del Aprendizaje por Refuerzo (RL) sobre una variante de ajedrez simplificada, el ajedrez $5\times5$ (ajedrez de Gardner o Minichess). El objetivo central es validar el uso de arquitecturas Transformer en tareas de RL, estudiando el efecto de las representaciones del tablero y comprobando si el preentrenamiento supervisado mejora la convergencia del agente.
 
 Dado que el ajedrez $8\times8$ demanda una capacidad computacional y un tiempo de ejecución que excede con creces los recursos disponibles en el marco del trabajo, se ha optado por utilizar el ajedrez $5\times5$. Este entorno reducido mantiene las dinámicas esenciales del aprendizaje por refuerzo adversarial, como las acciones legales, las recompensas diferidas y la planificación estratégica, pero se mantiene computacionalmente manejable para la experimentación ágil.
 
-El resto de este documento se estructura de la siguiente manera: en la Sección~\ref{sec:objetivos} se detallan los objetivos generales y específicos junto con el alcance del trabajo; en la Sección~\ref{sec:antecedentes} se describe el estado del arte y los antecedentes del problema; en la Sección~\ref{sec:resumen} se resume la solución metodológica planteada; en la Sección~\ref{sec:marco} se desarrolla el marco teórico y práctico, justificando las herramientas y el modelado matemático; en la Sección~\ref{sec:planificacion} se muestra la planificación temporal del proyecto; y las secciones finales presentan las aportaciones principales, conclusiones y futuras líneas de investigación.
+El resto de este documento se estructura de la siguiente manera: en la Sección~\ref{sec:objetivos} se detallan los objetivos generales y específicos junto con el alcance del trabajo; en la Sección~\ref{sec:antecedentes} se describe el estado del arte en transformers, aprendizaje por refuerzo y ajedrez y los antecedentes del problema; en la Sección~\ref{sec:resumen} se introduce y resume la solución metodológica planteada. 
+
+En la Sección~\ref{sec:marco} se desarrolla el marco teórico (~\ref{sec:marco_teorico}) y práctico (~\ref{sec:marco_practico}), detallando las hipótesis a probar, el modelado matemático del entorno de ajedrez, de la arquitectura transformer, la codificación de entradas y salidas y del problema de RL, además de justificar las herramientas utilizadas para el desarrollo. En la Sección~\ref{sec:planificacion} se muestra la planificación temporal del proyecto. 
+
+Las secciones finales presentan las aportaciones principales y resultados empíricos de los experimentos (Sección ~\ref{sec:aportaciones}), las conclusiones y discusión entorno a los resultados (Sección ~\ref{sec:conclusiones}) y las futuras líneas de investigación y limitaciones del trabajo (Sección ~\ref{sec:futuro}). Los anexos contienen información adicional específica, o desarrollos / cuestiones que van mas allá del alcance del trabajo (Sección~\ref{sec:anexos}).
 
 \newpage
 
@@ -131,13 +151,15 @@ Más recientemente, tras el éxito de esta arquitectura en los modelos de lengua
 
 En este ámbito, Ruoss et al. \cite{ruoss2024amortizedplanninglargescaletransformers} demostraron la viabilidad de realizar planificación amortizada utilizando Transformers a gran escala aplicados al ajedrez. Por otro lado, Monroe y Chalmers \cite{monroe2024masteringchesstransformermodel} desarrollaron un modelo basado en Transformers para dominar el ajedrez, sentando las bases para Chessformer, una arquitectura unificada propuesta posteriormente por Monroe et al. \cite{monroe2026chessformerunifiedarchitecturechess}. Además, Jenner et al. \cite{jenner2024evidencelearnedlookaheadchessplaying} aportaron evidencia sobre la existencia de capacidades de anticipación y planificación (\textit{look-ahead}) aprendidas de forma implícita por este tipo de redes, mientras que el proyecto open source Leela Chess Zero también ha incorporado y evaluado estas arquitecturas en su motor de juego \cite{lczero2024transformerprogress}.
 
-Por su parte, el estudio del miniajedrez o ajedrez en tableros reducidos tiene una larga trayectoria. La variante de Gardner fue propuesta originalmente por Martin Gardner en 1969. Este tipo de entornos se ha empleado tradicionalmente para analizar la complejidad matemática del juego y estudiar algoritmos de búsqueda heurística, al reducir drásticamente el espacio de estados sin perder la naturaleza no lineal e interactiva del ajedrez convencional TODO:cita como el paper ese.
+Por su parte, el estudio del miniajedrez o ajedrez en tableros reducidos tiene una larga trayectoria. Existen miles de variantes del ajedrez; la variante de Gardner fue propuesta originalmente por Martin Gardner en 1969\cite{beasley2007encyclopedia}. Este tipo de entornos se ha empleado tradicionalmente para analizar la complejidad matemática del juego y estudiar algoritmos de búsqueda heurística, al reducir drásticamente el espacio de estados sin perder la naturaleza del ajedrez convencional; necesidad de táctica y estrategia, y emergencia de dinámicas interesantes al contar con distintos tipos de pieza (lo que aumenta el número de combinaciones posibles). El ajedrez $5\times5$ es particularmente interesante ya que permite mantener todos los tipos de pieza (torre, alfil, caballo, dama y rey) y una disposición inicial similar a la del ajedrez estándar. 
+
+En 2013, Mehdi y Prost resolvieron débilmente el ajedrez Gardner, esto es, obtuvieron un algoritmo que permite asegurar el resultado de la partida partiendo de la posición inicial, pero no desde cualquier posición arbitraria. Utilizando técnicas de búsqueda e intervención humana, obtuvieron un oráculo para el jugador blanco y negro que asegura un empate partiendo de la jugada inicial. \cite{DBLP:journals/corr/MhallaP13}   
 
 \newpage
 % 5.10. Resumen de la solución propuesta
 \section{Resumen de la solución propuesta}\label{sec:resumen}
 
-\textbf{[TODO: Redactar bien el pipeline, por ahora solo es un esqueleto. Como es un resumen, tampoco tiene que ser super extenso, un par de líneas por cada parte quizás]}
+\textcolor{red}{\textbf{[TODO: Redactar bien el pipeline, por ahora solo es un esqueleto. Como es un resumen, tampoco tiene que ser super extenso, un par de líneas por cada parte quizás. Btw, no se solapa algo con la planificación?]}}
 
 \begin{enumerate}
     \item Generación de un dataset de partidas de Minichess con un motor clásico.
@@ -150,17 +172,30 @@ Por su parte, el estudio del miniajedrez o ajedrez en tableros reducidos tiene u
 \end{enumerate}
 
 \newpage
-% 5.11. Marco teórico y práctico. Herramientas empleadas
+% 5.11. Marco teórico y práctico
 \section{Marco teórico y práctico. Herramientas empleadas}\label{sec:marco}
 
-\subsection{Marco teórico}
+\subsection{Marco teórico}\label{sec:marco_teorico}
+
+
+\subsubsection{Diseño Experimental e Hipótesis}
+
+Para dar respuesta a los objetivos planteados, el desarrollo práctico se articula en torno a la demostración de las siguientes hipótesis experimentales, las cuales estructuran el diseño experimental del trabajo:
+
+\begin{itemize}
+    \item \textbf{Hipótesis 1 (Reducción del problema)}: El ajedrez 5x5 como entorno simplificado de RL puede conservar suficientes dinámicas esenciales del aprendizaje por refuerzo adversarial al tiempo que se mantiene computacionalmente manejable para la experimentación.
+    
+    \item \textbf{Hipótesis 2 (Representación):} El uso de representaciones estructuradas del tablero y del espacio de acciones (ej. planos espaciales vs. predicción por casillas origen/destino) mejora la eficiencia del aprendizaje frente a representaciones planas.
+
+    \item \textbf{Hipótesis 3 (Inicialización):} Un agente inicializado mediante aprendizaje supervisado a partir de jugadas generadas por un motor de referencia alcanza un nivel de rendimiento competitivo en menos \textit{epochs} que un agente entrenado de forma puramente \textit{tabula rasa}.
+\end{itemize}
 
 \subsubsection{Entorno: Reglas del ajedrez 5x5}
 
 El ajedrez $5\times5$ en su variante de Gardner es una reducción matemática del ajedrez estándar. Las reglas básicas de movimiento y captura para cada pieza individual son idénticas a las del ajedrez estándar $8\times8$, con las siguientes modificaciones estructurales:
 \begin{itemize}
     \item \textbf{Tablero:} tamaño de $5\times5$ casillas (columnas $a$ a $e$, filas $1$ a $5$).
-    \item \textbf{Disposición inicial:} Cada jugador cuenta con 10 piezas. En la fila 1 (blancas) y fila 5 (negras) se colocan las piezas mayores en el orden: Torre ($R$), Caballo ($N$), Alfil ($B$), Dama ($Q$) y Rey ($K$). Los peones correspondientes se colocan en la fila 2 (blancas) y fila 4 (negras).
+    \item \textbf{Disposición inicial:} La misma que el ajedrez estándar, pero con las piezas del lado de rey eliminadas, y una sola fila de separación entre peones. Cada jugador cuenta con 10 piezas. En la fila 1 (blancas) y fila 5 (negras) se colocan las piezas mayores en el orden: Torre ($R$), Caballo ($N$), Alfil ($B$), Dama ($Q$) y Rey ($K$). Los peones correspondientes se colocan en la fila 2 (blancas) y fila 4 (negras).
     \item \textbf{Omisión de reglas especiales:} No existe el enroque ni el avance doble de peón. Como consecuencia directa, tampoco existe la captura al paso (\textit{en passant}).
     \item \textbf{Promoción de peones:} Cuando un peón alcanza la fila límite opuesta (fila 5 para blancas, fila 1 para negras), es obligatorio promocionarlo a una de las siguientes cuatro piezas: Dama, Torre, Alfil o Caballo.
     \item \textbf{Condiciones de fin de partida:} La partida finaliza por jaque mate, ahogado (\textit{stalemate}), insuficiencia de material para dar jaque mate, si pasan 50 movimientos sin capturas ni avances de peón, o tablas por triple repetición (tres posiciones iguales consecutivas en el tablero).
@@ -190,16 +225,21 @@ La Figura~\ref{fig:minichess} ilustra la disposición física y la colocación d
 
 El ajedrez es un juego de información perfecta y completa. En todo momento los jugadores tienen información total acerca de las funciones de utilidad de su rival y del estado de la partida, tanto presente como pasado. Esto proporciona fundamentos teóricos sólidos para probar algoritmos de RL; un entorno determinista y con funciones de transición bien definidas.
 
-Dado el factor de ramificación estimado del ajedrez estándar (media de 35 hijos por nodo) y la complejidad del árbol de juego ($10^{120}$), propuesta por Claude Shannon en su artículo fundacional \cite{shannon1950programming}, la variante de ajedrez $5\times5$ se establece como un entorno matemáticamente equivalente en sus reglas de transición, pero con un espacio de estados acotado. 
+Dado el factor de ramificación estimado del ajedrez estándar (media de 35 hijos por nodo) y la complejidad del árbol de juego ($10^{120}$), propuesta por Claude Shannon en su artículo fundacional \cite{shannon1950programming}, la variante de ajedrez $5\times5$ se establece como un entorno matemáticamente equivalente en sus reglas de transición, pero con un espacio de estados y una complejidad del árbol de juego acotados. 
 
 Para estimar la complejidad de la variante Gardner $5\times5$, siguiendo un razonamiento similar al de Shannon, se pueden calcular las siguientes métricas:
 \begin{itemize}
-    \item \textbf{Espacio de estados $\mathcal{S}$:} Al colocar un máximo de 20 piezas (10 blancas y 10 negras) sobre 25 casillas, una cota superior combinatoria combinando la colocación de piezas distintas es:
-    $$|\mathcal{S}_{\text{comb}}| = \frac{25!}{5! 5! 5!} \approx 7.09 \times 10^{15}$$
-    Descontando posiciones ilegales (reyes en jaque simultáneo, peones en las filas de inicio/promoción, etc.), el espacio de estados legales efectivo real es algo menor (una estimación es entre $10^{11}$ y $10^{13}$ posiciones) (TODO:confirmar! no vale con decir "creo que es asi mas o menos..."). 
-    \item \textbf{Complejidad del árbol de juego:} Considerando un factor de ramificación promedio $b \approx 15 \text{ a } 20$ jugadas legales por posición y una profundidad promedio de partida $d \approx 25$ plies (medios movimientos) \textbf{(TODO:por ahora estos 2 numeros son placeholders. son estimaciones sensatas pero estaría bien sacar datos exactos de las estadísticas de generación de partidas)}, la complejidad de Shannon $b^d$ para Gardner es:
-    $$N_G \approx 20^{25} \approx 3.3 \times 10^{32}$$
-    Este valor es infinitamente menor que el del ajedrez estándar ($10^{120}$), lo que permite que el auto-juego converja con órdenes de magnitud menos recursos computacionales.
+    \item \textbf{Espacio de estados $\mathcal{S}$:} Mehdi y Prost estimaron que el número total de posiciones legales en el ajedrez $5\times5$ es aproximadamente $9\times 10^{18}$ \cite{DBLP:journals/corr/MhallaP13}, descontando posiciones ilegales (reyes en jaque simultáneo, peones en las filas de inicio/promoción, etc...). 
+    
+    \textcolor{red}{\textbf{TODO: no mencionan como lo obtuvieron. puede que sea un recuento combinatorio estilo total = permutaciones(25, 10) * comb(15,5) * comb(10,5), (ordenar las 10 piezas principales, luego peones negros y luego blancos), pero esto deja muchas jugadas que son ilegales o que simplemente no tienen sentido , ademas de no contar las posiciones con capturas.}}
+    \item \textbf{Complejidad del árbol de juego:} Considerando un factor de ramificación promedio $b \approx 12 \text{ a } 15$ jugadas legales por posición y una profundidad promedio de partida $d \approx 20$ plies (medios movimientos),
+    
+    \textcolor{red}{\textbf{(TODO:por ahora estos 3 numeros son placeholders. son estimaciones sensatas pero estaría bien sacar datos exactos de las estadísticas de generación de partidas)}}
+    
+    la complejidad de Shannon $b^d$ para Gardner es:
+    $$N_{upper} \approx 15^{20} \approx 3.3 \times 10^{23}$$
+    $$N_{lower} \approx 12^{20} \approx 3.8 \times 10^{21}$$
+    Estos valores son infinitamente menores que el límite superior del ajedrez estándar ($10^{120}$), lo que permite que el \textit{self-play} converja con órdenes de magnitud menos recursos computacionales.
 \end{itemize}
 
 Dada la complejidad del entorno, nos gustaría poder modelarlo de modo que el aprendizaje se realice únicamente sobre el estado actual, ya que comprobar el historial de jugadas completo tendría un coste computacional excesivo. Buscamos que la probabilidad de alcanzar un estado futuro dependa únicamente del estado presente, y no del historial de estados anteriores. Esta es la propiedad de Markov.
@@ -221,7 +261,7 @@ Para modelar el ajedrez $5\times5$ como un MDP, es necesario expandir el espacio
 
 Al encapsular explícitamente los contadores $p$ y $h$ dentro de la representación del estado actual $s_t$, el modelo no necesita consultar cronológicamente cómo se llegó a dicho estado. Toda la información temporal y causal necesaria para evaluar la legalidad de las jugadas futuras o detectar empates está autocontenida en el instante presente. Bajo esta formulación, se satisface la propiedad de Markov, lo que nos permite simplificar el modelado.
 
-\subsubsection{Arquitectura basada en Transformers: Encoder y Self-Attention}
+\subsubsection{Arquitectura basada en Transformers: Encoder y Self-Attention}\label{sec:transformer}
 
 A diferencia de los modelos de lenguaje (LLMs) que generan secuencias texto \textit{token} a \textit{token} utilizando una arquitectura de decodificador con enmascaramiento causal, la evaluación de un tablero de ajedrez requiere una comprensión bidireccional del estado completo en un instante de tiempo / posición. No es necesario enmascarar la atención para evitar observar tokens futuros, ya que por la propiedad de Markov demostrada anteriormente, una posición no depende de estados posteriores ni anteriores.
 
@@ -235,7 +275,7 @@ Donde $Q$ (Query), $K$ (Key) y $V$ (Value) son matrices obtenidas mediante proye
 
 $$Q=XW^Q, \quad K=XW^K, \quad V=XW^V$$
 
-$W^Q, W^K, W^V$ son matrices de pesos entrenables, y $d_k$ representa la dimensión de las claves (configurada en \texttt{[TODO: definir tamaño de d\_k]} para esta implementación). Este mecanismo se replica en cada una de las $h$ cabezas de atención, permitiendo capturar distintas relaciones entre las piezas. El resultado se concatena y se proyecta linealmente de vuelta a la dimensión original de la entrada. 
+$W^Q, W^K, W^V$ son matrices de pesos entrenables, y $d_k$ representa la dimensión de las claves (configurada en \textcolor{red}{[TODO: definir tamaño de d\_k]} para esta implementación). Este mecanismo se replica en cada una de las $h$ cabezas de atención, permitiendo capturar distintas relaciones entre las piezas. El resultado se concatena y se proyecta linealmente de vuelta a la dimensión original de la entrada. 
 
 $$\text{MultiHead}(X) = \text{Concat}(\text{head}_1, ..., \text{head}_h)W^O$$
 
@@ -245,9 +285,10 @@ Donde $\text{head}_i = \text{Attention}(QW_i^Q, KW_i^K, VW_i^V)$, $W^O$ es una m
 
 El problema del ajedrez $5\times5$ se modela a través de una formulación clásica de Proceso de Decisión de Markov (MDP). En cada paso $t$, el agente observa el estado actual $s_t$, elige una acción estocástica basada en una política parametrizada $\pi_\theta(a_t|s_t)$ y pasa a un nuevo estado $s_{t+1}$. La iteración prosigue hasta el final de la trayectoria (fin de la partida), momento en el cual el agente interactúa con el entorno recibiendo una recompensa terminal (victoria, derrota o empate).
 
-A diferencia de enfoques como MCTS que optimizan una pérdida de entropía cruzada mediante búsqueda explícita, este trabajo emplea una red neuronal de política y valor conjunta sin simulación del futuro. La red se optimiza directamente utilizando la \textit{clipped surrogate objective function} de Proximal Policy Optimization:
+A diferencia de enfoques como MCTS que optimizan una pérdida de entropía cruzada mediante búsqueda explícita, este trabajo emplea una red neuronal de política y valor conjunta sin simulación del futuro. La red se optimiza directamente utilizando la \textit{clipped surrogate objective function} de Proximal Policy Optimization \cite{DBLP:journals/corr/SchulmanWDRK17}:
 $$L^{CLIP}(\theta) = \hat{\mathbb{E}}_t \left[ \min(r_t(\theta)\hat{A}_t, \text{clip}(r_t(\theta), 1-\epsilon, 1+\epsilon)\hat{A}_t) \right]$$
-donde $r_t(\theta) = \frac{\pi_\theta(a_t|s_t)}{\pi_{\theta_{\text{old}}}(a_t|s_t)}$ es el cociente de probabilidades, $\hat{A}_t$ es la estimación de la ventaja y $\epsilon$ es el hiperparámetro de recorte (clipping). La red también minimiza el error cuadrático medio en la estimación del valor $v_\theta(s_t)$.
+donde $r_t(\theta) = \frac{\pi_\theta(a_t|s_t)}{\pi_{\theta_{\text{old}}}(a_t|s_t)}$ es el cociente de probabilidades, $\hat{A}_t$ es la estimación de la ventaja y $\epsilon$ es el hiperparámetro de recorte (clipping). La red también minimiza el error cuadrático medio en la estimación del valor $V_\theta(s_t)$. La función de pérdida conjunta total es:
+$$\mathcal{L}= -L^{CLIP} + c_1 L^{VF}-c_2 L^{ENT}$$
 
 \textbf{Diseño de la Función de Recompensa}
 
@@ -266,34 +307,25 @@ R_t =
 
 Esta escasez de señal dificulta las fases iniciales del entrenamiento, justificando así la necesidad de técnicas avanzadas o inicialización supervisada para guiar al modelo en las etapas tempranas para acelerar la convergencia de PPO.
 
-\subsubsection{Diseño Experimental e Hipótesis}
 
-Para dar respuesta a los objetivos planteados, el desarrollo práctico se articula en torno a la demostración de las siguientes hipótesis experimentales, las cuales estructuran el diseño experimental del trabajo:
 
-\begin{itemize}
-    \item \textbf{Hipótesis 1 (Reducción del problema)}: El ajedrez 5x5 como entorno simplificado de RL puede conservar suficientes dinámicas esenciales del aprendizaje por refuerzo adversarial al tiempo que se mantiene computacionalmente manejable para la experimentación.
-    \item \textbf{Hipótesis 2 (Representación):} El uso de representaciones estructuradas del tablero y del espacio de acciones (ej. planos espaciales vs. predicción por casillas origen/destino) mejora la eficiencia del aprendizaje frente a representaciones planas.
-    \item \textbf{Hipótesis 3 (Inicialización):} Un agente inicializado mediante aprendizaje supervisado a partir de jugadas generadas por un motor de referencia alcanza un nivel de rendimiento competitivo en menos \textit{epochs} que un agente entrenado de forma puramente \textit{tabula rasa}.
-\end{itemize}
-
-\subsection{Marco práctico}
+\subsection{Marco práctico}\label{sec:marco_practico}
 
 \subsubsection{Codificación del Espacio de Estados (Input)}
-TODO revisar
 
 Para evaluar la Hipótesis 1, se instrumentarán y compararán distintas representaciones del tablero de ajedrez 5x5, analizando su impacto en la asimilación espacial del modelo Transformer.
 
 \begin{itemize}
-    \item \textbf{Representación plana simple (Byte Array):} El tablero se representa como un vector unidimensional de 25 \textit{bytes} (índices 0-24), correspondientes a las 25 casillas del tablero de Minichess. Cada casilla almacena un número entero que identifica unívocamente una de las 12 piezas posibles (6 blancas y 6 negras) o el estado de casilla vacía. Esta representación minimalista es computacionalmente eficiente y delega en el Transformer la responsabilidad total de deducir la geometría 2D del tablero.
-    \item \textbf{Representación espacial (estilo AlphaZero):} El tablero se expande en un tensor multicanal de dimensiones $C \times 5 \times 5$, donde cada canal $C$ actúa como un plano binario indicando la presencia o ausencia de un tipo de pieza específico para cada color. Esta codificación facilita el reconocimiento de patrones espaciales a través de sesgos inductivos explícitos. Se añaden, además, canales binarios adicionales para variables de estado globales como el bando al que le toca mover y los límites del half-move clock.
-    \item \textbf{Representaciones aumentadas (Heurísticas):} Se incorporarán planos adicionales que inyecten información posicional específica para guiar al Transformer. Estos planos binarios codificarán: (a) casillas atacadas por las piezas propias y del oponente, (b) piezas que se encuentran clavadas o en estado de jaque, y (c) la topología binaria del tablero (casillas blancas vs. negras) para mitigar la falta de sesgo inductivo del Transformer sobre movimientos diagonales.
+    \item \textbf{Representación plana simple (Byte Array):} El tablero se representa como un vector unidimensional de 27 \textit{bytes} (índices 0-24), correspondientes a las 25 casillas del tablero de Minichess. Cada casilla almacena un número entero que identifica unívocamente una de las 12 piezas posibles (6 blancas y 6 negras) o el estado de casilla vacía. Adicionalmente se almacenan el número de repeticiones y el número de jugadas sin capturas / jaques en los 2 bytes finales. Esta representación es minimalista pero computacionalmente eficiente, y delega en el Transformer la responsabilidad de deducir la geometría 2D del tablero.
+
+    \item \textbf{Representación espacial (estilo AlphaZero):} El tablero se expande en un tensor multicanal de dimensiones $C \times 5 \times 5$. Cada canal $C$ está asignado a un tipo de pieza por color y actúa como un plano binario indicando su presencia o ausencia. Esta codificación facilita el reconocimiento de patrones espaciales a través de sesgos inductivos explícitos. Se añaden, además, canales binarios adicionales para variables de estado globales como el jugador al que le toca mover y los límites del half-move clock.
+
+    \item \textbf{Representaciones aumentadas (Heurísticas):} Se incorporarán planos adicionales que inyecten información posicional específica para guiar al Transformer, siguiendo las ideas de Czech Et al.\cite{czech2024representationmattersmasteringchess} Estos planos binarios codificarán información como: casillas ocupadas por piezas propias y del oponente, posiciones de todas las piezas dando jaque, la topología binaria del tablero (casillas blancas vs. negras), diferencia de material...
 \end{itemize}
 
 \placeholderfig{figura ilustrativa con una visualización de las distintas codificaciones de entrada}{Visualización de codificaciones de entrada. De izquierda a derecha: a, b, c...}{fig:resultados_hollow}
 
 \subsubsection{Codificación del Espacio de Acciones (Output)}
-
-TODO revisar
 
 De manera análoga, la forma en que la red proyecta sus predicciones altera drásticamente la topología del espacio de optimización. Se implementarán las siguientes cabezas de salida:
 
@@ -301,39 +333,72 @@ De manera análoga, la forma en que la red proyecta sus predicciones altera drá
     \item \textbf{Política Plana Discreta (Flat Policy):} Consiste en un vector de salida lineal que mapea todas las posibles transiciones legales del juego. En un tablero 5x5, considerando que una pieza no puede moverse a su propia casilla origen, existen $5^2 \times (5^2 - 1) = 600$ movimientos posicionales puros. Adicionalmente, las promociones de peón requieren un modelado independiente. 
     
     En Minichess, los peones en las columnas exteriores (a, e) tienen 2 opciones al coronar (avance o captura simple), mientras que los peones en columnas centrales (b, c, d) tienen 3. Esto resulta en $(2+3+3+3+2) = 13$ movimientos de promoción. Multiplicado por las 4 piezas posibles de promoción (Reina, Torre, Alfil, Caballo) y los 2 colores, se añaden 104 neuronas. La salida de la política (\textit{policy head}) será, por tanto, un vector estricto de \textbf{704 neuronas}.
-    \item \textbf{Política Factorizada (Origen-Destino):} En lugar de predecir sobre el espacio completo de 704 acciones, la salida de la política se bifurca en dos cabezas: una cabeza que predice la casilla de origen del movimiento (vector de tamaño 25) y una segunda cabeza que predice la casilla de destino del movimiento (vector de tamaño 25). Esto reduce el espacio de salida de 704 a 50 dimensiones en total, simplificando la tarea de optimización del gradiente.
-    \item \textbf{Cabezas auxiliares de recompensa densa:} Con el fin de mitigar la dispersión de las recompensas en las fases iniciales, se evaluará una cabeza auxiliar de valor que realice una regresión continua hacia la evaluación material o posicional (en centipeones) proporcionada en tiempo real por un motor clásico (Fairy-Stockfish) para cada estado intermedio.
+
+    \item \textbf{Política Factorizada (Origen-Destino):} En lugar de predecir sobre el espacio completo de 704 acciones, la salida de la política se bifurca en dos cabezas: una cabeza que predice la casilla de origen del movimiento (vector de tamaño 25) y una segunda cabeza que predice la casilla de destino del movimiento (vector de tamaño 25). Esto reduce el espacio de salida de 704 a 50 dimensiones en total, simplificando la tarea de optimización del gradiente. Se debe añadir también una cabeza adicional para predecir la pieza de promoción, codificada como 9 neuronas (4 piezas posibles por cada color + 1 para no promoción). El total de neuronas asciende a 59.
+    
+    \item \textbf{Política con codificación por filas/columnas:} En esta variante, la política se factoriza aún más para predecir por separado la fila y la columna de origen y destino. Esto se implementa mediante cuatro cabezas de salida: una para la fila de origen (5 neuronas), una para la columna de origen (5 neuronas), una para la fila de destino (5 neuronas), una para la columna de destino (5 neuronas) y una para la coronación (9 neuronas). Esto reduce el espacio de salida a solo 29 dimensiones, aunque introduce una mayor complejidad en la decodificación de las acciones. 
+    
+    El objetivo es que, al permitir que el modelo aprenda de forma independiente las dinámicas de filas y columnas y la dinámica de origen y destino, se facilite la generalización al permitir a la red hacer predicciones "parciales" al inicio (reconocer la columna de origen sin necesidad de acertar la fila, o viceversa).
+    
+    \item \textbf{Cabeza de valor:} Se incluye una cabeza de valor que predice el valor esperado de la posición actual, lo que permite al modelo aprender a evaluar la calidad de las posiciones además de predecir acciones. Esta cabeza se implementa como una proyección lineal seguida de una activación $\tanh$ para acotar la salida en el rango $[-1, 1]$, donde -1 representa una derrota segura, 0 un empate y +1 una victoria segura. 
+    
 \end{itemize}
 
 \placeholderfig{figura ilustrativa con una visualización de las distintas codificaciones de salida}{Visualización de codificaciones de salida. De izquierda a derecha: a, b, c...}{fig:resultados_hollow}
 
 \subsubsection{Arquitectura Transformer}
 
-TODO revisar
-
 La arquitectura neural propuesta se basa en un modelo \textbf{Transformer Encoder} que procesa el tablero de forma bidireccional, permitiendo que cada casilla preste atención a todas las demás. El flujo de procesamiento de la red se describe a continuación:
 \begin{enumerate}
-    \item \textbf{Capa de Proyección de Entrada:} Si la entrada es la representación binaria multicanal $C \times 5 \times 5$, se utiliza una capa convolucional de tamaño de filtro $1\times1$ o una proyección lineal para mapear cada una de las 25 casillas a un vector de dimensión oculta $d_{\text{model}}$ (generalmente configurado entre $128$ y $256$).
-    \item \textbf{Codificación Posicional Spatial 2D:} Para inyectar información geométrica y espacial en las capas de atención (ya que los Transformers puros son invariantes ante permutaciones), se suma un vector de codificación posicional 2D (con componentes seno y coseno correspondientes a las coordenadas de fila y columna de cada casilla) al embedding de cada casilla.
-    \item \textbf{Pila de Bloques del Encoder:} El tensor resultante de dimensiones $25 \times d_{\text{model}}$ se procesa a través de una serie de $L$ capas de codificación. Cada capa contiene:
+
+    \item \textbf{Capa de Proyección de Entrada:} La capa inicial busca aprender los embeddings que el modelo utilizará. Si la entrada es la representación binaria multicanal $C \times 5 \times 5$, se utiliza una capa convolucional de tamaño de filtro $1\times1$ o una proyección lineal \textcolor{red}{(\textbf{TODO: decidir entre estas 2})} para mapear cada una de las 25 casillas a un vector de dimensión oculta $d_{\text{model}}$ \textcolor{red}{(\textbf{TODO: decidir tamaño embeddings})}.
+    
+    \item \textbf{Codificación Posicional Spatial 2D:} Para inyectar información geométrica y espacial en las capas de atención (ya que los Transformers puros son invariantes ante permutaciones) \textcolor{red}{(TODO:elegir entre estas 2 en funcion de la dificultad de implementación)}...
+    
     \begin{itemize}
-        \item Un mecanismo de Auto-Atención Multicabeza (\textit{Multi-Head Self-Attention}).
-        \item Conexiones residuales y normalización de capa (\textit{Layer Normalization}).
-        \item Una red de alimentación hacia adelante (\textit{Feed-Forward Network}, FFN) compuesta por dos proyecciones lineales y una activación no lineal (ej. GeLU).
+        \item se suma un vector de codificación posicional 2D (con componentes seno y coseno correspondientes a las coordenadas de fila y columna de cada casilla) al embedding de cada casilla. \href{https://stackoverflow.com/questions/77444485/using-positional-encoding-in-pytorch}{(referencia implementación)}
+        
+        \item se aplica RoPE (\textit{Rotary Positional Encoding}), el estándar actual de codificación posicional en modelos de lenguaje y Transformers\cite{DBLP:journals/corr/abs-2104-09864}. Este codifica la posición de cada casilla mediante rotaciones en el espacio de embeddings, permitiendo que el modelo capture relaciones espaciales de manera más flexible. \href{https://meta-pytorch.org/torchtune/0.3/generated/torchtune.modules.RotaryPositionalEmbeddings.html}{(referencia pytorch)}
     \end{itemize}
-    \item \textbf{Cabezas de Salida (Cabezas Escindidas):} Tras la última capa del codificador, el estado procesado se bifurca en dos cabezas:
+    
+    \item \textbf{Pila de Bloques Encoder:} El tensor resultante de dimensiones $25 \times d_{\text{model}}$ se procesa a través de una serie de $L$ capas de codificación. Cada capa contiene:
+    
+    \begin{itemize}
+        \item Un mecanismo de (\textit{Multi-Head Self-Attention}) sin \textit{causal-masking} como el descrito en la sección~\ref{sec:transformer}. El número de cabezas de atenciónes el hiperparámetro $h$, que será ajustado en base a búsqueda de hiperparámetros.
+        
+        \item Conexiones residuales de inicio a fin y el estándar moderno de normalización, que utiliza \textit{pre-norm} y \textit{RMSNorm}. La convención \textit{pre-norm} aplica normalización antes de cada subcapa, de la forma $z = x + sublayer(normalization(x))$, donde $sublayer$ es una de las $L$ capas encoder. Se ha demostrado que esta mejora la estabilidad del entrenamiento\cite{DBLP:journals/corr/abs-2002-04745}. 
+        
+        La normalización RMS (\textit{Root Mean Square Layer Normalization}) es utilizada por transformers modernos debido a que reduce la complejidad computacional al no requerir el cálculo de la media para subtraer al vector original, manteniendo la capacidad de aprendizaje intacta. \cite{gupta2025geometricinterpretationlayernormalization}
+        
+        \item Una capa \textit{Feed-Forward Network} (FFN), compuesta por dos proyecciones lineales de expansión y contracción y una activación no lineal:
+        $$\text{FFN}(x) := FC_{expand}(x) \rightarrow \text{GELU} \rightarrow FC_{project}(x)$$
+    \end{itemize}
+
+    \item \textbf{Cabezas de Salida:} Tras la última capa del codificador, el estado procesado se bifurca en dos cabezas:
     \begin{itemize}
         \item \textbf{Cabeza de Política (\textit{Policy Head}):} Una proyección lineal que reduce el espacio de representación a la dimensión de la política (704 salidas discretas o 50 en la versión factorizada), seguida de una capa Softmax para producir una distribución de probabilidad sobre las acciones legales del estado.
         \item \textbf{Cabeza de Valor (\textit{Value Head}):} Se aplica una capa de agregación global (\textit{pooling}) sobre las casillas, seguida de una proyección lineal a una capa oculta, normalización, y finalmente una proyección escalar con una activación tangente hiperbólica ($\tanh$) que acota la salida en el intervalo $[-1, 1]$.
     \end{itemize}
+
 \end{enumerate}
 
-\placeholderfig{diagrama de arquitectura propuesta}{Arquitectura Encoder-only propuesta.}{fig:resultados_hollow}
+La figura ~\ref{fig:encoder_arch} ilustra la arquitectura propuesta, mostrando el flujo de datos desde la entrada de la representación hasta las salidas de las cabezas de política y valor.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=1\textwidth]{figures/Gemini_Generated_Diagram.png}
+    \caption{[Placeholder] Diagrama de la arquitectura utilizada (generado con IA, tiene errores / inconsistencias).}
+    \label{fig:encoder_arch}
+\end{figure}
+
+% \placeholderfig{diagrama de arquitectura propuesta}{Arquitectura Encoder-only propuesta.}{fig:resultados_hollow}
+
+\newpage
 
 \subsubsection{Algoritmo de Aprendizaje por Refuerzo: Proximal Policy Optimization (PPO)}
 
-Por qué este algoritmo? Clásicamente, metodologías como MCTS y \textit{Expert Iteration} actúan más como como planificadores a futuro que como RL propiamente dicho: resuelven futuros hipotéticos mediante búsqueda por fuerza bruta al contar con un modelo perfecto del entorno. En ellos, la red neuronal actúa como una memoria supervisada que aproxima las probabilidades de visita ya descubiertas por la búsqueda. 
-Estos sistemas no están aprendiendo (algo que se obtiene de la experiencia, y por tanto del pasado), sino que están planificando (algo que se obtiene de la previsión del futuro, y por tanto de la simulación). 
+Cabe preguntarse: ¿por qué este algoritmo en lugar del MCTS usado en enfoques como AlphaGO o AlphaZero? Clásicamente, metodologías como MCTS y \textit{Expert Iteration} actúan más como como planificadores a futuro que como RL propiamente dicho: descubren futuros hipotéticos mediante búsqueda por fuerza bruta al contar con un modelo perfecto del entorno. En ellos, la red neuronal actúa como una memoria supervisada que aproxima las probabilidades de visita ya descubiertas por la búsqueda. 
+Estos sistemas no están aprendiendo \textit{per se} (algo que se obtiene de la experiencia, y por tanto del pasado), sino que están planificando (algo que se obtiene de la previsión del futuro, y por tanto de la simulación, el futuro). 
 
 Por el contrario, Proximal Policy Optimization (PPO) es un algoritmo de aprendizaje por refuerzo puro (\textit{Model-Free}). La red neuronal carece de un mecanismo explícito de previsión del futuro mediante un árbol con estados; es ella, iterativamente a través métodos Actor-Crítico y puramente por descenso de gradiente, la que asimila las estrategias óptimas guiada por ensayo y error. Además, al requerirse exactamente una única inferencia por tablero en cada estado, los tableros / estados pueden agruparse en (\textit{batches}) mayores, maximizando la ocupación de GPU.
 
@@ -341,17 +406,17 @@ Por el contrario, Proximal Policy Optimization (PPO) es un algoritmo de aprendiz
 
 El algoritmo PPO actualiza los pesos para evitar colapsar debido a cambios demasiado severos de la política por una actualización errónea. Esta es la función fundamental del hiperparámetro de recorte $\epsilon$ (\textit{clipping mechanism}). Este asegura que la actualización no destruya la política existente, al penalizar las actualizaciones estocásticas grandes que diverjan significativamente de la política anterior empleada para recolectar el episodio en cuestión.
 
-Para balancear correctamente el sesgo y la varianza a la hora de determinar lo buena que es la acción tomada respecto a la acción promedio en el estado actual, se emplea la Estimación Generalizada de Ventaja (GAE - \textit{Generalized Advantage Estimation}). El algoritmo se puede sintetizar en el pseudocódigo del Algoritmo~\ref{alg:ppo}.
+Para balancear correctamente el sesgo y la varianza a la hora de determinar lo buena que es la acción tomada respecto a la acción promedio en el estado actual, se emplea la Estimación Generalizada de Ventaja (GAE - \textit{Generalized Advantage Estimation})\cite{DBLP:journals/corr/SchulmanWDRK17}. El algoritmo se puede sintetizar en el pseudocódigo del Algoritmo~\ref{alg:ppo}.
 
-TODO revisar comparar con \url{https://spinningup.openai.com/en/latest/algorithms/ppo.html#spinup.ppo_pytorch} y paper original 
-
-TODO añadir citas a paper y a lo que sea necesario
+\textcolor{red}{TODO revisar comparar con} \url{https://spinningup.openai.com/en/latest/algorithms/ppo.html#spinup.ppo_pytorch} \textcolor{red}{y paper original} 
 
 \begin{algorithm}[H]
-\caption{Proximal Policy Optimization (PPO)}\label{alg:ppo}
+\caption{Proximal Policy Optimization (PPO-Clip)}\label{alg:ppo}
 \begin{algorithmic}[1]
 \State Inicializar parámetros de política y valor $\theta$
 \For{iteración $i = 1, 2, \dots$}
+    % \State Recopilar el conjunto de trayectorias $\mathcal{D}_k = \{\tau_i\}$ ejecutando la política $\pi_k = \pi(\theta_k)$ en el entorno.
+    % \State Calcular las recompensas acumuladas a futuro (\textit{rewards-to-go}) $\hat{R}_t$.
     \State Ejecutar política parametrizada $\pi_{\theta_{old}}$ en $N$ entornos paralelos durante $T$ pasos temporales
     \State Calcular las estimaciones de ventaja $\hat{A}_t$ mediante GAE, en base al valor de $V_\theta(s_t)$ y las recompensas obtenidas
     \For{época $k = 1, \dots, K$}
@@ -368,16 +433,24 @@ TODO añadir citas a paper y a lo que sea necesario
 \end{algorithmic}
 \end{algorithm}
 
-En este pseudocódigo, $c_1$ y $c_2$ son coeficientes de ponderación para la pérdida de valor y la pérdida de entropía, respectivamente. La función de entropía $H(\pi_\theta(s_t))$ se incluye para fomentar la exploración durante el entrenamiento, y el valor objetivo $V_t^{target}$ se calcula utilizando las recompensas obtenidas y las estimaciones de valor futuro.
+En este pseudocódigo, se deben denotar varios aspectos:
+\begin{itemize}
+    \item Tanto $V_\theta$ como $\pi_{\theta}$ están parametrizadas por el mismo $theta$, dado que ambas funciones comparten el backbone de la arquitectura, pero cada una se predice en una de sus cabezas. 
+    \item $c_1$ y $c_2$ son coeficientes de ponderación para la pérdida de valor y la pérdida de entropía, respectivamente. La función de entropía $H(\pi_\theta(s_t))$ se incluye para fomentar la exploración durante el entrenamiento, y el valor objetivo $V_t^{target}$ se calcula utilizando las recompensas obtenidas y las estimaciones de valor futuro.
+    
+    
+    \item La ventaja en el pseudocódigo anterior se calcula utilizando GAE, y se controla mediante el hiperparámetro $\lambda$ que ajusta el sesgo-varianza de la estimación. 
+    Un valor de $\lambda$ cercano a 1 favorece una estimación de ventaja con bajo sesgo pero alta varianza (aproxima Monte Carlo), mientras que un valor cercano a 0 produce una estimación con alto sesgo pero baja varianza que aproxima \textit{TD-learning}.
 
-Un valor de $\lambda$ cercano a 1 favorece una estimación de ventaja con bajo sesgo pero alta varianza (aproxima Monte Carlo), mientras que un valor cercano a 0 produce una estimación con alto sesgo pero baja varianza que aproxima \textit{TD-learning}.
-La ventaja en el pseudocódigo anterior se calcula utilizando GAE, y se controla mediante el hiperparámetro $\lambda$ que ajusta el sesgo-varianza de la estimación. 
-Este hiperparámetro no está presente explícitamente en el pseudocódigo, pero se utiliza en la función de cálculo de $\hat{A}_t$ para determinar cómo se combinan las recompensas futuras y las estimaciones de valor para obtener una ventaja más estable y eficiente.
-El cálculo de la ventaja $\hat{A}_t$ mediante GAE se realiza utilizando la siguiente fórmula:
+    Este hiperparámetro no está presente explícitamente en el pseudocódigo, pero se utiliza en la función de cálculo de $\hat{A}_t$ para determinar cómo se combinan las recompensas futuras y las estimaciones de valor para obtener una ventaja más estable y eficiente.
+    El cálculo de la ventaja $\hat{A}_t$ mediante GAE se realiza utilizando la siguiente fórmula:
 
-$$\hat{A}_t = \sum_{l=0}^{\infty} (\gamma \lambda)^l \delta_{t+l}$$
-$$\delta_t = r_t + \gamma V_\theta(s_{t+1}) - V_\theta(s_t)$$
-\subsubsection{Herramientas y tecnologías}
+    $$\hat{A}_t = \sum_{l=0}^{\infty} (\gamma \lambda)^l \delta_{t+l}$$
+    $$\delta_t = r_t + \gamma V_\theta(s_{t+1}) - V_\theta(s_t)$$
+    
+\end{itemize}
+
+\subsubsection{Herramientas y tecnologías empleadas}
 
 El desarrollo práctico e investigativo del proyecto se implementará utilizando las siguientes herramientas de desarrollo de software libre:
 \begin{itemize}
@@ -439,27 +512,57 @@ La sigiente planificación es una aproximación orientada a la experimentación 
 % 5.13. Principales aportaciones
 \section{Principales aportaciones}\label{sec:aportaciones}
 
-\textbf{TODO aquí las gráficas!!!}
-\textbf{\begin{itemize}
+\textcolor{red}{\textbf{TODO aquí las gráficas!!!}}
+\textcolor{red}{\textbf{\begin{itemize}
     \item No introducir conceptos nuevos. directo al grano.
     \item Agrupar los resultados por cada una de las 3 hipótesis. Insertar las 1 o 2 gráficas correspondientes a cada bloque.
 \end{itemize}
-}
+}}
 
-% Placeholder tipo marco (sin relleno)
-\placeholderfig{Placeholder: Gráfica de resultados / Experimentos}{Descripción del experimento y métricas obtenidas.}{fig:resultados_hollow}
-
-\placeholderfig{Placeholder: Gráfica de resultados / Experimentos}{Descripción del experimento y métricas obtenidas.}{fig:resultados_hollow}
-
-TODO meter las gráficas exactas que espero por cada hipotesis
+\subsection{Resultados generales en el entorno de Minichess}
+\textcolor{red}{qué gráficas / tablas puedo aportar para esta hipótesis? no es exactamente un problema cuantificable. quizás sirve con algo como:} 
+\textit{"Como hemos visto en el desarrollo anterior, el problema del Minichess mantiene suficiente complejidad para ser utilizado como entorno de estudio a pesar de su tamaño reducido y su condición de weakly-solved"}
 
 
-TODO meter también las tablas que espero por cada una
+\subsection{Efectos de la representación sobre la eficiencia y calidad del aprendizaje}
+\placeholderfig{Gráfica: Eficiencia según representación de entrada}{Evolución de la pérdida según las distintas codificaciones del tablero estudiadas.}{fig:hip2_grafica}
+
+\begin{table}[htbp]
+    \centering
+    \begin{tabular}{|c|c|c|}
+    \hline
+    \textbf{Representación Input/Output} & \textbf{Iteraciones (PPO)} & \textbf{Winrate VS Heurística} \\
+    \hline
+    Plana & & \\
+    Espacial & & \\
+    Aumentada (Heurísticas) & & \\
+    \hline
+    \end{tabular}
+    \caption{Resultados de rendimiento final comparando representaciones (Hipótesis 2).}
+    \label{tab:hip2}
+\end{table}
+
+\subsection{Efectos de la inicialización supervisada sobre la convergencia del aprendizaje por refuerzo}
+\placeholderfig{Gráfica: Curva de convergencia Tabula Rasa vs Supervisado}{Tasa de victoria y avance del ELO estimado a lo largo del entrenamiento.}{fig:hip3_grafica}
+
+\begin{table}[htbp]
+    \centering
+    \begin{tabular}{|c|c|c|}
+    \hline
+    \textbf{Inicialización del Agente} & \textbf{Epochs al pico ELO} & \textbf{ELO final} \\
+    \hline
+    Tabula rasa & & \\
+    Pre-entrenado (Supervisado) & & \\
+    \hline
+    \end{tabular}
+    \caption{Comparativa de convergencia pre-entrenamiento vs tabula rasa (Hipótesis 3).}
+    \label{tab:hip3}
+\end{table}
 
 % 5.14. Conclusiones
 \section{Conclusiones}\label{sec:conclusiones}
 
-TODO
+\textcolor{red}{TODO}
 
 \begin{itemize}
     \item Análisis crítico de las gráficas, lectura matemática.
@@ -469,7 +572,9 @@ TODO
 % 5.15. Vías de trabajo futuro
 \section{Vías de trabajo futuro}\label{sec:futuro}
 
-TODO Lo que me quedó en el tintero
+\textcolor{red}{TODO Lo que me quedó en el tintero}
+
+\textcolor{red}{TODO limitaciones del enfoque y posibles mejoras}
 
 % 5.16. Referencias
 \newpage
@@ -480,12 +585,44 @@ TODO Lo que me quedó en el tintero
 \appendix
 \section{Anexos}\label{sec:anexos}
 
-Cosas a meter:
+Cosas a incluír:
 
 \begin{itemize}
     \item instrucciones reproducibilidad: configuración del entorno, los comandos de consola para lanzar los scripts de entrenamiento y generación de datos…
     \item pseudocódigos completos
     \item tablas de hiperparámetros wandb
+    \item partes importantes de código
+    \item explicaciones más en profundidad de cosas que puedan preguntar en la defensa
 \end{itemize}
+
+\subsection{Hiperparámetros del Entrenamiento}
+\textcolor{red}{TODO: rellenar datos tras hyperparam search}
+\begin{table}[htbp]
+    \centering
+    \begin{tabular}{|l|c|c|}
+    \hline
+    \textbf{Hiperparámetro (Símbolo)} & \textbf{Valor} & \textbf{Descripción} \\
+    \hline
+    \multicolumn{3}{|c|}{\textbf{Arquitectura Transformer}} \\
+    \hline
+    Dimensión oculta ($d_{\text{model}}$) & & \\
+    Número de capas Encoder ($L$) & & \\
+    Cabezas de atención ($h$) & & \\
+    \hline
+    \multicolumn{3}{|c|}{\textbf{Aprendizaje por Refuerzo (PPO)}} \\
+    \hline
+    Tasa de aprendizaje base ($lr$) & & \\
+    Batch size ($B$) & & \\
+    Número de epochs PPO ($K$) & & \\
+    Constante de descuento ($\gamma$) & & \\
+    Parámetro GAE ($\lambda$) & & \\
+    Márgen de Clipping ($\epsilon$) & & \\
+    Coeficiente de Entropía ($c_2$) & & \\
+    Coeficiente de Valor ($c_1$) & & \\
+    \hline
+    \end{tabular}
+    \caption{Tabla de hiperparámetros de los modelos y del algoritmo PPO.}
+    \label{tab:hiperparametros}
+\end{table}
 
 \end{document}
