@@ -1,3 +1,4 @@
+from torch.nn.modules import loss
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -5,6 +6,7 @@ import torch.optim as optim
 
 import matplotlib.pyplot as plt
 
+from dataclasses import dataclass
 import time
 
 # pyrefly: ignore [missing-import]
@@ -24,20 +26,20 @@ class MLP(nn.Module):
         5. dropout
     '''
 
-    def __init__(self, embedding_dim, dropout, expand_factor=3):
+    def __init__(self, config : EncoderConfig):
         super(MLP, self).__init__()
         
         self.ffn = nn.Sequential(
-            nn.Linear(embedding_dim, expand_factor * embedding_dim),
+            nn.Linear(config.embbed_dim, config.mlp_expand_factor * config.embed_dim),
             nn.GELU(),
             # optionally, other dropout here
-            nn.Linear(expand_factor * embedding_dim, embedding_dim),
-            nn.Dropout(dropout),
+            nn.Linear(config.mlp_expand_factor * config.embed_dim, config.embed_dim),
+            nn.Dropout(config.mlp_dropout),
         )
 
     def forward(self, x):
         return self.ffn(x)
-    
+
 
 class TransformerBlock(nn.Module):
     '''
@@ -55,15 +57,15 @@ class TransformerBlock(nn.Module):
     6. add residual
     '''
 
-    def __init__(self, embedding_dim, num_heads, mha_dropout, mlp_dropout):
+    def __init__(self, config : EncoderConfig):
         super(TransformerBlock, self).__init__()
-        
-        self.norm1 = torch.nn.RMSNorm(embedding_dim)
+
+        self.norm1 = torch.nn.RMSNorm(config.embed_dim)
         # this is gold for understanding internals of pytorch MHA + flashattn (which torch auto uses if available (torch >= 2.0.0))
         # https://dev-discuss.pytorch.org/t/understanding-multi-head-attention-for-ml-framework-developers/1792
-        self.mha = nn.MultiheadAttention(embedding_dim, num_heads, dropout=mha_dropout)
-        self.norm2 = torch.nn.RMSNorm(embedding_dim)
-        self.mlp = MLP(embedding_dim, mlp_dropout)
+        self.mha = nn.MultiheadAttention(config.embed_dim, config.num_heads, dropout=config.mha_dropout)
+        self.norm2 = torch.nn.RMSNorm(config.embed_dim)
+        self.mlp = MLP(config.embed_dim, config.mlp_dropout)
 
     def forward(self, x):
         residual = x 
@@ -83,6 +85,50 @@ class TransformerBlock(nn.Module):
         x = residual + self.mlp(self.norm2(x))
         return x
 
+class ChessEmbeddingSimple(nn.Module):
+    """Maps a 27-element flat chess state into a unified embedding space.
+    - 0-24: each of the 5x5 board squares, with a piece id inside
+    - 25: repetitions for the 3 move rule
+    - 26: halfmove for the 50 move rule
+    """
+
+    def __init__(self, config):
+        super().__init__()
+        # Total vocabulary size determined by the offsets (0 to 67)
+        self.embedding = nn.Embedding(config.vocab_size, config.embbed_dim)
+
+    def forward(self, board_flat, repetitions, halfmove_50):
+        """
+        Expects:
+            board_flat: Tensor of shape (B, 25) with values [0, 12]
+            repetitions: Tensor of shape (B, 1) with values [0, 2] (or dummy values)
+            halfmove_50: Tensor of shape (B, 1) with values [0, 50]
+        """
+        # Apply structural offsets to prevent token ID collisions
+        rep_shifted = repetitions + 13
+        halfmove_shifted = halfmove_50 + 16
+
+        # Combine into a single sequence of 27 tokens
+        flat_state = torch.cat([board_flat, rep_shifted, halfmove_shifted], dim=1)
+        
+        # Output shape: (B, 27, embedding_dim)
+        return self.embedding(flat_state)
+
+@dataclass
+class EncoderConfig:
+    embbed_dim : int
+    num_heads : int
+    num_blocks : int
+
+    input_size : int = 27
+    vocab_size : int = 68
+    mlp_dropout : float = 0.1
+    mha_dropout : float = 0.1
+    mlp_expand_factor : int = 4
+    policy_size : int = 704
+    value_size : int = 1
+
+
 class MiniChessTransformerEncoder(nn.Module):
     """
     Transformer encoder for 5x5 Minichess.
@@ -94,7 +140,7 @@ class MiniChessTransformerEncoder(nn.Module):
 
     Architecture:
         1. Input layer: flat vector of 27 bytes.
-        2. Embedding layer: embedding size of d_k = 256. map categorical vector data to a continuous vector space
+        2. Embedding layer: embedding size of embbed_dim = 256. map categorical vector data to a continuous vector space
         3. Positional encoding: simple sinusoidal positional encoding, but 2D. 
         4. N transformer blocks:
             0. residual stream from previous layer (or input to the first layer) 
@@ -120,40 +166,96 @@ class MiniChessTransformerEncoder(nn.Module):
                 2. dropout
                 3. linear
     """
-    
-    def __init__(self, input_size, d_k, num_heads, num_blocks, mlp_dropout, mha_dropout):
+
+    def __init__(self, config : EncoderConfig):
         super(MiniChessTransformerEncoder, self).__init__()
 
-        # some hyperparams we need before initializing layers
-        self.input_size = input_size
-        self.d_k = d_k
-        self.num_heads = num_heads
-        self.num_blocks = num_blocks
+        self._config = config
 
-        self.mlp_dropout = 0.1
-        self.mha_dropout = 0.1
-        self.policy_size = 704
-        self.value_size = 1
-
-        self.embedding = nn.Embedding(input_size, d_k)
-        self.positional_encoding = nn.Parameter(torch.randn(1, input_size, d_k))
-        self.transformer_blocks = nn.ModuleList([TransformerBlock(d_k, num_heads, mlp_dropout, mha_dropout) for _ in range(num_blocks)])
-        
-        self.policy_head = nn.Sequential(
-            nn.Linear(),
-            nn.GELU(),
-            nn.Dropout(self.mlp_dropout),
-            nn.Linear(),
-        )
-        self.value_head = nn.Sequential(
-            nn.Linear(),
-            nn.GELU(),
-            nn.Dropout(self.mlp_dropout),
-            nn.Linear(),
+        self.backbone = nn.ModuleDict(
+            dict(
+                w_embed=ChessEmbeddingSimple(config),
+                w_pos_embed=nn.Embedding(config.input_size, config.embbed_dim),
+                dropout=nn.Dropout(config.dropout),
+                transformer_blocks=nn.ModuleList(
+                    [TransformerBlock(config) for _ in range(config.num_blocks)]
+                ),
+                # add a final norm since last transformer's ends with residual after mlp
+                final_norm=nn.RMSNorm(config.embbed_dim),
+            )
         )
 
-    def forward(self, x, mask=None):
-        
+        # TODO decide head linear dims, look at papers
+        self.heads = nn.ModuleDict(
+            dict(
+                policy = nn.Sequential(
+                    nn.Linear(config.embbed_dim, config.mlp_expand_factor * config.embbed_dim),
+                    nn.GELU(),
+                    nn.Dropout(config.mlp_dropout),
+                    nn.Linear(config.mlp_expand_factor * config.embbed_dim, config.policy_size),
+                ),
+                value = nn.Sequential(
+                    nn.Linear(config.embbed_dim, config.mlp_expand_factor * config.embbed_dim),
+                    nn.GELU(),
+                    nn.Dropout(config.mlp_dropout),
+                    nn.Linear(config.mlp_expand_factor * config.embbed_dim, config.value_size),
+                )
+            )
+        )
+
+    def forward(self, input, targets=None):
+        B, S = input.size() # TODO verify it's like this and not the opposite
+        assert S == self._config.input_size # this should hold true
+        device = input.device 
+
+        # here we go, from karpathys nanoGPT
+
+        # simple pos absolute pos embeddings
+        pos = torch.arange(0, S, dtype=torch.long, device=device)
+
+        tok_embed = self.backbone.w_embed(input)
+        pos_embed = self.backbone.w_pos_embed(input)
+
+        x = self.backbone.dropout(tok_embed + pos_embed)
+        for block in self.backbone.transformer_blocks:
+            x = block(x)
+        x = self.transformer.final_norm(x)
+
+        # # TODO see if i want to do something like this or do loss outside
+        # if targets is not None:
+        #     # if we are given some desired targets also calculate the loss
+        #     logits = self.lm_head(x)
+        #     loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=-1)
+        # else:
+        #     # inference-time mini-optimization: only forward the lm_head on the very last position
+        #     logits = self.lm_head(x[:, [-1], :]) # note: using list [-1] to preserve the time dim
+        #     loss = None
+
+        policy_logits = self.heads.policy(x)
+        value_pred = self.heads.value(x)
+
+        return policy_logits, value_pred
+
+
+    def get_num_params(self, non_embedding=True):
+        """
+        Return the number of parameters in the model.
+        For non-embedding count (default), the position embeddings get subtracted.
+        Quasi-copied from nanoGPT
+        """
+        n_params = sum(p.numel() for p in self.parameters())
+        if non_embedding:
+            n_params -= self.backbone.w_pos_embed.weight.numel()
+            n_params -= self.backbone.w_embed.weight.numel()
+        return n_params
+
+    @classmethod
+    def from_pretrained():
+        # TODO once it's trained we'll need to load the 
+        # weights back in for use in PPO 
+        ...
+
+
 
 @time_this
 def train_model(

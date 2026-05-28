@@ -25,8 +25,6 @@ Options:
 
 Examples:
   ./run_gen.sh
-  ./run_gen.sh -v fairy -d 3
-  ./run_gen.sh -v crazyhouse -o crazyhouse.bin
   ./run_gen.sh -v gardner -t 8 -m auto
 USAGE
 }

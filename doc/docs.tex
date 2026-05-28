@@ -198,7 +198,8 @@ El ajedrez $5\times5$ en su variante de Gardner es una reducción matemática de
     \item \textbf{Disposición inicial:} La misma que el ajedrez estándar, pero con las piezas del lado de rey eliminadas, y una sola fila de separación entre peones. Cada jugador cuenta con 10 piezas. En la fila 1 (blancas) y fila 5 (negras) se colocan las piezas mayores en el orden: Torre ($R$), Caballo ($N$), Alfil ($B$), Dama ($Q$) y Rey ($K$). Los peones correspondientes se colocan en la fila 2 (blancas) y fila 4 (negras).
     \item \textbf{Omisión de reglas especiales:} No existe el enroque ni el avance doble de peón. Como consecuencia directa, tampoco existe la captura al paso (\textit{en passant}).
     \item \textbf{Promoción de peones:} Cuando un peón alcanza la fila límite opuesta (fila 5 para blancas, fila 1 para negras), es obligatorio promocionarlo a una de las siguientes cuatro piezas: Dama, Torre, Alfil o Caballo.
-    \item \textbf{Condiciones de fin de partida:} La partida finaliza por jaque mate, ahogado (\textit{stalemate}), insuficiencia de material para dar jaque mate, si pasan 50 movimientos sin capturas ni avances de peón, o tablas por triple repetición (tres posiciones iguales consecutivas en el tablero).
+    \item \textbf{Condiciones de fin de partida:} La partida finaliza por (A) jaque mate (el rey está amenazado y no puede retirarse a una casilla a salvo, cubrirse, o capturar a la pieza que lo amenaza), (B) rey ahogado (\textit{stalemate}, el rey no está en jaque pero el jugador no tiene ningún movimiento legal), (C) insuficiencia de material para dar jaque mate (posición muerta), (D) si pasan 75 movimientos sin capturas ni avances de peón, o (E) tablas por quíntuple repetición (cinco posiciones iguales a lo largo de toda la partida (no necesariamente consecutivas)).
+    \item \textbf{Condiciones "reclamables":} la regla de las 5 repeticiones y de los 75 movimientos tiene sus contrapartes \textit{``reclamables''}: la regla de las 3 repeticiones y la de los 50 movimientos requieren que uno de los jugadores reclame tablas para activarse.
 \end{itemize}
 
 Esta variante mantiene la naturaleza estratégica y la profundidad del ajedrez, pero en una fracción de su complejidad de cálculo original.
@@ -323,7 +324,7 @@ Para evaluar la Hipótesis 1, se instrumentarán y compararán distintas represe
     \item \textbf{Representaciones aumentadas (Heurísticas):} Se incorporarán planos adicionales que inyecten información posicional específica para guiar al Transformer, siguiendo las ideas de Czech Et al.\cite{czech2024representationmattersmasteringchess} Estos planos binarios codificarán información como: casillas ocupadas por piezas propias y del oponente, posiciones de todas las piezas dando jaque, la topología binaria del tablero (casillas blancas vs. negras), diferencia de material...
 \end{itemize}
 
-\placeholderfig{figura ilustrativa con una visualización de las distintas codificaciones de entrada}{Visualización de codificaciones de entrada. De izquierda a derecha: a, b, c...}{fig:resultados_hollow}
+\placeholderfig{figura ilustrativa con una visualización de las distintas codificaciones de entrada}{Visualización de codificaciones de entrada. De izquierda a derecha: a, b, c...}{fig:codificaciones_entrada}
 
 \subsubsection{Codificación del Espacio de Acciones (Output)}
 
@@ -344,7 +345,7 @@ De manera análoga, la forma en que la red proyecta sus predicciones altera drá
     
 \end{itemize}
 
-\placeholderfig{figura ilustrativa con una visualización de las distintas codificaciones de salida}{Visualización de codificaciones de salida. De izquierda a derecha: a, b, c...}{fig:resultados_hollow}
+\placeholderfig{figura ilustrativa con una visualización de las distintas codificaciones de salida}{Visualización de codificaciones de salida. De izquierda a derecha: a, b, c...}{fig:codificaciones_salida}
 
 \subsubsection{Arquitectura Transformer}
 
@@ -358,7 +359,7 @@ La arquitectura neural propuesta se basa en un modelo \textbf{Transformer Encode
     \begin{itemize}
         \item se suma un vector de codificación posicional 2D (con componentes seno y coseno correspondientes a las coordenadas de fila y columna de cada casilla) al embedding de cada casilla. \href{https://stackoverflow.com/questions/77444485/using-positional-encoding-in-pytorch}{(referencia implementación)}
         
-        \item se aplica RoPE (\textit{Rotary Positional Encoding}), el estándar actual de codificación posicional en modelos de lenguaje y Transformers\cite{DBLP:journals/corr/abs-2104-09864}. Este codifica la posición de cada casilla mediante rotaciones en el espacio de embeddings, permitiendo que el modelo capture relaciones espaciales de manera más flexible. \href{https://meta-pytorch.org/torchtune/0.3/generated/torchtune.modules.RotaryPositionalEmbeddings.html}{(referencia pytorch)}
+        \item se aplica RoPE (\textit{Rotary Positional Encoding}), el estándar actual de codificación posicional en modelos de lenguaje y Transformers \cite{DBLP:journals/corr/abs-2104-09864}. Este codifica la posición de cada casilla mediante rotaciones en el espacio de embeddings, permitiendo que el modelo capture relaciones espaciales de manera más flexible. \href{https://meta-pytorch.org/torchtune/0.3/generated/torchtune.modules.RotaryPositionalEmbeddings.html}{(referencia pytorch)}
     \end{itemize}
     
     \item \textbf{Pila de Bloques Encoder:} El tensor resultante de dimensiones $25 \times d_{\text{model}}$ se procesa a través de una serie de $L$ capas de codificación. Cada capa contiene:
