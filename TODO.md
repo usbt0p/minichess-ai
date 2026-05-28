@@ -18,15 +18,15 @@
     - si los datos no son suficientes... probar a generar más y en el peor de los casos, investigar alguna alternativa como a) destilar otro modelo más grande b) probar contrastive learning c) resignarse a puro RL
 
 
+---
+
 
 # ORDEN DEL DIA
-- visualizar un par de tableros aleatorios? los top endgames de los stats.txt. 
--  crear una nueva baseline, que tenga encoding para coronación y masking de movs ilegales
-    - pensar encoding de coronacion
-    - IMPORTANTE!!!: implementar el masking!!! no va a ir bien la prediccion si no se penaliza lo suficiente a los movimientos ilegales
-- pasar a convolucional simple
-- pasar a transformer simple
-
+- acabar aqruitectura transformer (dummy pass)
+- dudas:
+    - que inicialización? se puede usar la por defecto? parece xavier glorot en pytorch 
+    https://github.com/pytorch/pytorch/blob/4f4b931aba66ae438aae8daca1dcbebeabb947e4/torch/nn/modules/activation.py#L1018-L1034
+- unit test the dataset parser! if it's not tested we cant trust it
 
 # DONE
 
@@ -48,5 +48,12 @@
 - mientras hago todo lo demas, dejar un benchmark del simple pero con dropout + batchnorm e igual una residual connection?
 - crear un baseline random que solo elija aleatoriamente movimientos y evaluaciones, para comparar con el mio
 
+## 0505
+- visualizar un par de tableros aleatorios? los top endgames de los stats.txt. 
+-  crear una nueva baseline, que tenga encoding para coronación y masking de movs ilegales
+    - pensar encoding de coronacion
+    - IMPORTANTE!!!: implementar el masking!!! no va a ir bien la prediccion si no se penaliza lo suficiente a los movimientos ilegales
 
 
+## 0605
+- hacer el benchmark para la baseline con masking y coronacion y añadir al overlapped

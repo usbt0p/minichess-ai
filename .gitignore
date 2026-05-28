@@ -44,5 +44,12 @@ doc/aux
 *.txt
 *.mmd
 
+# disallow images on here, but not in doc/figures/ or src/benchmarks/
+src/**/*.png
+#!src/benchmarks/**/*.png
+!doc/figures/**/*.png
+plots/**/*.png
+/*.png
+
 # specific allows
 !overlapped_results.png
