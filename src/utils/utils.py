@@ -81,10 +81,13 @@ def save_and_export(model, dummy_input, target_path="best_model.pth"):
     onnx_logger.setLevel(old_level)
     #print(f"Modelo exportado a {onnx_path}")
 
-def count_params(net):
+def count_params(net, module_structure=False, perlayer=False):
     '''Counts the number of trainable parameters in a PyTorch model 
-    and prints them in a human-readable format.'''
-    print(f"---> {net} params:")
+    and prints them in a human-readable format.
+    If verbose=True, also outputs module __repr__, and each layer's 
+        name, size (dims), exact number of params and dtype
+    '''
+    if module_structure: print(f"---> {net} params:")
     total = 0
     for name, param in net.named_parameters():
         if param.requires_grad:
@@ -93,7 +96,7 @@ def count_params(net):
             total += p
         else:
             p = None
-        print("\t", name, param.size(), p, type)
+        if perlayer: print("\t", name, param.size(), p, type)
 
     print()
     print(f"Total number of trainable parameters: {total}")

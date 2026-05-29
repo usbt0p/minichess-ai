@@ -28,6 +28,7 @@
     https://github.com/pytorch/pytorch/blob/4f4b931aba66ae438aae8daca1dcbebeabb947e4/torch/nn/modules/activation.py#L1018-L1034
     - MUY IMPORTANTE! averiguar si el -1/0/1 es relativo al jugador actual o no!!! ese si lo pes, pero y la evaluación???
     - IMPORTANTE! decidir si hacer flipping de tablero (en dataloader y durante rollouts) o si añadir 2 tokens mas. si hago flip en RL, luego tengo que invertir los resultados para el negro
+    - more residuals never hurt! figure out where they might be needed
 - escribir el loader apropiado para el nuevo transformer
 - escribir en la docu sobre el dataset. dar un sample. estadisticas en el anexo. explicar profundidades
 - unit test the dataset parser! if it's not tested we cant trust it

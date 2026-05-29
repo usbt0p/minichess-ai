@@ -30,7 +30,7 @@ class MLP(nn.Module):
         super(MLP, self).__init__()
         
         self.ffn = nn.Sequential(
-            nn.Linear(config.embbed_dim, config.mlp_expand_factor * config.embed_dim),
+            nn.Linear(config.embed_dim, config.mlp_expand_factor * config.embed_dim),
             nn.GELU(),
             # optionally, other dropout here
             nn.Linear(config.mlp_expand_factor * config.embed_dim, config.embed_dim),
@@ -63,15 +63,14 @@ class TransformerBlock(nn.Module):
         self.norm1 = torch.nn.RMSNorm(config.embed_dim)
         # this is gold for understanding internals of pytorch MHA + flashattn (which torch auto uses if available (torch >= 2.0.0))
         # https://dev-discuss.pytorch.org/t/understanding-multi-head-attention-for-ml-framework-developers/1792
-        self.mha = nn.MultiheadAttention(config.embed_dim, config.num_heads, dropout=config.mha_dropout)
+        self.mha = nn.MultiheadAttention(config.embed_dim, config.num_heads, dropout=config.mha_dropout, batch_first=True)
         self.norm2 = torch.nn.RMSNorm(config.embed_dim)
-        self.mlp = MLP(config.embed_dim, config.mlp_dropout)
+        self.mlp = MLP(config)
 
     def forward(self, x):
         residual = x 
         norm = self.norm1(x)
-        attn_out = self.mha(query=norm, key=norm, value=norm, mask=None, 
-                                    need_weights=False) 
+        attn_out, _ = self.mha(query=norm, key=norm, value=norm, attn_mask=None, need_weights=False) 
                                     # Set need_weights=False to use the optimized scaled_dot_product_attention 
                                     # and achieve the best performance for MHA. 
                                     # https://docs.pytorch.org/docs/2.12/generated/torch.nn.MultiheadAttention.html
@@ -95,7 +94,7 @@ class ChessEmbeddingSimple(nn.Module):
     def __init__(self, config):
         super().__init__()
         # Total vocabulary size determined by the offsets (0 to 67)
-        self.embedding = nn.Embedding(config.vocab_size, config.embbed_dim)
+        self.embedding = nn.Embedding(config.vocab_size, config.embed_dim)
 
     def forward(self, board_flat, repetitions, halfmove_50):
         """
@@ -116,14 +115,16 @@ class ChessEmbeddingSimple(nn.Module):
 
 @dataclass
 class EncoderConfig:
-    embbed_dim : int
+    embed_dim : int
     num_heads : int
     num_blocks : int
+    batch_size : int
 
     input_size : int = 27
     vocab_size : int = 68
     mlp_dropout : float = 0.1
     mha_dropout : float = 0.1
+    embed_dropout : float = 0.1
     mlp_expand_factor : int = 4
     policy_size : int = 704
     value_size : int = 1
@@ -140,7 +141,7 @@ class MiniChessTransformerEncoder(nn.Module):
 
     Architecture:
         1. Input layer: flat vector of 27 bytes.
-        2. Embedding layer: embedding size of embbed_dim = 256. map categorical vector data to a continuous vector space
+        2. Embedding layer: embedding size of embed_dim = 256. map categorical vector data to a continuous vector space
         3. Positional encoding: simple sinusoidal positional encoding, but 2D. 
         4. N transformer blocks:
             0. residual stream from previous layer (or input to the first layer) 
@@ -175,51 +176,53 @@ class MiniChessTransformerEncoder(nn.Module):
         self.backbone = nn.ModuleDict(
             dict(
                 w_embed=ChessEmbeddingSimple(config),
-                w_pos_embed=nn.Embedding(config.input_size, config.embbed_dim),
-                dropout=nn.Dropout(config.dropout),
+                w_pos_embed=nn.Embedding(config.input_size, config.embed_dim),
+                embed_dropout=nn.Dropout(config.embed_dropout),
                 transformer_blocks=nn.ModuleList(
                     [TransformerBlock(config) for _ in range(config.num_blocks)]
                 ),
                 # add a final norm since last transformer's ends with residual after mlp
-                final_norm=nn.RMSNorm(config.embbed_dim),
+                final_norm=nn.RMSNorm(config.embed_dim),
             )
         )
 
-        # TODO decide head linear dims, look at papers
+        # TODO maybe modify arch for the heads, make them bigger?
         self.heads = nn.ModuleDict(
             dict(
                 policy = nn.Sequential(
-                    nn.Linear(config.embbed_dim, config.mlp_expand_factor * config.embbed_dim),
+                    nn.Linear(config.embed_dim, config.mlp_expand_factor * config.embed_dim),
                     nn.GELU(),
                     nn.Dropout(config.mlp_dropout),
-                    nn.Linear(config.mlp_expand_factor * config.embbed_dim, config.policy_size),
+                    nn.Linear(config.mlp_expand_factor * config.embed_dim, config.policy_size),
                 ),
                 value = nn.Sequential(
-                    nn.Linear(config.embbed_dim, config.mlp_expand_factor * config.embbed_dim),
+                    nn.Linear(config.embed_dim, config.mlp_expand_factor * config.embed_dim),
                     nn.GELU(),
                     nn.Dropout(config.mlp_dropout),
-                    nn.Linear(config.mlp_expand_factor * config.embbed_dim, config.value_size),
+                    nn.Linear(config.mlp_expand_factor * config.embed_dim, config.value_size),
                 )
             )
         )
 
     def forward(self, input, targets=None):
-        B, S = input.size() # TODO verify it's like this and not the opposite
-        assert S == self._config.input_size # this should hold true
+        B, S = input.size() 
+        assert (S == self._config.input_size) and (B == self._config.batch_size)
         device = input.device 
 
         # here we go, from karpathys nanoGPT
 
+        # before forwarding, we must split the tensor and pass to the chess embedder
+        board_flat, repetitions, halfmove_50 = torch.split(input, [25, 1, 1], dim=1)
+        tok_embed = self.backbone.w_embed(board_flat, repetitions, halfmove_50)
+
         # simple pos absolute pos embeddings
-        pos = torch.arange(0, S, dtype=torch.long, device=device)
+        pos = torch.arange(0, S, dtype=torch.long, device=device) # shape (input_size, )
+        pos_embed = self.backbone.w_pos_embed(pos) # gets converted to (input_size, emb_dim)
 
-        tok_embed = self.backbone.w_embed(input)
-        pos_embed = self.backbone.w_pos_embed(input)
-
-        x = self.backbone.dropout(tok_embed + pos_embed)
+        x = self.backbone.embed_dropout(tok_embed + pos_embed) # sum is broadcasted across batch dimension
         for block in self.backbone.transformer_blocks:
             x = block(x)
-        x = self.transformer.final_norm(x)
+        x = self.backbone.final_norm(x)
 
         # # TODO see if i want to do something like this or do loss outside
         # if targets is not None:
@@ -230,6 +233,13 @@ class MiniChessTransformerEncoder(nn.Module):
         #     # inference-time mini-optimization: only forward the lm_head on the very last position
         #     logits = self.lm_head(x[:, [-1], :]) # note: using list [-1] to preserve the time dim
         #     loss = None
+        print("shape before heads: ", x.shape)
+
+        # TODO here's the problem! how do we go from (batch, seq_len, embed_d) to 
+        # (B, policy) y (B, value) in the heads?
+        # going from (B, 27, 256) to (B, 27 * 256) via x.view(B, -1) is valid and gets 
+        # me a 6,912 input for the policy head. a linear layer going from 6,912 to 704 adds 
+        # roughly 4.8 million parameters the policy head alone whichi is insane
 
         policy_logits = self.heads.policy(x)
         value_pred = self.heads.value(x)
@@ -246,7 +256,7 @@ class MiniChessTransformerEncoder(nn.Module):
         n_params = sum(p.numel() for p in self.parameters())
         if non_embedding:
             n_params -= self.backbone.w_pos_embed.weight.numel()
-            n_params -= self.backbone.w_embed.weight.numel()
+            n_params -= self.backbone.w_embed.embedding.weight.numel()
         return n_params
 
     @classmethod
@@ -256,118 +266,47 @@ class MiniChessTransformerEncoder(nn.Module):
         ...
 
 
-
-@time_this
-def train_model(
-    model,
-    train_loader, 
-    val_loader,
-    num_epochs=10,
-    patience=5, 
-    lr=2e-3,
-    weight_decay=2e-5,
-    device="cuda" if torch.cuda.is_available() else "cpu",
-):
-    '''
-    - Patience: number of epochs worsened validation loss until early stopping
-    '''
-
-    optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
-    print(f"Using device: {device}")
-
-    train_losses = [] # list of train loss per epoch, for all the three losses
-    val_losses = []
-    prev_validation_loss = float("-inf")
-
-    val_move_accs = []
-    val_res_accs = []
-    
-    patience_count = 0
-    debug_flag = True
-    
-    best_move_acc = float("-inf")
-    best_result_acc = float("-inf")
-
-    # TODO criterion
-
-    for epoch in range(num_epochs):
-        model.train()
-        total_loss, total_policy_loss, total_value_loss = 0.0, 0.0, 0.0
-
-        start_time = time.time()
-
-        # TODO training loop
-        ...    
-
-    print(f"Best mean accuracy: {(best_move_acc + best_result_acc)/2*100:.2f}% achieved at epoch {best_epoch}")
-    print(f"Best move accuracy: {best_move_acc*100:.2f}%")
-    print(f"Best result accuracy: {best_result_acc*100:.2f}%")
-
-
-def plot_loss(train_losses, val_losses, val_move_accs, val_res_accs):
-    plt.figure(figsize=(10, 5))
-    plt.plot(range(len(train_losses)), [l[0] for l in train_losses], label='Train Loss')
-    plt.plot(range(len(val_losses)), val_losses, label='Val Loss')
-    
-    # overlap policy and value loss with dashed lines
-    plt.plot(range(len(train_losses)), [l[1] for l in train_losses], label='Train Policy Loss', linestyle='--')
-    plt.plot(range(len(train_losses)), [l[2] for l in train_losses], label='Train Value Loss', linestyle='--')
-    
-    plt.xlabel('Epoch')
-    plt.ylabel('Loss')
-    plt.title('Training and Validation Loss')
-    plt.legend()
-    plt.savefig('train_loss.png')
-    plt.show()
-    
-    plt.figure(figsize=(10, 5))
-    plt.plot(range(len(val_move_accs)), val_move_accs, label='Val Move Acc')
-    plt.plot(range(len(val_res_accs)), val_res_accs, label='Val Result Acc')
-    plt.xlabel('Epoch')
-    plt.ylabel('Accuracy')
-    plt.title('Validation Accuracy')
-    plt.legend()
-    plt.savefig('val_accuracy.png')
-    plt.show()
-
-def validation_test(model, val_loader, device="cuda"):
-    '''
-    Tests the model on the validation set and returns the accuracy for moves and results.
-    '''
-    model = model.to(device)
-    model.eval()
-    
-    correct_moves = 0
-    correct_results = 0
-    total_val_samples = 0
-
-    with torch.no_grad():
-        for features, moves, results, scores, masks in val_loader:
-
-            features, moves, results, scores, masks = features.to(device), moves.to(device), results.to(device), scores.to(device), masks.to(device)
-            policy_logits, value_result = model(features, masks)
-            _, predicted_moves = torch.max(policy_logits, 1)
-            correct_moves += (predicted_moves == moves).sum().item()
-            total_val_samples += moves.size(0)
-
-            _, predicted_results = torch.max(value_result, 1)
-            correct_results += (predicted_results == results).sum().item()
-    print("\n\nValidation test results:\n")
-    print("\tTotal samples: ", total_val_samples)
-    print("\tMove Accuracy: ", correct_moves / total_val_samples)
-    print("\tResult Accuracy: ", correct_results / total_val_samples)
-
-
 if __name__ == '__main__':
     import sys
 
     data_path = sys.argv[1] if len(sys.argv) > 1 else "data/training_data_sample.txt"
-    
-    model = MiniChessTransformerEncoder().to("cuda")
+
+    config = EncoderConfig(
+        embed_dim=256, 
+        num_heads=8, 
+        num_blocks=4, 
+        batch_size=32
+    )
+
+    model = MiniChessTransformerEncoder(config).to("cuda")
     count_params(model)
+    print("karpathys parameter count:", model.get_num_params(non_embedding=True))
 
     # TODO first, dummy pass to check proper network architecture
-    ...
+    # we want to go like this since it's the default for torch's mha
+    dummy_board = torch.randint(0, 13, (config.batch_size, 25))
+    dummy_rep = torch.randint(0, 3, (config.batch_size, 1))
+    dummy_halfmove = torch.randint(0, 51, (config.batch_size, 1))
+    dummy_tensor = torch.cat([dummy_board, dummy_rep, dummy_halfmove], dim=1).to("cuda")
+    print("dummy tensor size: ", dummy_tensor.size())
+    out = model(dummy_tensor)
+    print("Policy logits shape:", out[0].shape)
+    print("Value prediction shape:", out[1].shape)
+
+    #returns:
+    '''
+    Total number of trainable parameters: 4430529
+        In bits: 141776928 bits
+        In bytes: 17722116 bytes
+        In kilobytes: 17306.75390625 KB
+        In megabytes: 16.901126861572266 MB
+
+    karpathys parameter count: 4406209
+    torch.Size([32, 27])
+    shape before heads:  torch.Size([32, 27, 256])
+    Policy logits shape: torch.Size([32, 704])
+    Value prediction shape: torch.Size([32, 1])
+    '''
 
     # # load dataset
     # dataset = MinichessTextDataset(data_path, promotions=True, use_cache=True, time=True)
@@ -375,7 +314,6 @@ if __name__ == '__main__':
     # # get dataloaders
     # train_loader, val_loader = get_dataloaders(
     #     dataset, batch_size=256, train_ratio=0.98, num_workers=12, time=True)
-
 
     # train_losses, val_losses, val_move_accs, val_res_accs, model = train_model(
     #     model, train_loader, val_loader, num_epochs=10, patience=4, time=True
