@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import time
 from src.utils.utils import time_this, count_params
 
-from src.models.dataloaders import get_dataloaders, MinichessTextDataset
+from src.models.dataloaders import get_dataloaders, MinichessFfnDataset
 
 
 # TODO dataloader from text and dataloader from binary
@@ -284,7 +284,7 @@ if __name__ == '__main__':
     count_params(model)
 
     # load dataset
-    dataset = MinichessTextDataset(data_path, promotions=True, use_cache=True, time=True)
+    dataset = MinichessFfnDataset(data_path, promotions=True, use_cache=True, time=True)
 
     # get dataloaders
     train_loader, val_loader = get_dataloaders(

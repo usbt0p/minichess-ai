@@ -60,7 +60,7 @@ class RandomBaseline():
         return self.forward(masks=masks)
 
 if __name__ == "__main__":
-    from src.models.dataloaders import get_dataloaders, MinichessTextDataset
+    from src.models.dataloaders import get_dataloaders, MinichessFfnDataset as MinichessTextDataset
     import os
 
     # Usamos los nuevos datasets con coronaciones

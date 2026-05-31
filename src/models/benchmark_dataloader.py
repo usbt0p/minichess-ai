@@ -1,6 +1,6 @@
 import time
 import torch
-from src.models.dataloaders import MinichessTextDataset, get_dataloaders
+from src.models.dataloaders import MinichessFfnDataset, get_dataloaders
 
 
 def test_correctness():
@@ -8,14 +8,14 @@ def test_correctness():
     file_path = "data/training_data_sample.txt"
 
     # We will load just a few items to check their contents
-    dataset = MinichessTextDataset(file_path)
+    dataset = MinichessFfnDataset(file_path)
     print(f"Total samples loaded: {len(dataset)}")
 
     if len(dataset) == 0:
         print("No data found!")
         return
 
-    features, move, result, score = dataset[0]
+    features, move, result, score, mask = dataset[0]
     print(f"Features shape: {features.shape} (Expected: [325])")
     print(f"Move idx: {move.item()} (Expected in [0, 599])")
     print(f"Result: {result.item()} (Expected -1.0, 0.0, or 1.0)")
@@ -47,7 +47,7 @@ def test_performance():
 
     # Benchmark Dataset creation (reading and parsing the file)
     start_time = time.time()
-    dataset = MinichessTextDataset(file_path)
+    dataset = MinichessFfnDataset(file_path)
     creation_time = time.time() - start_time
     print(f"Dataset parsing time: {creation_time:.4f}s for {len(dataset)} samples")
     print(f"Parsing speed: {len(dataset)/creation_time:.2f} samples/s")
@@ -59,7 +59,7 @@ def test_performance():
     start_time = time.time()
     num_batches = 0
     num_samples = 0
-    for features, moves, results, score in train_loader:
+    for features, moves, results, score, masks in train_loader:
         num_batches += 1
         num_samples += features.size(0)
     iteration_time = time.time() - start_time
