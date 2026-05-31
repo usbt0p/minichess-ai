@@ -99,11 +99,11 @@ def count_params(net, module_structure=False, perlayer=False):
         if perlayer: print("\t", name, param.size(), p, type)
 
     print()
-    print(f"Total number of trainable parameters: {total}")
+    print(f"Total number of trainable parameters: {total:,}")
     bytes = total * torch.tensor([], dtype=type).element_size()
-    print(f"\tIn bits: {bytes * 8} bits")
-    print(f"\tIn bytes: {bytes} bytes")
-    print(f"\tIn kilobytes: {bytes / 1024} KB")
+    print(f"\tIn bits: {bytes * 8:,} bits")
+    print(f"\tIn bytes: {bytes:,} bytes")
+    print(f"\tIn kilobytes: {bytes / 1024:,} KB")
     print(f"\tIn megabytes: {bytes / 1024**2} MB", end="\n\n")
 
 def set_seed(seed):

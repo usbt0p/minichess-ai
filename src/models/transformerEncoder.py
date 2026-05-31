@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.functional as F
 
 from dataclasses import dataclass
 import math
@@ -104,9 +105,14 @@ class ChessEmbeddingSimple(nn.Module):
             repetitions: Tensor of shape (B, 1) with values [0, 2] (or dummy values)
             halfmove_50: Tensor of shape (B, 1) with values [0, 50]
         """
+        # TODO maybe it would be better to make this fail loudly...
+        # Clamp repetitions and halfmove count to avoid out-of-bounds embedding index errors
+        rep_clipped = torch.clamp(repetitions, 0, 2)
+        halfmove_clipped = torch.clamp(halfmove_50, 0, 51)
+
         # Apply structural offsets to prevent token ID collisions
-        rep_shifted = repetitions + 13
-        halfmove_shifted = halfmove_50 + 16
+        rep_shifted = rep_clipped + 13
+        halfmove_shifted = halfmove_clipped + 16
 
         # Combine into a single sequence of 27 tokens
         flat_state = torch.cat([board_flat, rep_shifted, halfmove_shifted], dim=1)
@@ -190,9 +196,10 @@ class EncoderConfig:
     def __post_init__(self):
         assert self.policy_size == (25*24) + self.promotion_size, "Policy must be possible moves + possible promotions"
         # not mine! https://stackoverflow.com/questions/57025836/how-to-check-if-a-given-number-is-a-power-of-two
-        is_power_of_two = lambda n: (n & (n-1) == 0) and n != 0 
-        assert is_power_of_two(self.embed_dim) and \
-            is_power_of_two(self.policy_head_hidden_dim), "Set these to powers of two for better efficiency"
+        # is_power_of_two = lambda n: (n & (n-1) == 0) and n != 0 
+        # assert is_power_of_two(self.embed_dim) and \
+        #     is_power_of_two(self.policy_head_hidden_dim), "Set these to powers of two for better efficiency"
+        assert self.embed_dim % self.num_heads == 0, "Set the number of dims to be divisible by the number of heads."
 
 
 class MiniChessTransformerEncoder(nn.Module):
@@ -265,13 +272,22 @@ class MiniChessTransformerEncoder(nn.Module):
                     nn.Linear(
                         config.mlp_expand_factor * config.embed_dim, config.value_size
                     ),
+                    torch.nn.Tanh()
                 ),
             )
         )
 
     def forward(self, input):
         '''Forward the MiniChess Encoder. This involves some moving parts for
-        embedding, 
+        embedding, batched matmul and CLS token handling. 
+
+        Args:
+        - `input`: must be tensor of size `(batch_dim, seq_len=27, embed_dim)`. Will get transformed into
+            `(batch_dim, seq_len=28, embed_dim)`.
+
+        Out:
+        - Policy logits tensor of size `(batch_dim, policy_size=704)`.
+        - Value predictions tensor of size `(batch_dim, 1)`.
         '''
         B, S = input.size()
         assert S == self._config.input_size, f"Expected sequence length {self._config.input_size}, got {S}"
@@ -335,7 +351,7 @@ if __name__ == "__main__":
     # dummy pass to check proper network architecture
     config = EncoderConfig(embed_dim=256, num_heads=8, num_blocks=4, batch_size=32)
 
-    model = MiniChessTransformerEncoder(config).to("cuda")
+    model : MiniChessTransformerEncoder = MiniChessTransformerEncoder(config).to("cuda")
     count_params(model)
     print("karpathys parameter count:", model.get_num_params(non_embedding=True))
 
@@ -347,7 +363,7 @@ if __name__ == "__main__":
     print("dummy tensor size: ", dummy_tensor.size())
     
     # forward it and debug
-    out = model(dummy_tensor)
+    out = model.forward(dummy_tensor)
     print("Policy logits shape:", out[0].shape)
     print("Value prediction shape:", out[1].shape)
 
