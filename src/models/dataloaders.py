@@ -77,7 +77,7 @@ class MinichessTransformerDataset(Dataset):
     """
 
     @time_this 
-    def __init__(self, file_path, promotions=False, use_cache=True):
+    def __init__(self, file_path, promotions=False, use_cache=True, subsample_ratio=1.0):
         super().__init__()
         
         # Check for cached binary version
@@ -92,30 +92,39 @@ class MinichessTransformerDataset(Dataset):
             self.scores = cached_data['scores']
             self.masks = cached_data['masks']
             self.halfmoves = cached_data.get('halfmoves', torch.zeros(len(self.features), dtype=torch.uint8))
-            return
+        else:
+            print(f">> Parsing dataset from text: {file_path}")
+            features_arr, halfmoves_arr, moves_arr, masks_arr, results_arr, scores_arr = parse_minichess_text_file(
+                file_path, promotions=promotions
+            )
 
-        print(f">> Parsing dataset from text: {file_path}")
-        features_arr, halfmoves_arr, moves_arr, masks_arr, results_arr, scores_arr = parse_minichess_text_file(
-            file_path, promotions=promotions
-        )
+            self.features = torch.from_numpy(features_arr)
+            self.halfmoves = torch.from_numpy(halfmoves_arr)
+            self.moves = torch.from_numpy(moves_arr).long()
+            self.masks = torch.from_numpy(masks_arr).bool()
+            self.results = torch.from_numpy(results_arr).float()
+            self.scores = torch.from_numpy(scores_arr).float().unsqueeze(1)
 
-        self.features = torch.from_numpy(features_arr)
-        self.halfmoves = torch.from_numpy(halfmoves_arr)
-        self.moves = torch.from_numpy(moves_arr).long()
-        self.masks = torch.from_numpy(masks_arr).bool()
-        self.results = torch.from_numpy(results_arr).float()
-        self.scores = torch.from_numpy(scores_arr).float().unsqueeze(1)
+            if use_cache:
+                print(f">> Saving cached dataset to {cache_path}...")
+                torch.save({
+                    'features': self.features,
+                    'halfmoves': self.halfmoves,
+                    'moves': self.moves,
+                    'masks': self.masks,
+                    'results': self.results,
+                    'scores': self.scores
+                }, cache_path)
 
-        if use_cache:
-            print(f">> Saving cached dataset to {cache_path}...")
-            torch.save({
-                'features': self.features,
-                'halfmoves': self.halfmoves,
-                'moves': self.moves,
-                'masks': self.masks,
-                'results': self.results,
-                'scores': self.scores
-            }, cache_path)
+        if subsample_ratio < 1.0:
+            N = int(len(self.features) * subsample_ratio)
+            print(f">> Subsampling dataset: keeping {N} samples ({subsample_ratio*100:.1f}%)")
+            self.features = self.features[:N]
+            self.moves = self.moves[:N]
+            self.results = self.results[:N]
+            self.scores = self.scores[:N]
+            self.masks = self.masks[:N]
+            self.halfmoves = self.halfmoves[:N]
 
     def __len__(self):
         return len(self.features)
