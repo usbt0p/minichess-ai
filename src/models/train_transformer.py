@@ -1,3 +1,4 @@
+from importlib import metadata
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -8,6 +9,8 @@ import time
 import os
 import sys
 import inspect
+
+from datetime import timedelta
 
 from src.utils.utils import time_this, count_params
 from src.models.dataloaders import get_dataloaders, MinichessTransformerDataset
@@ -131,11 +134,12 @@ def train_model(
                 loss = policy_loss + value_loss
 
                 if debug_flag: # useful for debugging tensor dims
-                    print("features (flat_state): ", features.shape)
-                    print("results: ", results.shape)
-                    print("value_result: ", value_result.shape)
-                    print("moves: ", moves.shape)
-                    print("policy_logits: ", policy_logits.shape)
+                    print("[DEBUG TENSOR SIZES]:")
+                    print("\tfeatures (flat_state): ", features.shape)
+                    print("\tresults: ", results.shape)
+                    print("\tvalue_result: ", value_result.shape)
+                    print("\tmoves: ", moves.shape)
+                    print("\tpolicy_logits: ", policy_logits.shape)
                     print("\n")
                     debug_flag = False
 
@@ -331,20 +335,28 @@ def estimate_training_time(model, train_loader, val_loader, config: TrainingConf
         loss = policy_criterion(policy_logits, moves) + value_criterion(value_result.squeeze(-1), results.float())
         loss.backward()
         optimizer.step()
-
+    
     if device == "cuda":
         torch.cuda.synchronize()
 
     # Timed passes for train
     print(f"Running {num_timed} timed training steps...")
     start_train = time.time()
-    for _ in range(num_timed):
+
+    for i in range(num_timed):
+        start = time.time()
+
         optimizer.zero_grad()
         policy_logits, value_result = model(features)
+
         policy_logits = policy_logits.masked_fill(~masks, -1e9)
         loss = policy_criterion(policy_logits, moves) + value_criterion(value_result.squeeze(-1), results.float())
         loss.backward()
         optimizer.step()
+
+        # print time for forward
+        delta = timedelta(seconds=round(time.time()-start, 4))
+        print(f"\tstep {i+1}: Forward + backward + optim took {delta}")
 
     if device == "cuda":
         torch.cuda.synchronize()
@@ -401,7 +413,7 @@ def estimate_training_time(model, train_loader, val_loader, config: TrainingConf
     print(f"  Estimated epoch train time: {epoch_train_time:.2f} s")
     print(f"  Estimated epoch val time:   {epoch_val_time:.2f} s")
     print(f"  Estimated TOTAL epoch time: {total_epoch_time:.2f} s")
-    print(f"  Estimated TOTAL train time: {total_training_time:.2f} s ({total_training_time/60:.2f} minutes)")
+    print(f"  Estimated TOTAL train time ({config.num_epochs} epochs): {total_training_time:.2f} s ({total_training_time/60:.2f} minutes)")
     print("------------------------------------------------\n")
 
 
@@ -411,6 +423,7 @@ if __name__ == '__main__':
     path = None
     if len(sys.argv) > 1:
        path = sys.argv[1]
+       d_k = int(sys.argv[2])
 
     # Initialize train configurations
     train_config = TrainingConfig(
@@ -419,25 +432,23 @@ if __name__ == '__main__':
         batch_size=512,
         train_ratio=0.98,
         num_workers=12,
-        num_epochs=10,
+        num_epochs=3,
         patience=4,
         lr=2e-3,
         weight_decay=2e-5,
     )
-    
+    print(train_config)
 
     # Initialize model config
     encoder_config = EncoderConfig(
-        # if 192 (64*3), then num heads can be 4, 6 or 8 no problem,
-        # or 32*5 = 160
-        embed_dim=256, 
-        num_heads=8,
-        num_blocks=4,
+        embed_dim=d_k, 
+        num_heads=4,
+        num_blocks=1,
         batch_size=train_config.batch_size,
         policy_size=704,
-        mlp_expand_factor=4,
-
+        mlp_expand_factor=1,
     )
+    print(encoder_config)
 
     # Load dataset using MinichessTransformerDataset
     dataset = MinichessTransformerDataset(
@@ -477,7 +488,7 @@ if __name__ == '__main__':
         validation_test(model, val_loader, device=train_config.device)
 
     '''
-    >> Loading cached dataset from data/gardner_depth2/d2_with_promotions.txt.transformer.pt...
+>> Loading cached dataset from data/gardner_depth2/d2_with_promotions.txt.transformer.pt...
 
 Total number of trainable parameters: 3,505,897
         In bits: 112,188,704 bits
@@ -533,4 +544,6 @@ Epoch 5/10 [984.69s]
 Epoch 6/10 [1010.49s]
   Train Loss: 1.4044 (Policy: 1.1841, Value: 0.2203)
   Val Loss:   1.3531 | Val Move Acc: 55.94% | Val Result Acc: 76.89%
+
+python3 src/models/train_transformer.py data/gardner_depth2/d2_with_promotions.txt 64 | tee trnsf_64.log; python3 src/models/train_transformer.py data/gardner_depth2/d2_with_promotions.txt 128 | tee trnsf_128.log; python3 src/models/train_transformer.py data/gardner_depth2/d2_with_promotions.txt 256 | tee trnsf_256.log; python3 src/models/train_transformer.py data/gardner_depth2/d2_with_promotions.txt 512 | tee trnsf_512.log; python3 src/models/train_transformer.py data/gardner_depth2/d2_with_promotions.txt 1024 | tee trnsf_1024.log;        
     '''

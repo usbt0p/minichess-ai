@@ -152,7 +152,6 @@ def get_dataloaders(dataset, batch_size=128, train_ratio=0.96, num_workers=0):
         shuffle=True,
         num_workers=num_workers,
         pin_memory=torch.cuda.is_available(),
-        persistent_workers=True,
     )
 
     val_loader = DataLoader(
@@ -161,7 +160,6 @@ def get_dataloaders(dataset, batch_size=128, train_ratio=0.96, num_workers=0):
         shuffle=False,
         num_workers=num_workers,
         pin_memory=torch.cuda.is_available(),
-        persistent_workers=True
     )
 
     return train_loader, val_loader
