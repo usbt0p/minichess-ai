@@ -43,6 +43,14 @@ doc/aux
 *.log
 *.txt
 *.mmd
+*.json
+
+# tensorboard / pytorch profiler logs / profiles
+*.prof
+*.trace.json
+events.out.tfevents*
+logs/
+log/
 
 # disallow images on here, but not in doc/figures/ or src/benchmarks/
 src/**/*.png
