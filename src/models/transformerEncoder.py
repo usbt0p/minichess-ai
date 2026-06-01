@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
-import torch.functional as F
+import torch.nn.functional as F
+from torch.nn.attention import SDPBackend, sdpa_kernel
 
 from dataclasses import dataclass
 import math
@@ -69,11 +70,13 @@ class TransformerBlock(nn.Module):
     def forward(self, x):
         residual = x
         norm = self.norm1(x)
-        attn_out, _ = self.mha(
-            query=norm, key=norm, value=norm, attn_mask=None, need_weights=False
-        )
-        # Set need_weights=False to use the optimized scaled_dot_product_attention
-        # and achieve the best performance for MHA.
+
+        # force the use of flash attention in the cuda backend
+        with sdpa_kernel(SDPBackend.FLASH_ATTENTION):
+            attn_out, _ = self.mha(
+                query=norm, key=norm, value=norm, attn_mask=None, need_weights=False
+                )
+        # Set need_weights=False to use the optimized scaled_dot_product_attention and therefore flash attn
         # https://docs.pytorch.org/docs/2.12/generated/torch.nn.MultiheadAttention.html
 
         # the last dropout in attn with need_weights=False is made after the attn weights, but before projection with W_o
@@ -134,8 +137,18 @@ class MatrixPolicyHead(nn.Module):
         self.head_dim = config.policy_head_hidden_dim
 
         # these fully connected layers will act as conditioning for "from where" and "to were" we move
-        self.proj_from = nn.Linear(config.embed_dim, config.policy_head_hidden_dim)
-        self.proj_to = nn.Linear(config.embed_dim, config.policy_head_hidden_dim)
+        self.proj_from = nn.Sequential(
+            nn.Linear(config.embed_dim, config.policy_head_hidden_dim * 2),
+            nn.GELU(),
+            nn.Dropout(),
+            nn.Linear(config.policy_head_hidden_dim * 2, config.policy_head_hidden_dim),
+        )
+        self.proj_to = nn.Sequential(
+            nn.Linear(config.embed_dim, config.policy_head_hidden_dim * 2),
+            nn.GELU(),
+            nn.Dropout(),
+            nn.Linear(config.policy_head_hidden_dim * 2, config.policy_head_hidden_dim),
+        )
 
         # promotion predictions use context from the CLS token
         self.proj_promo = nn.Linear(config.embed_dim, config.promotion_size)
@@ -293,39 +306,42 @@ class MiniChessTransformerEncoder(nn.Module):
         assert S == self._config.input_size, f"Expected sequence length {self._config.input_size}, got {S}"
         device = input.device
 
-        # here we go, inspired on karpathy's nanoGPT's forward
-
         # before forwarding, we must split the tensor and pass to the chess embedder
         board_flat, repetitions, halfmove_50 = torch.split(input, [25, 1, 1], dim=1)
-        tok_embed = self.backbone.w_embed(board_flat, repetitions, halfmove_50)
-
-        # Prepend expanded CLS token array to sequence dimension
-        cls_tokens = self.cls_token.expand(B, 1, -1)
-        x = torch.cat([cls_tokens, tok_embed], dim=1)  # (B, 28, D)
-
-        # simple pos absolute pos embeddings
-        # TODO make these less shitty, maybe nn.RoPE or some learnable thing
-        pos = torch.arange(0, S + 1, dtype=torch.long, device=device)  # shape (input_size, )
-        pos_embed = self.backbone.w_pos_embed(pos)  # gets converted to (input_size, emb_dim)
-
-        x = self.backbone.embed_dropout(x + pos_embed)  # sum is broadcasted across batch dimension
-        for block in self.backbone.transformer_blocks:
-            x = block(x)
-        x = self.backbone.final_norm(x)
         
-        # now: the problem! how do we go from (batch, seq_len, embed_d) to
-        # (B, policy) y (B, value) in the heads? this is why we use CLS for value, and 
-        # outer product between projections of the embedings, for policy 
+        # no dtype=torch.bfloat16 because it seems to be slightly slower and less GPU efficient seein the profiler runs
+        with torch.autocast(device_type=device.type, enabled=(device.type == 'cuda')):
+            tok_embed = self.backbone.w_embed(board_flat, repetitions, halfmove_50)
 
-        # separate CLS from "board representation" (board tokens). 
-        # metadata tokens are not explicitly used, but they have affected toks [0,26] thanks to the attention 
-        cls_output = x[:, 0, :]           # (B, D)
-        board_tokens = x[:, 1:26, :]      # (B, 25, D)
+            # Prepend expanded CLS token array to sequence dimension
+            cls_tokens = self.cls_token.expand(B, 1, -1)
+            x = torch.cat([cls_tokens, tok_embed], dim=1)  # (B, 28, D)
 
-        policy_logits = self.heads.policy(board_tokens, cls_output)
-        value_pred = self.heads.value(cls_output)
+            # simple pos absolute pos embeddings
+            # TODO make these less shitty, maybe nn.RoPE or some learnable thing
+            pos = torch.arange(0, S + 1, dtype=torch.long, device=device)  # shape (input_size, )
+            pos_embed = self.backbone.w_pos_embed(pos)  # gets converted to (input_size, emb_dim)
 
-        return policy_logits, value_pred
+            x = self.backbone.embed_dropout(x + pos_embed)  # sum is broadcasted across batch dimension
+            for block in self.backbone.transformer_blocks:
+                x = block(x)
+            x = self.backbone.final_norm(x)
+            
+            # now: the problem! how do we go from (batch, seq_len, embed_d) to
+            # (B, policy) y (B, value) in the heads? this is why we use CLS for value, and  the special policy head
+            # with batch matmul between projections of the embedings
+
+            # separate CLS from "board representation" (board tokens). 
+            # metadata tokens are not explicitly used, but they have affected toks [0,26] thanks to the attention 
+            cls_output = x[:, 0, :]           # (B, D)
+            board_tokens = x[:, 1:26, :]      # (B, 25, D)
+
+            policy_logits = self.heads.policy(board_tokens, cls_output)
+            value_pred = self.heads.value(cls_output)
+
+        # now, since we autocasted to bfloat16 previously, we need to go back to float32 to avoid 
+        # numerical stability issues with the loss (like what a GradScaler does)
+        return policy_logits.float(), value_pred.float() 
 
     def get_num_params(self, non_embedding=True):
         """
