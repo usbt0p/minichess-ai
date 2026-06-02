@@ -27,7 +27,7 @@ class MLP(nn.Module):
         self.ffn = nn.Sequential(
             nn.Linear(config.embed_dim, config.mlp_expand_factor * config.embed_dim),
             nn.GELU(),
-            # optionally, other dropout here
+            # optionally, other dropout here, OR THE MOVE THE NEXT HERE
             nn.Linear(config.mlp_expand_factor * config.embed_dim, config.embed_dim),
             nn.Dropout(config.mlp_dropout),
         )
@@ -309,8 +309,10 @@ class MiniChessTransformerEncoder(nn.Module):
         # before forwarding, we must split the tensor and pass to the chess embedder
         board_flat, repetitions, halfmove_50 = torch.split(input, [25, 1, 1], dim=1)
         
-        # no dtype=torch.bfloat16 because it seems to be slightly slower and less GPU efficient seein the profiler runs
-        with torch.autocast(device_type=device.type, enabled=(device.type == 'cuda')):
+        # dtype=torch.bfloat16 seems to be slightly slower and less GPU efficient on the profiler runs,
+        # but when using 256 embed_dim models or more, numerical stability issues appear with float16, so we
+        # just leave it in bfloat16 for now
+        with torch.autocast(device_type=device.type, dtype=torch.bfloat16, enabled=(device.type == 'cuda')):
             tok_embed = self.backbone.w_embed(board_flat, repetitions, halfmove_50)
 
             # Prepend expanded CLS token array to sequence dimension
