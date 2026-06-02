@@ -23,12 +23,24 @@ def train_model(
     config: TrainingConfig,
     encoder_config: EncoderConfig = None,
 ):
-    profile_training = config.profile_name is not None
+    # Setup run directory and TensorBoard writer
+    run_dir = None
+    writer = None
+    if config.run_name:
+        run_dir = f"logs/exps/{config.run_name}"
+        save_run_metadata(run_dir, config, encoder_config, config.profile_desc or f"Experiment run: {config.run_name}")
+        try:
+            from torch.utils.tensorboard import SummaryWriter
+            writer = SummaryWriter(log_dir=run_dir)
+        except Exception as e:
+            print(f"[WARNING] Could not initialize TensorBoard writer: {e}")
+    elif config.profile_name is not None:
+        run_dir = f"./log/{config.profile_name}"
+        save_run_metadata(run_dir, config, encoder_config, config.profile_desc)
 
+    profile_training = config.profile_name is not None
     prof = None
     if profile_training:
-        trace_dir = f'./log/{config.profile_name}'
-        save_run_metadata(trace_dir, config, encoder_config, config.profile_desc)
         prof = configure_profiler(config, config.profile_name, trace_filename=config.profile_filename)
         prof.start()
 
@@ -153,22 +165,34 @@ def train_model(
 
             val_move_acc = correct_moves / total_val_samples if total_val_samples > 0 else 0 
             val_res_acc = correct_results / total_val_samples if total_val_samples > 0 else 0 
+            val_mean_acc = ((val_move_acc + val_res_acc) / 2) if total_val_samples > 0 else 0
             val_loss /= total_val_samples
 
             val_losses.append(val_loss)
             val_move_accs.append(val_move_acc)
             val_res_accs.append(val_res_acc)
 
+            # TensorBoard logging of scalar metrics
+            if writer is not None:
+                writer.add_scalar("Loss/Train", total_loss, epoch + 1)
+                writer.add_scalar("Loss/Train_Policy", total_policy_loss, epoch + 1)
+                writer.add_scalar("Loss/Train_Value", total_value_loss, epoch + 1)
+                writer.add_scalar("Loss/Val", val_loss, epoch + 1)
+                writer.add_scalar("Accuracy/Val_Move", val_move_acc * 100, epoch + 1)
+                writer.add_scalar("Accuracy/Val_Result", val_res_acc * 100, epoch + 1)
+                writer.add_scalar("Accuracy/Val_Mean", val_mean_acc * 100, epoch + 1)
+
             print(f"Epoch {epoch+1}/{config.num_epochs} [{epoch_time:.2f}s]")
             print(f"  Train Loss: {total_loss:.4f} (Policy: {total_policy_loss:.4f}, Value: {total_value_loss:.4f})")
             print(f"  Val Loss:   {val_loss:.4f} | Val Move Acc: {val_move_acc*100:.2f}% | Val Result Acc: {val_res_acc*100:.2f}%")
 
             # Consider the best model as the one with the best mean acc
-            if (val_move_acc + val_res_acc)/2 > (best_move_acc + best_result_acc)/2:
+            if  val_mean_acc > (best_move_acc + best_result_acc)/2:
                 best_move_acc = val_move_acc
                 best_result_acc = val_res_acc
                 best_epoch = epoch + 1
-                torch.save(model.state_dict(), "best_model.pth")
+                model_save_path = os.path.join(run_dir, "best_model.pth") if run_dir else "best_model.pth"
+                torch.save(model.state_dict(), model_save_path)
 
             # Early stopping based on validation loss
             if config.patience > 0:
@@ -189,6 +213,9 @@ def train_model(
     print(f"Best mean accuracy: {(best_move_acc + best_result_acc)/2*100:.2f}% achieved at epoch {best_epoch}")
     print(f"Best move accuracy: {best_move_acc*100:.2f}%")
     print(f"Best result accuracy: {best_result_acc*100:.2f}%")
+
+    if writer is not None:
+        writer.close()
 
     return train_losses, val_losses, val_move_accs, val_res_accs, model
 
@@ -239,18 +266,20 @@ if __name__ == '__main__':
     train_config = TrainingConfig(
         data_path=args.data_path,
         use_cache=True,
-        batch_size=512,
+        batch_size=args.batch_size,
         train_ratio=0.98,
         num_workers=12,
-        num_epochs=6,
+        num_epochs=args.epochs,
         patience=4,
-        lr=2e-3,
+        lr=args.lr,
         weight_decay=2e-5,
+        custom_init=args.custom_init,
+        run_name=args.run_name,
         profile_name=args.profile,
         profile_steps=args.profile_steps,
         profile_desc=args.profile_desc,
         profile_filename=args.profile_filename,
-        subsample_ratio=0.6, #args.subsample,
+        subsample_ratio=args.subsample,
     )
     print(train_config)
 
@@ -258,10 +287,11 @@ if __name__ == '__main__':
     encoder_config = EncoderConfig(
         embed_dim=d_k, 
         num_heads=8,
-        num_blocks=4,
+        num_blocks=args.num_blocks,
         batch_size=train_config.batch_size,
         policy_size=704,
-        mlp_expand_factor=4,
+        mlp_expand_factor=args.mlp_expand,
+        custom_init=train_config.custom_init,
     )
     print(encoder_config)
 
@@ -295,10 +325,11 @@ if __name__ == '__main__':
     )
 
     # Optional loss plotting
-    # plot_loss(train_losses, val_losses, val_move_accs, val_res_accs)
+    run_dir = f"logs/exps/{train_config.run_name}" if train_config.run_name else None
+    plot_loss(train_losses, val_losses, val_move_accs, val_res_accs, save_dir=run_dir)
     
     # Use best model for final validation test validation
-    # best_model_path = "best_model.pth"
+    # best_model_path = os.path.join(run_dir, "best_model.pth") if run_dir else "best_model.pth"
     # if os.path.exists(best_model_path):
     #     model.load_state_dict(torch.load(best_model_path, map_location=train_config.device))
     #     validation_test(model, val_loader, device=train_config.device)
