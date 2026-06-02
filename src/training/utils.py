@@ -237,7 +237,7 @@ def estimate_training_time(model, train_loader, val_loader, config, num_warmup: 
     print(f"  Estimated TOTAL train time ({config.num_epochs} epochs): {total_training_time:.2f} s ({total_training_time/60:.2f} minutes)")
     print("------------------------------------------------\n")
 
-def plot_loss(train_losses, val_losses, val_move_accs, val_res_accs):
+def plot_loss(train_losses, val_losses, val_move_accs, val_res_accs, save_dir=None):
     plt.figure(figsize=(10, 5))
     plt.plot(range(len(train_losses)), [l[0] for l in train_losses], label='Train Loss')
     plt.plot(range(len(val_losses)), val_losses, label='Val Loss')
@@ -249,7 +249,8 @@ def plot_loss(train_losses, val_losses, val_move_accs, val_res_accs):
     plt.ylabel('Loss')
     plt.title('Training and Validation Loss')
     plt.legend()
-    plt.savefig('train_loss.png')
+    train_loss_path = os.path.join(save_dir, 'train_loss.png') if save_dir else 'train_loss.png'
+    plt.savefig(train_loss_path)
     plt.close()
     
     plt.figure(figsize=(10, 5))
@@ -259,5 +260,6 @@ def plot_loss(train_losses, val_losses, val_move_accs, val_res_accs):
     plt.ylabel('Accuracy')
     plt.title('Validation Accuracy')
     plt.legend()
-    plt.savefig('val_accuracy.png')
+    val_accuracy_path = os.path.join(save_dir, 'val_accuracy.png') if save_dir else 'val_accuracy.png'
+    plt.savefig(val_accuracy_path)
     plt.close()
