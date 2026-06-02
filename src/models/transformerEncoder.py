@@ -31,6 +31,8 @@ class MLP(nn.Module):
             nn.Linear(config.mlp_expand_factor * config.embed_dim, config.embed_dim),
             nn.Dropout(config.mlp_dropout),
         )
+        # Tag residual projection for special scaling in custom weight initialization
+        self.ffn[2].residual_proj = True
 
     def forward(self, x):
         return self.ffn(x)
@@ -66,6 +68,8 @@ class TransformerBlock(nn.Module):
         )
         self.norm2 = torch.nn.RMSNorm(config.embed_dim)
         self.mlp = MLP(config)
+        # Tag the output projection layer for special scaling in custom weight initialization
+        self.mha.out_proj.residual_proj = True
 
     def forward(self, x):
         residual = x
@@ -199,6 +203,7 @@ class EncoderConfig:
     mha_dropout: float = 0.1
     embed_dropout: float = 0.1
     mlp_expand_factor: int = 4
+    custom_init: bool = False
 
     policy_head_hidden_dim : int = 64 # TODO important to tune this to not compress too much
     policy_size: int = 704
@@ -289,6 +294,27 @@ class MiniChessTransformerEncoder(nn.Module):
                 ),
             )
         )
+
+        # Apply custom weight initialization if enabled
+        if config.custom_init:
+            self.apply(self._init_weights)
+
+    def _init_weights(self, module):
+        if isinstance(module, nn.Linear):
+            std = 0.02
+            # Check if this linear layer was tagged as a residual projection
+            if getattr(module, 'residual_proj', False):
+                std = std / math.sqrt(2 * self._config.num_blocks)
+            torch.nn.init.normal_(module.weight, mean=0.0, std=std)
+            if module.bias is not None:
+                torch.nn.init.zeros_(module.bias)
+        elif isinstance(module, nn.Embedding):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+        elif isinstance(module, (nn.LayerNorm, nn.RMSNorm)):
+            if hasattr(module, 'weight') and module.weight is not None:
+                torch.nn.init.ones_(module.weight)
+            if hasattr(module, 'bias') and module.bias is not None:
+                torch.nn.init.zeros_(module.bias)
 
     def forward(self, input):
         '''Forward the MiniChess Encoder. This involves some moving parts for
