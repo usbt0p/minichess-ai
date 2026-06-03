@@ -62,4 +62,8 @@ def parse_args():
     
     parser.add_argument("--subsample", type=float, default=1.0, help="Percentage of the dataset to use (e.g. 0.5 for 50%%)")
     
+    # careful with these, bad combinations can break things silently! 
+    parser.add_argument("--attn_backend", type=str, choices=["math", "efficient", "flash", "auto"], default="auto", help="Scaled Dot-Product Attention backend (default: auto)")
+    parser.add_argument("--autocast", type=str, choices=["bfloat16", "float16", "float32", "auto", "none"], default="bfloat16", help="Autocast precision mode (default: bfloat16)")
+    
     return parser.parse_args()

@@ -292,6 +292,10 @@ if __name__ == '__main__':
         policy_size=704,
         mlp_expand_factor=args.mlp_expand,
         custom_init=train_config.custom_init,
+        
+        # careful with these, bad combinations can break things silently! 
+        attn_backend=args.attn_backend,
+        autocast_mode=args.autocast,
     )
     print(encoder_config)
 

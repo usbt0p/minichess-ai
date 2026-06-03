@@ -10,6 +10,42 @@ import math
 from src.utils.utils import time_this, count_params
 
 
+@dataclass
+class EncoderConfig:
+    '''MiniChess encoder configuration.
+    Decouples config hyperparameters for easier logging, modification and tuning.    
+    '''
+
+    embed_dim: int
+    num_heads: int
+    num_blocks: int
+    batch_size: int
+
+    input_size: int = 27
+    vocab_size: int = 68
+    mlp_dropout: float = 0.1
+    mha_dropout: float = 0.1
+    embed_dropout: float = 0.1
+    mlp_expand_factor: int = 4
+
+    policy_head_hidden_dim : int = 64 # TODO important to tune this to not compress too much
+    policy_size: int = 704
+    promotion_size : int = 104
+    value_size: int = 1
+
+    custom_init: bool = False
+    attn_backend: str = "auto"
+    autocast_mode: str = "none"
+
+    # for reference: https://www.pythonmorsels.com/customizing-dataclass-initialization/
+    def __post_init__(self):
+        assert self.policy_size == (25*24) + self.promotion_size, "Policy must be possible moves + possible promotions"
+        # not mine! https://stackoverflow.com/questions/57025836/how-to-check-if-a-given-number-is-a-power-of-two
+        # is_power_of_two = lambda n: (n & (n-1) == 0) and n != 0 
+        # assert is_power_of_two(self.embed_dim) and \
+        #     is_power_of_two(self.policy_head_hidden_dim), "Set these to powers of two for better efficiency"
+        assert self.embed_dim % self.num_heads == 0, "Set the number of dims to be divisible by the number of heads."
+
 class MLP(nn.Module):
     """
     Multi-layer perceptron for transformer block.
@@ -56,6 +92,19 @@ class TransformerBlock(nn.Module):
 
     def __init__(self, config: EncoderConfig):
         super(TransformerBlock, self).__init__()
+        
+        # Resolve attention backend during init to avoid conditional branching in forward()
+        self.attn_backend = config.attn_backend
+        if self.attn_backend == "auto":
+            self.backend_enum = None
+        elif self.attn_backend == "flash":
+            self.backend_enum = SDPBackend.FLASH_ATTENTION
+        elif self.attn_backend == "efficient":
+            self.backend_enum = SDPBackend.EFFICIENT_ATTENTION
+        elif self.attn_backend == "math":
+            self.backend_enum = SDPBackend.MATH
+        else:
+            raise ValueError(f"Unknown attention backend: {self.attn_backend}")
 
         self.norm1 = torch.nn.RMSNorm(config.embed_dim)
         # this is gold for understanding internals of pytorch MHA + flashattn (which torch auto uses if available (torch >= 2.0.0))
@@ -64,7 +113,7 @@ class TransformerBlock(nn.Module):
             config.embed_dim,
             config.num_heads,
             dropout=config.mha_dropout,
-            batch_first=True,
+            batch_first=True, # simplify things and avoid transpositions
         )
         self.norm2 = torch.nn.RMSNorm(config.embed_dim)
         self.mlp = MLP(config)
@@ -75,14 +124,18 @@ class TransformerBlock(nn.Module):
         residual = x
         norm = self.norm1(x)
 
-        # force the use of flash attention in the cuda backend
-        with sdpa_kernel(SDPBackend.FLASH_ATTENTION):
+        if self.backend_enum is None:
+            # torch will choose the best for us based on our dtype
             attn_out, _ = self.mha(
                 query=norm, key=norm, value=norm, attn_mask=None, need_weights=False
                 )
-        # Set need_weights=False to use the optimized scaled_dot_product_attention and therefore flash attn
-        # https://docs.pytorch.org/docs/2.12/generated/torch.nn.MultiheadAttention.html
-
+        else:
+            # Set need_weights=False to use the optimized scaled_dot_product_attention and therefore flash attn
+            # https://docs.pytorch.org/docs/2.12/generated/torch.nn.MultiheadAttention.html
+            with sdpa_kernel(self.backend_enum):
+                attn_out, _ = self.mha(
+                    query=norm, key=norm, value=norm, attn_mask=None, need_weights=False
+                    )
         # the last dropout in attn with need_weights=False is made after the attn weights, but before projection with W_o
         # https://github.com/pytorch/pytorch/blob/4f4b931aba66ae438aae8daca1dcbebeabb947e4/torch/nn/functional.py#L5504
         # so we could add another dropout after it here like this https://github.com/karpathy/nanoGPT/blob/master/model.py#L75
@@ -186,40 +239,6 @@ class MatrixPolicyHead(nn.Module):
         return torch.cat([base_moves, promo_logits], dim=1)  # (B, 704)
 
 
-@dataclass
-class EncoderConfig:
-    '''MiniChess encoder configuration.
-    Decouples config hyperparameters for easier logging, modification and tuning.    
-    '''
-
-    embed_dim: int
-    num_heads: int
-    num_blocks: int
-    batch_size: int
-
-    input_size: int = 27
-    vocab_size: int = 68
-    mlp_dropout: float = 0.1
-    mha_dropout: float = 0.1
-    embed_dropout: float = 0.1
-    mlp_expand_factor: int = 4
-    custom_init: bool = False
-
-    policy_head_hidden_dim : int = 64 # TODO important to tune this to not compress too much
-    policy_size: int = 704
-    promotion_size : int = 104
-    value_size: int = 1
-
-    # for reference: https://www.pythonmorsels.com/customizing-dataclass-initialization/
-    def __post_init__(self):
-        assert self.policy_size == (25*24) + self.promotion_size, "Policy must be possible moves + possible promotions"
-        # not mine! https://stackoverflow.com/questions/57025836/how-to-check-if-a-given-number-is-a-power-of-two
-        # is_power_of_two = lambda n: (n & (n-1) == 0) and n != 0 
-        # assert is_power_of_two(self.embed_dim) and \
-        #     is_power_of_two(self.policy_head_hidden_dim), "Set these to powers of two for better efficiency"
-        assert self.embed_dim % self.num_heads == 0, "Set the number of dims to be divisible by the number of heads."
-
-
 class MiniChessTransformerEncoder(nn.Module):
     """
     Transformer encoder for 5x5 Minichess.
@@ -299,6 +318,27 @@ class MiniChessTransformerEncoder(nn.Module):
         if config.custom_init:
             self.apply(self._init_weights)
 
+        # Resolve autocast settings during initialization to avoid branch logic in forward()
+        self.autocast_mode = getattr(config, 'autocast_mode', 'bfloat16')
+        self.autocast_dtype = torch.bfloat16
+        self.autocast_enabled_if_cuda = False
+
+        # bfloat16 + flash attn + torch compile is fastest generally
+        # bfloat sacrifices some performance due to lower fraction precision but is faster
+        # numerical stability issues appear with float16 due to less exponent bits
+        # float32 is the slowest and most memory demanding but gives bst metrics
+        if self.autocast_mode == 'bfloat16':
+            self.autocast_enabled_if_cuda = True
+            self.autocast_dtype = torch.bfloat16
+        elif self.autocast_mode == 'float16':
+            self.autocast_enabled_if_cuda = True
+            self.autocast_dtype = torch.float16
+        elif self.autocast_mode == 'auto':
+            self.autocast_enabled_if_cuda = True
+            self.autocast_dtype = torch.bfloat16
+        elif self.autocast_mode in ('float32', 'none', 'no', 'disabled'):
+            self.autocast_enabled_if_cuda = False
+
     def _init_weights(self, module):
         if isinstance(module, nn.Linear):
             std = 0.02
@@ -335,10 +375,10 @@ class MiniChessTransformerEncoder(nn.Module):
         # before forwarding, we must split the tensor and pass to the chess embedder
         board_flat, repetitions, halfmove_50 = torch.split(input, [25, 1, 1], dim=1)
         
-        # dtype=torch.bfloat16 seems to be slightly slower and less GPU efficient on the profiler runs,
-        # but when using 256 embed_dim models or more, numerical stability issues appear with float16, so we
-        # just leave it in bfloat16 for now
-        with torch.autocast(device_type=device.type, dtype=torch.bfloat16, enabled=(device.type == 'cuda')):
+        # Check device type at runtime to configure autocast context manager
+        autocast_enabled = (device.type == 'cuda' and self.autocast_enabled_if_cuda)
+
+        with torch.autocast(device_type=device.type, dtype=self.autocast_dtype, enabled=autocast_enabled):
             tok_embed = self.backbone.w_embed(board_flat, repetitions, halfmove_50)
 
             # Prepend expanded CLS token array to sequence dimension
