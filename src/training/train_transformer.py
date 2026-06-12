@@ -6,7 +6,7 @@ import torch.nn as nn
 from src.utils.utils import time_this, count_params
 from src.models.dataloaders import get_dataloaders, MinichessTransformerDataset
 from src.models.transformerEncoder import MiniChessTransformerEncoder, EncoderConfig
-from src.training.config import TrainingConfig, parse_args
+from src.training.config import TrainingConfig, parse_args, generate_run_name
 from src.training.utils import (
     configure_optimizers,
     save_run_metadata,
@@ -23,6 +23,10 @@ def train_model(
     config: TrainingConfig,
     encoder_config: EncoderConfig = None,
 ):
+    # Always normalize the run name to ensure uniqueness and descriptive folder names
+    if encoder_config is not None:
+        config.run_name = generate_run_name(config, encoder_config)
+
     # Setup run directory and TensorBoard writer
     run_dir = None
     writer = None
@@ -191,8 +195,24 @@ def train_model(
                 best_move_acc = val_move_acc
                 best_result_acc = val_res_acc
                 best_epoch = epoch + 1
+                
+                # Delete previous metrics checkpoint in this run directory to keep it clean
+                if hasattr(train_model, 'last_saved_checkpoint') and train_model.last_saved_checkpoint:
+                    try:
+                        if os.path.exists(train_model.last_saved_checkpoint):
+                            os.remove(train_model.last_saved_checkpoint)
+                    except Exception:
+                        pass
+                
+                # Save standard best model path
                 model_save_path = os.path.join(run_dir, "best_model.pth") if run_dir else "best_model.pth"
                 torch.save(model.state_dict(), model_save_path)
+                
+                # Save a copy with metrics in the filename for easy reference
+                metrics_name = f"best_model_epoch{epoch+1}_move{val_move_acc*100:.2f}_res{val_res_acc*100:.2f}.pth"
+                metrics_save_path = os.path.join(run_dir, metrics_name) if run_dir else metrics_name
+                torch.save(model.state_dict(), metrics_save_path)
+                train_model.last_saved_checkpoint = metrics_save_path
 
             # Early stopping based on validation loss
             if config.patience > 0:
@@ -258,6 +278,35 @@ def validation_test(model, val_loader, device="cuda"):
     print("\tResult Accuracy: ", correct_results / total_val_samples)
 
 
+def test_model_holdout(model, train_config):
+    """Loads the holdout test set (if it exists) and evaluates the model on it."""
+    basename = os.path.basename(train_config.data_path)
+    prefix = basename.replace("_val.txt", "").replace(".txt", "")
+    test_path = os.path.join("data", "test_splits", f"{prefix}_test.txt")
+    
+    if not os.path.exists(test_path):
+        print(f"\n>> Holdout test file not found at: {test_path}")
+        return
+        
+    print(f"\n>> Loading dedicated holdout test dataset from: {test_path}...")
+    from torch.utils.data import DataLoader
+    test_dataset = MinichessTransformerDataset(
+        test_path, 
+        promotions=train_config.promotions, 
+        use_cache=True
+    )
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=train_config.batch_size,
+        shuffle=False,
+        num_workers=train_config.num_workers,
+        pin_memory=torch.cuda.is_available()
+    )
+    print(">> Evaluating final model on Holdout Test Set...")
+    print("\nHoldout Test Set Results:")
+    validation_test(model, test_loader, device=train_config.device)
+
+
 if __name__ == '__main__':
     args = parse_args()
     d_k = args.embed_dim
@@ -297,6 +346,9 @@ if __name__ == '__main__':
         attn_backend=args.attn_backend,
         autocast_mode=args.autocast,
     )
+    # TODO donde poner esto
+    torch.set_float32_matmul_precision('high')
+    
     print(encoder_config)
 
     # Load dataset using MinichessTransformerDataset
@@ -321,7 +373,7 @@ if __name__ == '__main__':
     model = torch.compile(model) # JIT for optimized triton kernels
 
     # Estimate training time before beginning full training
-    # estimate_training_time(model, train_loader, val_loader, train_config)
+    estimate_training_time(model, train_loader, val_loader, train_config)
 
     # Run the training loop
     train_losses, val_losses, val_move_accs, val_res_accs, model = train_model(
@@ -332,11 +384,12 @@ if __name__ == '__main__':
     run_dir = f"logs/exps/{train_config.run_name}" if train_config.run_name else None
     plot_loss(train_losses, val_losses, val_move_accs, val_res_accs, save_dir=run_dir)
     
-    # Use best model for final validation test validation
+    # Use best model for final validation/test validation
     # best_model_path = os.path.join(run_dir, "best_model.pth") if run_dir else "best_model.pth"
     # if os.path.exists(best_model_path):
     #     model.load_state_dict(torch.load(best_model_path, map_location=train_config.device))
     #     validation_test(model, val_loader, device=train_config.device)
+    #     test_model_holdout(model, train_config)
 
     '''
 >> Loading cached dataset from data/gardner_depth2/d2_with_promotions.txt.transformer.pt...

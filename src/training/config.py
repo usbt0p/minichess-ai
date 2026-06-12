@@ -1,6 +1,8 @@
 import os
+import time
 import argparse
 from dataclasses import dataclass
+from src.models.transformerEncoder import EncoderConfig
 
 @dataclass
 class TrainingConfig:
@@ -37,7 +39,15 @@ class TrainingConfig:
         assert 0.0 < self.train_ratio <= 0.99, "train_ratio must be between 0 and 0.99"
         assert self.batch_size > 0, "batch_size must be positive"
         assert self.num_epochs > 0, "num_epochs must be positive"
-        assert os.path.exists(self.data_path), "The data file does not exist!"
+        # Allow running with virtual paths that only have cached .pt versions
+        cache_pt = f"{self.data_path}.transformer.pt"
+        cache_promo = f"{self.data_path}.promo.pt"
+        cache_reg = f"{self.data_path}.pt"
+        exists = (os.path.exists(self.data_path) or 
+                  os.path.exists(cache_pt) or 
+                  os.path.exists(cache_promo) or 
+                  os.path.exists(cache_reg))
+        assert exists, f"Neither the data file nor any cached version exists for: {self.data_path}"
 
 
 def parse_args():
@@ -67,3 +77,29 @@ def parse_args():
     parser.add_argument("--autocast", type=str, choices=["bfloat16", "float16", "float32", "auto", "none"], default="bfloat16", help="Autocast precision mode (default: bfloat16)")
     
     return parser.parse_args()
+
+
+def generate_run_name(config: TrainingConfig, encoder_config: EncoderConfig) -> str:
+    """Generates a normalized, unique, and descriptive run name for the experiment."""
+    # Base dataset name from path
+    dataset_name = "data"
+    if config.data_path:
+        base_name = os.path.basename(config.data_path)
+        dataset_name = os.path.splitext(base_name)[0]
+        # Remove common extensions/suffixes
+        dataset_name = dataset_name.replace(".train_val", "").replace(".test", "").replace(".txt", "")
+
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    
+    # Base name (default to 'run' if not provided)
+    base_run = config.run_name if config.run_name else "run"
+    # Clean directory delimiters
+    base_run = base_run.replace("/", "_").replace("\\", "_")
+    
+    # Extract architecture params
+    d_k = encoder_config.embed_dim if encoder_config else "unknown"
+    depth = encoder_config.num_blocks if encoder_config else "unknown"
+    lr = config.lr
+    bs = config.batch_size
+    
+    return f"{timestamp}_{dataset_name}_{base_run}_dk{d_k}_depth{depth}_lr{lr:.2e}_bs{bs}"

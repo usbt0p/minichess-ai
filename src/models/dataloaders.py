@@ -146,19 +146,24 @@ class MinichessTransformerDataset(Dataset):
 def get_dataloaders(dataset, batch_size=128, train_ratio=0.96, num_workers=0):
     """
     Returns train and validation dataloaders for the given dataset.
+    Uses a contiguous split to prevent game-level data leakage.
     """
     train_size = int(len(dataset) * train_ratio)
     val_size = len(dataset) - train_size
 
-    generator = torch.Generator().manual_seed(42)
-    train_dataset, val_dataset = torch.utils.data.random_split(
-        dataset, [train_size, val_size], generator=generator
-    )
+    # generator = torch.Generator().manual_seed(42)
+    # train_dataset, val_dataset = torch.utils.data.random_split(
+    #     dataset, [train_size, val_size], generator=generator
+    # )
+    # Use contiguous subsets instead of random_split to avoid game-level data leakage
+    # since positions are stored sequentially as they appear
+    train_dataset = torch.utils.data.Subset(dataset, range(0, train_size))
+    val_dataset = torch.utils.data.Subset(dataset, range(train_size, len(dataset)))
 
     train_loader = DataLoader(
         train_dataset,
         batch_size=batch_size,
-        shuffle=True,
+        shuffle=True, # Shuffle positions only within the training subset
         num_workers=num_workers,
         pin_memory=torch.cuda.is_available(),
     )
