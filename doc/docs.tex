@@ -349,36 +349,36 @@ De manera análoga, la forma en que la red proyecta sus predicciones altera drá
 
 \subsubsection{Arquitectura Transformer}
 
-La arquitectura neural propuesta se basa en un modelo \textbf{Transformer Encoder} que procesa el tablero de forma bidireccional, permitiendo que cada casilla preste atención a todas las demás. El flujo de procesamiento de la red se describe a continuación:
+La arquitectura neural propuesta se basa en un modelo \textbf{Transformer Encoder} que procesa el estado del tablero de forma bidireccional, permitiendo que cada componente preste atención a todos los demás, y se describe a continuación:
 \begin{enumerate}
 
-    \item \textbf{Capa de Proyección de Entrada:} La capa inicial busca aprender los embeddings que el modelo utilizará. Si la entrada es la representación binaria multicanal $C \times 5 \times 5$, se utiliza una capa convolucional de tamaño de filtro $1\times1$ o una proyección lineal \textcolor{red}{(\textbf{TODO: decidir entre estas 2})} para mapear cada una de las 25 casillas a un vector de dimensión oculta $d_{\text{model}}$ \textcolor{red}{(\textbf{TODO: decidir tamaño embeddings})}.
+    \item \textbf{Capa de Proyección de Entrada:} La capa inicial mapea la representación plana de 27 tokens del tablero. Consta de 25 casillas (clasificando las piezas y el estado de cuadrícula vacía), además de la cuenta de repeticiones y la regla de los 50 movimientos. Adicionalmente, se concatena un \textbf{token de clase} \textit{CLS}, obteniendo un tensor de dimensiones $28 \times d_{\text{model}}$. Los 28 tokens se proyectan linealmente a una dimensión $d_k$.
     
-    \item \textbf{Codificación Posicional Spatial 2D:} Para inyectar información geométrica y espacial en las capas de atención (ya que los Transformers puros son invariantes ante permutaciones) \textcolor{red}{(TODO:elegir entre estas 2 en funcion de la dificultad de implementación)}...
-    
+    \item \textbf{Codificación Posicional Absoluta:} Para inyectar información geométrica y espacial en las secuencias, se añade un \textit{embedding} posicional absoluto \texttt{w\_pos\_embed} en 1D, asignando un vector a cada uno de los 28 elementos de la secuencia y sumándoselo.
+
+    \textcolor{red}{\textbf{LOS 2 MÉTODOS SIGUIENTES ESTAN AQUÍ COMO REFERENCIA, POR POSIBILIDAD DE IMPLEMENTARLOS EN EL FUTURO, PERO EL QUE SE USA ES EL DESCRITO ANTES:}}
     \begin{itemize}
         \item se suma un vector de codificación posicional 2D (con componentes seno y coseno correspondientes a las coordenadas de fila y columna de cada casilla) al embedding de cada casilla. \href{https://stackoverflow.com/questions/77444485/using-positional-encoding-in-pytorch}{(referencia implementación)}
+            
         
         \item se aplica RoPE (\textit{Rotary Positional Encoding}), el estándar actual de codificación posicional en modelos de lenguaje y Transformers \cite{DBLP:journals/corr/abs-2104-09864}. Este codifica la posición de cada casilla mediante rotaciones en el espacio de embeddings, permitiendo que el modelo capture relaciones espaciales de manera más flexible. \href{https://meta-pytorch.org/torchtune/0.3/generated/torchtune.modules.RotaryPositionalEmbeddings.html}{(referencia pytorch)}
     \end{itemize}
     
-    \item \textbf{Pila de Bloques Encoder:} El tensor resultante de dimensiones $25 \times d_{\text{model}}$ se procesa a través de una serie de $L$ capas de codificación. Cada capa contiene:
     
+    \item \textbf{Pila de Bloques Encoder:} El tensor resultante se procesa a través de una serie de $L$ capas de codificación con $h$ cabezas. Cada capa contiene:
     \begin{itemize}
-        \item Un mecanismo de (\textit{Multi-Head Self-Attention}) sin \textit{causal-masking} como el descrito en la sección~\ref{sec:transformer}. El número de cabezas de atenciónes el hiperparámetro $h$, que será ajustado en base a búsqueda de hiperparámetros.
+        \item Un mecanismo (\textit{Multi-Head Self-Attention}) sin causal-masking.
         
-        \item Conexiones residuales de inicio a fin y el estándar moderno de normalización, que utiliza \textit{pre-norm} y \textit{RMSNorm}. La convención \textit{pre-norm} aplica normalización antes de cada subcapa, de la forma $z = x + sublayer(normalization(x))$, donde $sublayer$ es una de las $L$ capas encoder. Se ha demostrado que esta mejora la estabilidad del entrenamiento\cite{DBLP:journals/corr/abs-2002-04745}. 
+        \item Conexiones residuales de inicio a fin y normalización, utilizando \textit{pre-norm} y \textbf{RMSNorm}. La convención \textit{pre-norm} aplica normalización antes de cada subcapa de la forma $z = x + sublayer(normalization(x))$, donde $sublayer$ es una de las $L$ capas encoder, mejorando la estabilidad del entrenamiento\cite{DBLP:journals/corr/abs-2002-04745}. La normalización RMS es utilizada por transformers modernos debido a que reduce la complejidad computacional frente a alternativas como LayerNorm\cite{gupta2025geometricinterpretationlayernormalization}.
         
-        La normalización RMS (\textit{Root Mean Square Layer Normalization}) es utilizada por transformers modernos debido a que reduce la complejidad computacional al no requerir el cálculo de la media para subtraer al vector original, manteniendo la capacidad de aprendizaje intacta. \cite{gupta2025geometricinterpretationlayernormalization}
-        
-        \item Una capa \textit{Feed-Forward Network} (FFN), compuesta por dos proyecciones lineales de expansión y contracción y una activación no lineal:
-        $$\text{FFN}(x) := FC_{expand}(x) \rightarrow \text{GELU} \rightarrow FC_{project}(x)$$
+        \item Una capa \textit{Feed-Forward Network} o \textit{Multi-Layer Perceptron} (MLP), compuesta de la forma:
+        $$\text{FFN}(x) := FC_{expand}(x) \rightarrow \text{GELU} \rightarrow FC_{project}(x) \rightarrow \text{Dropout}$$
     \end{itemize}
 
-    \item \textbf{Cabezas de Salida:} Tras la última capa del codificador, el estado procesado se bifurca en dos cabezas:
+    \item \textbf{Cabezas de Salida:} Tras la última normalización RMS, el estado se divide, extrayendo el tensor del \textit{CLS token} y aislando los $25$ vectores resultantes del estado final de las iteraciones de atención sobre las celdas del tablero. A continuación se bifurca en dos procesos independientes:
     \begin{itemize}
-        \item \textbf{Cabeza de Política (\textit{Policy Head}):} Una proyección lineal que reduce el espacio de representación a la dimensión de la política (704 salidas discretas o 50 en la versión factorizada), seguida de una capa Softmax para producir una distribución de probabilidad sobre las acciones legales del estado.
-        \item \textbf{Cabeza de Valor (\textit{Value Head}):} Se aplica una capa de agregación global (\textit{pooling}) sobre las casillas, seguida de una proyección lineal a una capa oculta, normalización, y finalmente una proyección escalar con una activación tangente hiperbólica ($\tanh$) que acota la salida en el intervalo $[-1, 1]$.
+        \item \textbf{Cabeza de Política Orientada a Relaciones (``\textit{Matrix Policy Head}"):} Proyecta cada uno de los 25 \textit{tokens} de las casillas paralelamente evaluando si estas funcionan como origen (\texttt{proj\_from}) y como destino (\texttt{proj\_to}) mediante MLPs. A continuación realiza un producto interno espacial (\textit{batched matmul}) entre estas incrustaciones elaborando una matriz de correlación $25 \times 25$. Paralelamente, se obtienen otros $104$ \textit{logits} del tensor \textit{CLS} que reflejan opciones de promoción, y se concatenan a los $600$ movimientos ordinarios. Obtenemos por lo tanto, una distribución de $704$ \textit{acciones}.
+        \item \textbf{Cabeza de Valor (\textit{Value Head}):} Procesa únicamente el \textit{token CLS} final en un \textit{MLP} denso (Expansión Lineal, GELU, Dropout, Reducción de dim a escalar, Tanh) que acota la salida en el intervalo $[-1, 1]$.
     \end{itemize}
 
 \end{enumerate}
@@ -388,7 +388,7 @@ La figura ~\ref{fig:encoder_arch} ilustra la arquitectura propuesta, mostrando e
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=1\textwidth]{figures/Gemini_Generated_Diagram.png}
-    \caption{[Placeholder] Diagrama de la arquitectura utilizada (generado con IA, tiene errores / inconsistencias).}
+    \caption{[Placeholder] Diagrama de la arquitectura utilizada (generado con IA, tiene errores / inconsistencias). Además, está desactualizado con respecto a la descripción anterior. Igual es mejor separar los diagramas de las cabezas, y hacerlos más abstractos en la arquitectura general.}
     \label{fig:encoder_arch}
 \end{figure}
 
@@ -461,6 +461,42 @@ El desarrollo práctico e investigativo del proyecto se implementará utilizando
     \item \textbf{Seguimiento de experimentos:} \texttt{Weights \& Biases} (wandb) para la visualización en tiempo real del progreso de entrenamiento, entropía de la política, pérdida multiobjetivo y curvas de convergencia.
     \item \textbf{Reproducibilidad, dependencias y manejo de módulos en Python:} \texttt{uv} para la gestión de entornos virtuales y dependencias, asegurando la portabilidad y reproducibilidad del código (\texttt{uv} permite generar archivos de requisitos específicos y fijar una versión de Python).
 \end{itemize}
+
+\subsubsection{Descripción del conjunto de datos}
+
+\textcolor{red}{TODO: poner una muestra, explicar modificaciones (mascaras añadidas p ej), estadísticas en el anexo (con imagenes...)}
+
+- las estadísticas más importantes ponerlas aqui (ratio draws)
+- explicar importancia de distintas profundidades. DECIDIR DEFINITIVAMENTE si el self play final lo voy a hacer con una mezcla o con uno solo.
+- hacer que jueguen entre ellos distintos modelos a distintas profundidades en caso de que use varias
+- explicar peculiaridades: quiescent positions, filtrado de posiciones repetidas, filtrado de posiciones tácticas puras. explicar lo de las coronaciones que solo son a una dama, y el ratio de victorias por color...
+- para esto habrá bastante informacion seguramente en las entradas de blog que escribí
+
+
+
+
+\subsection{Diseño experimental}
+
+\textcolor{red}{\textbf{TODO!: ESTO ES LO MÁS IMPORTANTE AHORA MISMO! TENGO QUE TENERLO ESCRITO PARA ESTRUCTURAR COMO LO VOY A HACER. FIJAR POCAS VARIACIONES. DECIDIR HIPERPARÁMETROS, MODEL RECIPE, CARACTERÍATICAS DE ENTRENAMIENTO COMO (ATTN BACKEND, BATCH SIZE, TAMAÑO TEST...) FIJOS Y TIRAR CON ELLOS}}
+
+\begin{itemize}
+    \item Primero, los experimentos supervisados:
+         \begin{itemize}
+            \item PRIMERO asegurar que no haya aleatoriedad en los experimentos! fijar todas las semillas posibles. puede que por cosas de paralelismo y cuda esto sea imposible de todos modos
+            \item tener en cuenta que 3 representaicones distintas para input y output resultan en muchas combinaciones. si hago ablación por separado, son 6. si hago combinaciones, son 9. si reduzco a 2 in y 2 out, son 4 por separado y 4 en combinación (?)
+            \item la ablacion puede que haya que hacerla con varias semillas
+            \item ahora si, el experimento. basicamente, con paramatros fijos, es cambiar los inputs y output como se menciona en cada uno, y luego ejecutar cada uno y comparar resultados: para mismos epochs, minima loss, maxima acc, tiempo de entrenamiento, convergencia alcanzada o no, velocidad de convergencia (pendiente de loss inicial?)... pensar esto un poco mejor de todos modos
+            \item estudio riguroso. es decir, usar significatividad estadística para las medidas! algun test de hipótesis de los que vi en faa o en estadçística  
+
+        \end{itemize}
+
+    \item Luego, PPO:
+        \begin{itemize}
+            \item glup, no tengo ni idea. primero estaria bien diseñar una forma de que 2 redes jueguen, y de que una juegue consigo misma (not the same thing)
+        \end{itemize}
+
+\end{itemize}
+
 
 \newpage
 % 5.12. Planificación y seguimiento
