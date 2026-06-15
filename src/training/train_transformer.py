@@ -79,6 +79,7 @@ def train_model(
         for epoch in range(config.num_epochs):
             model.train()
             total_loss, total_policy_loss, total_value_loss = 0.0, 0.0, 0.0
+            total_aux_loss = 0.0
 
             start_time = time.time()
 
@@ -91,7 +92,12 @@ def train_model(
 
                 optimizer.zero_grad()
 
-                policy_logits, value_result = model(features)
+                outputs = model(features)
+                # different outputs depending on the model heads
+                if len(outputs) == 5:
+                    policy_logits, value_result, aux_from, aux_to, aux_promo = outputs
+                else:
+                    policy_logits, value_result = outputs
 
                 # Apply legal moves masking
                 policy_logits = policy_logits.masked_fill(~masks, -1e9)
@@ -99,7 +105,21 @@ def train_model(
                 policy_loss = policy_criterion(policy_logits, moves)
                 value_loss = value_criterion(value_result.squeeze(-1), results.float())
 
-                loss = policy_loss + value_loss
+                # the loss for the factored policy is less straightforwad, but basically
+                # we just train each of the three factors (from, to, promo) independently
+                if len(outputs) == 5:
+                    target_from, target_to, target_promo = decode_move_indices(moves, features.device)
+                    
+                    from_loss = policy_criterion(aux_from, target_from)
+                    to_loss = policy_criterion(aux_to, target_to)
+                    promo_loss = policy_criterion(aux_promo, target_promo)
+                    aux_loss = from_loss + to_loss + promo_loss
+                    
+                    loss = policy_loss + value_loss + 0.5 * aux_loss
+                    total_aux_loss += aux_loss.item() * features.size(0)
+                
+                else:
+                    loss = policy_loss + value_loss
 
                 if debug_flag: # useful for debugging tensor dims
                     print("[DEBUG TENSOR SIZES]:")
@@ -108,6 +128,10 @@ def train_model(
                     print("\tvalue_result: ", value_result.shape)
                     print("\tmoves: ", moves.shape)
                     print("\tpolicy_logits: ", policy_logits.shape)
+                    if len(outputs) == 5:
+                        print("\taux_from: ", aux_from.shape)
+                        print("\taux_to: ", aux_to.shape)
+                        print("\taux_promo: ", aux_promo.shape)
                     print("\n")
                     debug_flag = False
 
@@ -135,6 +159,7 @@ def train_model(
             total_loss /= num_samples
             total_policy_loss /= num_samples
             total_value_loss /= num_samples
+            total_aux_loss /= num_samples
             train_losses.append((total_loss, total_policy_loss, total_value_loss))
 
             epoch_time = time.time() - start_time
@@ -150,7 +175,11 @@ def train_model(
                     results = results.to(config.device)
                     masks = masks.to(config.device)
 
-                    policy_logits, value_result = model(features)
+                    outputs = model(features)
+                    if len(outputs) == 5:
+                        policy_logits, value_result, _, _, _ = outputs
+                    else:
+                        policy_logits, value_result = outputs
                     
                     # get value loss and "correct" results (round)
                     value_loss = value_criterion(value_result.squeeze(-1), results.float())
@@ -182,12 +211,16 @@ def train_model(
                 writer.add_scalar("Loss/Train_Policy", total_policy_loss, epoch + 1)
                 writer.add_scalar("Loss/Train_Value", total_value_loss, epoch + 1)
                 writer.add_scalar("Loss/Val", val_loss, epoch + 1)
+                writer.add_scalar("Loss/Train_Aux", total_aux_loss, epoch + 1)
                 writer.add_scalar("Accuracy/Val_Move", val_move_acc * 100, epoch + 1)
                 writer.add_scalar("Accuracy/Val_Result", val_res_acc * 100, epoch + 1)
                 writer.add_scalar("Accuracy/Val_Mean", val_mean_acc * 100, epoch + 1)
 
             print(f"Epoch {epoch+1}/{config.num_epochs} [{epoch_time:.2f}s]")
-            print(f"  Train Loss: {total_loss:.4f} (Policy: {total_policy_loss:.4f}, Value: {total_value_loss:.4f})")
+            if total_aux_loss > 0:
+                print(f"  Train Loss: {total_loss:.4f} (Policy: {total_policy_loss:.4f}, Value: {total_value_loss:.4f}, Aux: {total_aux_loss:.4f})")
+            else:
+                print(f"  Train Loss: {total_loss:.4f} (Policy: {total_policy_loss:.4f}, Value: {total_value_loss:.4f})")
             print(f"  Val Loss:   {val_loss:.4f} | Val Move Acc: {val_move_acc*100:.2f}% | Val Result Acc: {val_res_acc*100:.2f}%")
 
             # Consider the best model as the one with the best mean acc
@@ -239,6 +272,7 @@ def train_model(
 
     return train_losses, val_losses, val_move_accs, val_res_accs, model
 
+
 def validation_test(model, val_loader, device="cuda"):
     """Tests the model on the validation set and prints the accuracy for moves and results."""
     model = model.to(device)
@@ -260,7 +294,11 @@ def validation_test(model, val_loader, device="cuda"):
             results = results.to(device)
             masks = masks.to(device)
             
-            policy_logits, value_result = model(features)
+            outputs = model(features)
+            if len(outputs) == 5:
+                policy_logits, value_result, _, _, _ = outputs
+            else:
+                policy_logits, value_result = outputs
             policy_logits = policy_logits.masked_fill(~masks, -1e9)
             
             # policy results
@@ -293,7 +331,8 @@ def test_model_holdout(model, train_config):
     test_dataset = MinichessTransformerDataset(
         test_path, 
         promotions=train_config.promotions, 
-        use_cache=True
+        use_cache=True,
+        representation=train_config.representation,
     )
     test_loader = DataLoader(
         test_dataset,
@@ -329,6 +368,8 @@ if __name__ == '__main__':
         profile_desc=args.profile_desc,
         profile_filename=args.profile_filename,
         subsample_ratio=args.subsample,
+        representation=args.representation,
+        use_factorized_policy=args.factorized_policy,
     )
     print(train_config)
 
@@ -345,9 +386,11 @@ if __name__ == '__main__':
         # careful with these, bad combinations can break things silently! 
         attn_backend=args.attn_backend,
         autocast_mode=args.autocast,
+        representation=train_config.representation,
+        use_factorized_policy=train_config.use_factorized_policy,
     )
     # TODO donde poner esto
-    torch.set_float32_matmul_precision('high')
+    torch.set_float32_matmul_precision('highest')
     
     print(encoder_config)
 
@@ -357,6 +400,7 @@ if __name__ == '__main__':
         promotions=train_config.promotions, 
         use_cache=train_config.use_cache,
         subsample_ratio=train_config.subsample_ratio,
+        representation=train_config.representation,
     )
 
     # Get dataloaders

@@ -17,6 +17,7 @@
     para saber si es importante representarlas (modificar archivo c++)
     - si los datos no son suficientes... probar a generar más y en el peor de los casos, investigar alguna alternativa como a) destilar otro modelo más grande b) probar contrastive learning c) resignarse a puro RL
 
+- pensar si compensa tunear dinamicamente el peso de cada perdida, ya que creo que a la hora de buscar las mejores jugadas la value orienta mejor
 
 ---
 
@@ -39,11 +40,27 @@ while they train:
 - updates in the docs:
   - add info about the dataset. annex holds figures with stats (escribir en la docu sobre el dataset. dar un sample. estadisticas en el anexo. explicar profundidades)
   - update the transformer architecture
+  - explain separately the backbone of the transformer and the head(s). 
+  - explain the encoding of the inputs for each model (mlp and transformer w/ and w/out inductive bias)
 
 - develop experiment metodology for checking what exactly inductive biases achieve, and if they verify the hypotheses
 
 - develop the "procedure": what i do, starting from data and going trough the steps in processing, creating the model, choosing params, training it, testing experiments...
 
+- train reproducibly and cleanly:
+    - first DECIDE ON THE DATA SPLIT USED! meaning: d2, d3 or d4 or merged? use this throughout the whole pipeline
+    - then SPLIT IN TRAIN/TEST!!!! hold test out and use for later proofs.
+    - small mlp simple encoding, big mlp simple encoding, small standard encoding, big standard encoding, small 2d + factored head encoding, big 2d + factored head encoding (consult previous results in mlp since its been long ago). pick adequate lr, stick with normal batch size and dtype
+    - compare, draw conclusions. prove statistical significance
+
+- while this is going, put up some tests:
+    - for dataloaders (?)
+    - for parsing, and parsing working in different modes (mlp, transformer, transformer with inductive bias). for 
+    - for forward passes of the models going right
+    - for training dry runs and stuff being correctly saved: tensorboard, directories, .pt files, test evaluation...
+    - for decode_move_indices and uci_to_index
+
+# ideas no tan urgentes
 
 -  ver si mejora el tiempo hacer non_blocking los tensores: https://docs.pytorch.org/tutorials/intermediate/pinmem_nonblock.html
 - idea! puede ser que flashattn no sea tan util por lo pequeño de la secuencia, y como se sacrifica precision en bfloat16, mejor usar float32 con efficientAttention o otro backend? refs:

@@ -66,6 +66,7 @@ def _parse_chunk(chunk_data, promotions, piece_map):
     num_samples = len(chunk_data)
     features_arr = np.full((num_samples, 25), 12, dtype=np.uint8)
     halfmoves_arr = np.zeros(num_samples, dtype=np.uint8)
+    active_players_arr = np.zeros(num_samples, dtype=np.uint8)
     moves_arr = np.zeros(num_samples, dtype=np.int16)
     masks_arr = np.zeros((num_samples, 704 if promotions else 600), dtype=np.bool_)
     results_arr = np.zeros(num_samples, dtype=np.float16)
@@ -75,10 +76,12 @@ def _parse_chunk(chunk_data, promotions, piece_map):
         fen_str = lines[0][4:].strip()
         parse_fen_to_features(fen_str, piece_map, features_arr[i])
         
-        # Parse halfmove clock
+        # Parse halfmove clock and active player
         parts = fen_str.split(" ")
         halfmove = int(parts[4]) if len(parts) > 4 else 0
         halfmoves_arr[i] = halfmove
+        active_player = 1 if len(parts) > 1 and parts[1] == 'w' else 0
+        active_players_arr[i] = active_player
         
         legal_moves = pyffish.legal_moves("gardner", fen_str, [])
         for m in legal_moves:
@@ -101,10 +104,10 @@ def _parse_chunk(chunk_data, promotions, piece_map):
             
         scores_arr[i] = float(lines[2][6:].strip())
         
-    return features_arr, halfmoves_arr, moves_arr, masks_arr, results_arr, scores_arr
+    return features_arr, halfmoves_arr, active_players_arr, moves_arr, masks_arr, results_arr, scores_arr
 
 @time_this
-def parse_minichess_text_file(file_path, promotions=False):
+def parse_minichess_text_file(file_path, promotions=False, return_active_player=False):
     """
     Parses the raw Minichess text file and returns the parsed numpy arrays.
 
@@ -154,13 +157,14 @@ def parse_minichess_text_file(file_path, promotions=False):
     # need this in order to pass arguments
     worker = partial(_parse_chunk, promotions=promotions, piece_map=piece_map)
     
-    features_list, halfmoves_list, moves_list, masks_list, results_list, scores_list = [], [], [], [], [], []
+    features_list, halfmoves_list, active_players_list, moves_list, masks_list, results_list, scores_list = [], [], [], [], [], [], []
     processed_samples = 0
     
     with mp.Pool(processes=mp.cpu_count()) as pool:
-        for f_arr, h_arr, m_arr, mask_arr, r_arr, s_arr in pool.imap(worker, chunk_generator()):
+        for f_arr, h_arr, ap_arr, m_arr, mask_arr, r_arr, s_arr in pool.imap(worker, chunk_generator()):
             features_list.append(f_arr)
             halfmoves_list.append(h_arr)
+            active_players_list.append(ap_arr)
             moves_list.append(m_arr)
             masks_list.append(mask_arr)
             results_list.append(r_arr)
@@ -176,9 +180,13 @@ def parse_minichess_text_file(file_path, promotions=False):
 
     features_arr = np.concatenate(features_list)
     halfmoves_arr = np.concatenate(halfmoves_list)
+    active_players_arr = np.concatenate(active_players_list)
     moves_arr = np.concatenate(moves_list)
     masks_arr = np.concatenate(masks_list)
     results_arr = np.concatenate(results_list)
     scores_arr = np.concatenate(scores_list)
 
-    return features_arr, halfmoves_arr, moves_arr, masks_arr, results_arr, scores_arr
+    if return_active_player:
+        return features_arr, halfmoves_arr, active_players_arr, moves_arr, masks_arr, results_arr, scores_arr
+    else:
+        return features_arr, halfmoves_arr, moves_arr, masks_arr, results_arr, scores_arr

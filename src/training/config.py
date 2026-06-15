@@ -29,6 +29,10 @@ class TrainingConfig:
     promotions: bool = True
     device: str = "cuda"
 
+    # representation and factorized policy settings
+    representation: str = "simple"
+    use_factorized_policy: bool = False
+
     # profiler stuff
     profile_name: str = None
     profile_steps: int = 50
@@ -40,7 +44,7 @@ class TrainingConfig:
         assert self.batch_size > 0, "batch_size must be positive"
         assert self.num_epochs > 0, "num_epochs must be positive"
         # Allow running with virtual paths that only have cached .pt versions
-        cache_pt = f"{self.data_path}.transformer.pt"
+        cache_pt = f"{self.data_path}.spatial.pt" if self.representation == "spatial" else f"{self.data_path}.transformer.pt"
         cache_promo = f"{self.data_path}.promo.pt"
         cache_reg = f"{self.data_path}.pt"
         exists = (os.path.exists(self.data_path) or 
@@ -63,6 +67,10 @@ def parse_args():
     parser.add_argument("--mlp_expand", type=int, default=4, help="MLP hidden dimension expand factor (default: 4)")
     parser.add_argument("--custom_init", action="store_true", help="Enable GPT-2 style weight initialization")
     parser.add_argument("--run_name", type=str, default=None, help="Descriptive name of the run to save metadata and logs")
+
+    # Representation and factorized policy options
+    parser.add_argument("--representation", type=str, choices=["simple", "spatial"], default="simple", help="Input representation style (default: simple)")
+    parser.add_argument("--factorized_policy", action="store_true", help="Enable factorized policy auxiliary heads and loss")
 
     # Profiler stuff
     parser.add_argument("--profile", type=str, default=None, help="Name of the profiling run (enables profiling)")
@@ -101,5 +109,7 @@ def generate_run_name(config: TrainingConfig, encoder_config: EncoderConfig) -> 
     depth = encoder_config.num_blocks if encoder_config else "unknown"
     lr = config.lr
     bs = config.batch_size
+    repr_str = config.representation
+    fact_str = "fact" if config.use_factorized_policy else "nofact"
     
-    return f"{timestamp}_{dataset_name}_{base_run}_dk{d_k}_depth{depth}_lr{lr:.2e}_bs{bs}"
+    return f"{timestamp}_{dataset_name}_{base_run}_{repr_str}_{fact_str}_dk{d_k}_depth{depth}_lr{lr:.2e}_bs{bs}"
