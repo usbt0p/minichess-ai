@@ -39,6 +39,7 @@ while they train:
 
 - updates in the docs:
   - add info about the dataset. annex holds figures with stats (escribir en la docu sobre el dataset. dar un sample. estadisticas en el anexo. explicar profundidades)
+  - explain the test holdout strategy and why it's important to separate games using plies.  
   - update the transformer architecture
   - explain separately the backbone of the transformer and the head(s). 
   - explain the encoding of the inputs for each model (mlp and transformer w/ and w/out inductive bias)
