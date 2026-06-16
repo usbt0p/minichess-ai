@@ -24,18 +24,15 @@
 
 # ORDEN DEL DIA
 
+- add scalar loss to the model (gradient norm, l2?) and gradient histogram (less frequent since it adds overhead, maybe in all of the first 5 epochs and then every 5?). remember to detach or call cpu
 
-now i need to:
-- tomarse en serio split train-val-test, hacer uno de test
-- fix some arquitecture recipes (big and small) and commit to them for now
-- fix hiperparams for them (lr, batch size, dtype and sdpa kernel)
-- just go ahead and train them fully, like 50 epochs for example (al entrenar: probar con todo mezclado VS. con primero depth 2 e incrementar)
+- run the new ablatable experiments on the 3090. verify statistical significance and hypotheses
 
-while they train:
+- get the README ready for making the repo public.
 
-- design coirrectly the inductive bias i mentioned for the input and output
-  - choose one and see how to use it
-  - see what needs to change in the code
+- implement and verify the script for running tournaments with multiple models
+
+- add .agents file and simple skills
 
 - updates in the docs:
   - add info about the dataset. annex holds figures with stats (escribir en la docu sobre el dataset. dar un sample. estadisticas en el anexo. explicar profundidades)
@@ -44,15 +41,9 @@ while they train:
   - explain separately the backbone of the transformer and the head(s). 
   - explain the encoding of the inputs for each model (mlp and transformer w/ and w/out inductive bias)
 
-- develop experiment metodology for checking what exactly inductive biases achieve, and if they verify the hypotheses
-
 - develop the "procedure": what i do, starting from data and going trough the steps in processing, creating the model, choosing params, training it, testing experiments...
 
-- train reproducibly and cleanly:
-    - first DECIDE ON THE DATA SPLIT USED! meaning: d2, d3 or d4 or merged? use this throughout the whole pipeline
-    - then SPLIT IN TRAIN/TEST!!!! hold test out and use for later proofs.
-    - small mlp simple encoding, big mlp simple encoding, small standard encoding, big standard encoding, small 2d + factored head encoding, big 2d + factored head encoding (consult previous results in mlp since its been long ago). pick adequate lr, stick with normal batch size and dtype
-    - compare, draw conclusions. prove statistical significance
+- tune lr and other adam hyperparams on highest batchsize possible on a 3090. refer to google tuning playbook. do for different d_k and depths. stick to it 
 
 - while this is going, put up some tests:
     - for dataloaders (?)
@@ -141,3 +132,24 @@ while they train:
 ## 0306
 
 - escribir a leandro sobre gpu server
+
+## 14-16/06
+now i need to:
+- tomarse en serio split train-val-test, hacer uno de test
+- fix some arquitecture recipes (big and small) and commit to them for now
+- fix hiperparams for them (lr, batch size, dtype and sdpa kernel)
+- just go ahead and train them fully, like 50 epochs for example (al entrenar: probar con todo mezclado VS. con primero depth 2 e incrementar)
+
+while they train:
+
+- design coirrectly the inductive bias i mentioned for the input and output
+  - choose one and see how to use it
+  - see what needs to change in the code
+
+- train reproducibly and cleanly:
+    - first DECIDE ON THE DATA SPLIT USED! meaning: d2, d3 or d4 or merged? use this throughout the whole pipeline
+    - then SPLIT IN TRAIN/TEST!!!! hold test out and use for later proofs.
+    - small mlp simple encoding, big mlp simple encoding, small standard encoding, big standard encoding, small 2d + factored head encoding, big 2d + factored head encoding (consult previous results in mlp since its been long ago). pick adequate lr, stick with normal batch size and dtype
+    - compare, draw conclusions. prove statistical significance
+
+- ^did the above, but bat. changing 2 independent varibales makes finding results and conclusions impossible. ablate one by one!!

@@ -31,7 +31,7 @@ class MinichessFfnDataset(Dataset):
 
         print(f">> Parsing dataset from text: {file_path}")
         features_arr, halfmoves_arr, moves_arr, masks_arr, results_arr, scores_arr = parse_minichess_text_file(
-            file_path, promotions=promotions
+            file_path, promotions=promotions # TODO quitar esto, siempre quereemos promo
         )
 
         self.features = torch.from_numpy(features_arr)
