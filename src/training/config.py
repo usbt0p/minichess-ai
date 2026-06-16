@@ -24,6 +24,7 @@ class TrainingConfig:
     subsample_ratio: float = 1.0
     custom_init: bool = False
     run_name: str = None
+    save_dir: str = None
     
     # these are defaults and should rarely change
     promotions: bool = True
@@ -67,6 +68,7 @@ def parse_args():
     parser.add_argument("--mlp_expand", type=int, default=4, help="MLP hidden dimension expand factor (default: 4)")
     parser.add_argument("--custom_init", action="store_true", help="Enable GPT-2 style weight initialization")
     parser.add_argument("--run_name", type=str, default=None, help="Descriptive name of the run to save metadata and logs")
+    parser.add_argument("--save_dir", type=str, default=None, help="Directory where run folders will be saved")
 
     # Representation and factorized policy options
     parser.add_argument("--representation", type=str, choices=["simple", "spatial"], default="simple", help="Input representation style (default: simple)")

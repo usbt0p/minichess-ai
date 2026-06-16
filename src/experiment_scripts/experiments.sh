@@ -138,6 +138,8 @@ python3 src/training/train_transformer.py data/gardner_depth4/d4_val.txt 64 \
 ###########################################
 
 ## BIg versions
+# i'll make this later, they are the same as the above but with bigger dimensions
+# this should be done in another machine since it will take a while
 
 # echo "Starting Standard Transformer Big (d_k=128, depth=6)"
 # python3 src/training/train_transformer.py data/gardner_depth4/d4_val.txt 128 \

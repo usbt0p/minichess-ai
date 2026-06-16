@@ -3,7 +3,7 @@ import os
 import sys
 import torch
 import torch.nn as nn
-from src.utils.utils import time_this, count_params
+from src.utils.utils import time_this, count_params, set_seed
 from src.models.dataloaders import get_dataloaders, MinichessTransformerDataset
 from src.models.transformerEncoder import MiniChessTransformerEncoder, EncoderConfig
 from src.training.config import TrainingConfig, parse_args, generate_run_name
@@ -12,7 +12,8 @@ from src.training.utils import (
     save_run_metadata,
     configure_profiler,
     estimate_training_time,
-    plot_loss
+    plot_loss,
+    decode_move_indices
 )
 
 @time_this
@@ -31,7 +32,7 @@ def train_model(
     run_dir = None
     writer = None
     if config.run_name:
-        run_dir = f"logs/exps/{config.run_name}"
+        run_dir = f"{config.save_dir}/{config.run_name}"
         save_run_metadata(run_dir, config, encoder_config, config.profile_desc or f"Experiment run: {config.run_name}")
         try:
             from torch.utils.tensorboard import SummaryWriter
@@ -348,6 +349,7 @@ def test_model_holdout(model, train_config):
 
 if __name__ == '__main__':
     args = parse_args()
+    set_seed(42)
     d_k = args.embed_dim
 
     # Initialize train configurations
@@ -355,7 +357,7 @@ if __name__ == '__main__':
         data_path=args.data_path,
         use_cache=True,
         batch_size=args.batch_size,
-        train_ratio=0.98,
+        train_ratio=0.97,
         num_workers=12,
         num_epochs=args.epochs,
         patience=4,
@@ -363,6 +365,7 @@ if __name__ == '__main__':
         weight_decay=2e-5,
         custom_init=args.custom_init,
         run_name=args.run_name,
+        save_dir=args.save_dir,
         profile_name=args.profile,
         profile_steps=args.profile_steps,
         profile_desc=args.profile_desc,
@@ -425,8 +428,8 @@ if __name__ == '__main__':
     )
 
     # Optional loss plotting
-    run_dir = f"logs/exps/{train_config.run_name}" if train_config.run_name else None
-    plot_loss(train_losses, val_losses, val_move_accs, val_res_accs, save_dir=run_dir)
+    #run_dir = f"{train_config.save_dir}/{train_config.run_name}" if train_config.run_name else None
+    # plot_loss(train_losses, val_losses, val_move_accs, val_res_accs, save_dir=run_dir)
     
     # Use best model for final validation/test validation
     # best_model_path = os.path.join(run_dir, "best_model.pth") if run_dir else "best_model.pth"
@@ -434,6 +437,8 @@ if __name__ == '__main__':
     #     model.load_state_dict(torch.load(best_model_path, map_location=train_config.device))
     #     validation_test(model, val_loader, device=train_config.device)
     #     test_model_holdout(model, train_config)
+
+    print("\n"*3, "/\\"*10, "\n"*3)
 
     '''
 >> Loading cached dataset from data/gardner_depth2/d2_with_promotions.txt.transformer.pt...

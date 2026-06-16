@@ -2,11 +2,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+import os
 
 import matplotlib.pyplot as plt
 
 import time
-from src.utils.utils import time_this, count_params
+from src.utils.utils import time_this, count_params, set_seed
 
 from src.models.dataloaders import get_dataloaders, MinichessFfnDataset
 
@@ -27,7 +28,7 @@ class BaselineNet(nn.Module):
     TODO promotion still has no encoding.
     """
     
-    def __init__(self, input_size=325, hidden_size=512, policy_size=704, result_mode= "classification"):
+    def __init__(self, input_size=325, hidden_size=512, policy_size=704, result_mode="regression"):
         super().__init__()
 
         self.fc1 = nn.Linear(input_size, hidden_size)
@@ -86,6 +87,7 @@ def train_model(
     lr=2e-3,
     weight_decay=2e-5,
     device="cuda" if torch.cuda.is_available() else "cpu",
+    run_dir=None,
 ):
     '''
     - Patience: number of epochs worsened validation loss until early stopping
@@ -100,7 +102,15 @@ def train_model(
     else:
         value_result_criterion = nn.MSELoss()
 
-    # TODO wandb logging after everything else is done
+    # TensorBoard setup
+    writer = None
+    if run_dir:
+        os.makedirs(run_dir, exist_ok=True)
+        try:
+            from torch.utils.tensorboard import SummaryWriter
+            writer = SummaryWriter(log_dir=run_dir)
+        except Exception as e:
+            print(f"[WARNING] Could not initialize TensorBoard writer: {e}")
 
     train_losses = [] # list of train loss per epoch, for all the three losses
     val_losses = []
@@ -114,6 +124,7 @@ def train_model(
     
     best_move_acc = float("-inf")
     best_result_acc = float("-inf")
+    best_epoch = 1
 
     for epoch in range(num_epochs):
         model.train()
@@ -129,20 +140,21 @@ def train_model(
             policy_logits, value_result = model(features, masks)
 
             if debug_flag: # useful for debugging tensor dims
+                print("features: ", features.shape)
                 print("results: ", results.shape)
                 print("value_result: ", value_result.shape)
                 print("moves: ", moves.shape)
                 print("policy_logits: ", policy_logits.shape)
+                print("masks: ", masks.shape)
                 print("\n")
                 debug_flag = False
 
             policy_loss = policy_criterion(policy_logits, moves)
             if model.result_mode == "classification":
-                value_result_loss = value_result_criterion(value_result, results.long())
+                targets = results.long() + 1
+                value_result_loss = value_result_criterion(value_result, targets)
             else:
                 value_result_loss = value_result_criterion(value_result.squeeze(-1), results.float())
-            #value_score_loss = value_score_criterion(value_score, scores)
-            # value_loss = value_result_loss + value_score_loss
 
             loss = policy_loss + value_result_loss
             loss.backward()
@@ -171,9 +183,10 @@ def train_model(
                 policy_loss = policy_criterion(policy_logits, moves)
                 
                 if model.result_mode == "classification":
-                    value_result_loss = value_result_criterion(value_result, results.long())
+                    targets = results.long() + 1
+                    value_result_loss = value_result_criterion(value_result, targets)
                     _, predicted_results = torch.max(value_result, 1)
-                    correct_results += (predicted_results == results).sum().item()
+                    correct_results += (predicted_results == targets).sum().item()
                 else:
                     value_result_loss = value_result_criterion(value_result.squeeze(-1), results.float())
                     # For regression, mapping [-1, 1] back to class integers to check correctness
@@ -199,12 +212,23 @@ def train_model(
         print(f"  Train Loss: {total_loss:.4f} (Policy: {total_policy_loss:.4f}, Value: {total_value_loss:.4f})")
         print(f"  Val Loss:   {val_loss:.4f} | Val Move Acc: {val_move_acc*100:.2f}% | Val Result Acc: {val_res_acc*100:.2f}%")
         
+        # Log to TensorBoard
+        if writer:
+            writer.add_scalar("Loss/Train", total_loss, epoch + 1)
+            writer.add_scalar("Loss/Train_Policy", total_policy_loss, epoch + 1)
+            writer.add_scalar("Loss/Train_Value", total_value_loss, epoch + 1)
+            writer.add_scalar("Loss/Val", val_loss, epoch + 1)
+            writer.add_scalar("Accuracy/Val_Move", val_move_acc * 100, epoch + 1)
+            writer.add_scalar("Accuracy/Val_Result", val_res_acc * 100, epoch + 1)
+            writer.add_scalar("Accuracy/Val_Mean", (val_move_acc + val_res_acc) / 2 * 100, epoch + 1)
+
         # consider the best model as the one with the best mean acc
         if (val_move_acc + val_res_acc)/2 > (best_move_acc + best_result_acc)/2:
             best_move_acc = val_move_acc
             best_result_acc = val_res_acc
             best_epoch = epoch + 1
-            torch.save(model.state_dict(), "best_model.pth")
+            best_model_path = os.path.join(run_dir, "best_model.pt") if run_dir else "best_model.pth"
+            torch.save(model.state_dict(), best_model_path)
             
         # early stopping based on validation loss
         if patience > 0:
@@ -221,10 +245,27 @@ def train_model(
     print(f"Best move accuracy: {best_move_acc*100:.2f}%")
     print(f"Best result accuracy: {best_result_acc*100:.2f}%")
 
+    if writer:
+        writer.close()
+
+    # Save metrics summary
+    if run_dir:
+        import json
+        metrics = {
+            "best_epoch": best_epoch,
+            "best_move_accuracy": best_move_acc,
+            "best_result_accuracy": best_result_acc,
+            "best_mean_accuracy": (best_move_acc + best_result_acc) / 2,
+        }
+        metrics_path = os.path.join(run_dir, "metrics_summary.json")
+        with open(metrics_path, "w") as f:
+            json.dump(metrics, f, indent=4)
+        print(f"[INFO] Metrics summary saved to '{metrics_path}'")
+
     return train_losses, val_losses, val_move_accs, val_res_accs, model
 
 
-def plot_loss(train_losses, val_losses, val_move_accs, val_res_accs):
+def plot_loss(train_losses, val_losses, val_move_accs, val_res_accs, save_dir=None):
     plt.figure(figsize=(10, 5))
     plt.plot(range(len(train_losses)), [l[0] for l in train_losses], label='Train Loss')
     plt.plot(range(len(val_losses)), val_losses, label='Val Loss')
@@ -237,8 +278,9 @@ def plot_loss(train_losses, val_losses, val_move_accs, val_res_accs):
     plt.ylabel('Loss')
     plt.title('Training and Validation Loss')
     plt.legend()
-    plt.savefig('train_loss.png')
-    plt.show()
+    plot_path = os.path.join(save_dir, 'train_loss.png') if save_dir else 'train_loss.png'
+    plt.savefig(plot_path)
+    plt.close()
     
     plt.figure(figsize=(10, 5))
     plt.plot(range(len(val_move_accs)), val_move_accs, label='Val Move Acc')
@@ -247,8 +289,9 @@ def plot_loss(train_losses, val_losses, val_move_accs, val_res_accs):
     plt.ylabel('Accuracy')
     plt.title('Validation Accuracy')
     plt.legend()
-    plt.savefig('val_accuracy.png')
-    plt.show()
+    plot_path = os.path.join(save_dir, 'val_accuracy.png') if save_dir else 'val_accuracy.png'
+    plt.savefig(plot_path)
+    plt.close()
 
 def validation_test(model, val_loader, device="cuda"):
     model = model.to(device)
@@ -267,8 +310,13 @@ def validation_test(model, val_loader, device="cuda"):
             correct_moves += (predicted_moves == moves).sum().item()
             total_val_samples += moves.size(0)
 
-            _, predicted_results = torch.max(value_result, 1)
-            correct_results += (predicted_results == results).sum().item()
+            if model.result_mode == "classification":
+                _, predicted_results = torch.max(value_result, 1)
+                targets = results.long() + 1
+            else:
+                predicted_results = torch.round(value_result.squeeze(-1))
+                targets = results
+            correct_results += (predicted_results == targets).sum().item()
     print("\n\nValidation test results:\n")
     print("\tTotal samples: ", total_val_samples)
     print("\tMove Accuracy: ", correct_moves / total_val_samples)
@@ -276,25 +324,59 @@ def validation_test(model, val_loader, device="cuda"):
 
 
 if __name__ == '__main__':
-    import sys
-
-    data_path = sys.argv[1] if len(sys.argv) > 1 else "data/training_data_sample.txt"
+    import argparse
+    import json
+    set_seed(42)
     
-    model = BaselineNet(result_mode="classification").to("cuda")
+    parser = argparse.ArgumentParser(description="Train MLP Baseline for Minichess")
+    parser.add_argument("data_path", type=str, help="Path to the dataset file")
+    parser.add_argument("--hidden_size", type=int, default=512, help="Hidden layer size")
+    parser.add_argument("--lr", type=float, default=2e-3, help="Learning rate")
+    parser.add_argument("--batch_size", type=int, default=512, help="Batch size")
+    parser.add_argument("--epochs", type=int, default=10, help="Number of training epochs")
+    parser.add_argument("--run_name", type=str, default="mlp_baseline", help="Run name")
+    parser.add_argument("--save_dir", type=str, default="experiments/exp1_mlp_transf", help="Base directory to save checkpoints and metrics")
+    parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu", help="Device to train on")
+    parser.add_argument("--result_mode", type=str, choices=["classification", "regression"], default="regression", help="Result head type (default: regression)")
+    args = parser.parse_args()
+    
+    run_dir = os.path.join(args.save_dir, args.run_name)
+    os.makedirs(run_dir, exist_ok=True)
+    
+    # Save config
+    config_dict = {
+        "hidden_size": args.hidden_size,
+        "lr": args.lr,
+        "batch_size": args.batch_size,
+        "epochs": args.epochs,
+        "run_name": args.run_name,
+        "data_path": args.data_path,
+        "result_mode": args.result_mode,
+    }
+    config_path = os.path.join(run_dir, "config.json")
+    with open(config_path, "w") as f:
+        json.dump(config_dict, f, indent=4)
+    print(f"[INFO] Config saved to '{config_path}'")
+    
+    model = BaselineNet(hidden_size=args.hidden_size, result_mode=args.result_mode).to(args.device)
     count_params(model)
-
+    
     # load dataset
-    dataset = MinichessFfnDataset(data_path, promotions=True, use_cache=True, time=True)
-
+    dataset = MinichessFfnDataset(args.data_path, promotions=True, use_cache=True, time=True)
+    
     # get dataloaders
     train_loader, val_loader = get_dataloaders(
-        dataset, batch_size=256, train_ratio=0.98, num_workers=12, time=True)
-
-
-    train_losses, val_losses, val_move_accs, val_res_accs, model = train_model(
-        model, train_loader, val_loader, num_epochs=10, patience=4, time=True
+        dataset, batch_size=args.batch_size, train_ratio=0.97, num_workers=12, time=True
     )
-    #plot_loss(train_losses, val_losses, val_move_accs, val_res_accs)
-    # use best model for validation test
-    model.load_state_dict(torch.load("best_model.pth"))
-    validation_test(model, val_loader, device="cuda")
+    
+    train_losses, val_losses, val_move_accs, val_res_accs, model = train_model(
+        model, train_loader, val_loader, num_epochs=args.epochs, patience=4, lr=args.lr, device=args.device, run_dir=run_dir
+    )
+    
+    #plot_loss(train_losses, val_losses, val_move_accs, val_res_accs, save_dir=run_dir)
+    
+    # load best model for validation test
+    best_model_path = os.path.join(run_dir, "best_model.pt")
+    if os.path.exists(best_model_path):
+        model.load_state_dict(torch.load(best_model_path, map_location=args.device))
+        validation_test(model, val_loader, device=args.device)

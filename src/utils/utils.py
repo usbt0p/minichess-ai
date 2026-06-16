@@ -109,6 +109,8 @@ def count_params(net, module_structure=False, perlayer=False):
 def set_seed(seed):
     """Set seed for reproducibility.
     """
+    import random
+    random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
     np.random.seed(seed)
