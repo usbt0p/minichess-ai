@@ -1,6 +1,8 @@
 import os
 import time
+import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 class TensorBoardLogger:
     """
@@ -18,19 +20,55 @@ class TensorBoardLogger:
             except Exception as e:
                 print(f"[WARNING] Could not initialize TensorBoard writer: {e}")
 
-    def log_epoch(self, epoch: int, metrics: dict):
+    def log_epoch(
+        self,
+        epoch: int,
+        metrics: dict,
+        val_policy_activations=None,
+        val_value_activations=None,
+        model=None
+    ):
         if self.writer is None:
             return
+
+        all_policy_logits = None
+        all_value_preds = None
+
+        # compute activation statistics if provided
+        if val_policy_activations and val_value_activations:
+            all_policy_logits = torch.cat(val_policy_activations, dim=0)
+            all_value_preds = torch.cat(val_value_activations, dim=0)
+            
+            # Compute policy probabilities
+            all_policy_probs = F.softmax(all_policy_logits, dim=-1)
+            
+            # policy confidence: average top-1 probability over all samples
+            mean_max_prob = all_policy_probs.max(dim=-1)[0].mean().item()
+            # for checking value prediction variability 
+            mean_val_pred = all_value_preds.mean().item() 
+            std_val_pred = all_value_preds.std().item()
+
+            metrics["Stats/Policy_Confidence"] = mean_max_prob
+            metrics["Stats/Value_Prediction_Mean"] = mean_val_pred
+            metrics["Stats/Value_Prediction_Std"] = std_val_pred
+
+        # log all scalar metrics
         for tag, value in metrics.items():
             self.writer.add_scalar(tag, value, epoch)
 
-    def log_gradient_histograms(self, epoch: int, model: nn.Module):
-        if self.writer is None:
-            return
-        for name, param in model.named_parameters():
-            if param.grad is not None:
-                # Detach and copy to CPU to avoid memory/device leakage
-                self.writer.add_histogram(f"Gradients/{name}", param.grad.detach().cpu(), epoch)
+        # log histograms on first 5 epochs, and then every 5 epochs
+        # more detailed first 5 epochs for seeing how learning starts and initialization issues
+        if (epoch <= 5) or (epoch % 5 == 0):
+            # gradient histograms
+            if model is not None:
+                for name, param in model.named_parameters():
+                    if param.grad is not None:
+                        self.writer.add_histogram(f"Gradients/{name}", param.grad.detach().cpu(), epoch)
+
+            # activation histograms
+            if all_policy_logits is not None and all_value_preds is not None:
+                self.writer.add_histogram("Activations/Policy_Probabilities", all_policy_probs.detach().cpu(), epoch)
+                self.writer.add_histogram("Activations/Value_Predictions", all_value_preds.detach().cpu(), epoch)
 
     def close(self):
         if self.writer is not None:

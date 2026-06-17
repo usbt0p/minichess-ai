@@ -3,6 +3,7 @@ import os
 import sys
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from src.utils.utils import time_this, count_params, set_seed
 from src.models.dataloaders import get_dataloaders, MinichessTransformerDataset
@@ -75,6 +76,10 @@ def train_model(
 
     try:
         for epoch in range(config.num_epochs):
+            
+            ###########################################
+            ##            Training phase             ##
+            ###########################################
             model.train()
             total_loss, total_policy_loss, total_value_loss = 0.0, 0.0, 0.0
             total_aux_loss = 0.0
@@ -164,9 +169,12 @@ def train_model(
 
             epoch_time = time.time() - start_time
 
-            # Validation phase
-            model.eval()
+            ###########################################
+            ##           Validation phase            ##
+            ###########################################
+            model.eval() # for dropout and batchnorm
             val_loss, correct_moves, correct_results, total_val_samples = 0.0, 0, 0, 0
+            val_policy_activations, val_value_activations = [], []
 
             with torch.no_grad():
                 for features, moves, results, scores, masks in val_loader:
@@ -181,13 +189,19 @@ def train_model(
                     else:
                         policy_logits, value_result = outputs
                     
+                    # Apply move masking before logging or computing loss
+                    policy_logits = policy_logits.masked_fill(~masks, -1e9)
+                    
+                    # store activations on CPU to avoid GPU memory growth
+                    val_policy_activations.append(policy_logits.detach().cpu())
+                    val_value_activations.append(value_result.detach().cpu())
+                    
                     # get value loss and "correct" results (round)
                     value_loss = value_criterion(value_result.squeeze(-1), results.float())
                     predicted_results = torch.round(value_result.squeeze(-1))
                     correct_results += (predicted_results == results).sum().item()
 
                     # get policy logits, loss and correct moves for accuracy
-                    policy_logits = policy_logits.masked_fill(~masks, -1e9)
                     policy_loss = policy_criterion(policy_logits, moves)
                     _, predicted_moves = torch.max(policy_logits, 1)
                     correct_moves += (predicted_moves == moves).sum().item()
@@ -205,23 +219,24 @@ def train_model(
             val_move_accs.append(val_move_acc)
             val_res_accs.append(val_res_acc)
 
-            # TensorBoard logging of metrics
-            metrics = {
-                "Loss/Train": total_loss,
-                "Loss/Train_Policy": total_policy_loss,
-                "Loss/Train_Value": total_value_loss,
-                "Loss/Val": val_loss,
-                "Loss/Train_Aux": total_aux_loss,
-                "Loss/Grad_Norm": avg_grad_norm,
-                "Accuracy/Val_Move": val_move_acc * 100,
-                "Accuracy/Val_Result": val_res_acc * 100,
-                "Accuracy/Val_Mean": val_mean_acc * 100,
-            }
-            tb_logger.log_epoch(epoch + 1, metrics)
-
-            # Log gradient histograms for the first 5 epochs, and then every 5 epochs
-            if (epoch + 1 <= 5) or ((epoch + 1) % 5 == 0):
-                tb_logger.log_gradient_histograms(epoch + 1, model)
+            # TensorBoard logging of metrics and histograms
+            tb_logger.log_epoch(
+                epoch=epoch + 1,
+                metrics={
+                    "Loss/Train": total_loss,
+                    "Loss/Train_Policy": total_policy_loss,
+                    "Loss/Train_Value": total_value_loss,
+                    "Loss/Val": val_loss,
+                    "Loss/Train_Aux": total_aux_loss,
+                    "Loss/Grad_Norm": avg_grad_norm,
+                    "Accuracy/Val_Move": val_move_acc * 100,
+                    "Accuracy/Val_Result": val_res_acc * 100,
+                    "Accuracy/Val_Mean": val_mean_acc * 100,
+                },
+                val_policy_activations=val_policy_activations,
+                val_value_activations=val_value_activations,
+                model=model
+            )
 
             print(f"Epoch {epoch+1}/{config.num_epochs} [{epoch_time:.2f}s]")
             if total_aux_loss > 0:

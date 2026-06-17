@@ -336,7 +336,7 @@ class ValueHead(nn.Module):
     """Simple feedforward value head. 
     Projects the CLS token to a scalar value.
     """
-    def __init__(config: EncoderConfig):
+    def __init__(self, config: EncoderConfig):
         super().__init__()
         # TODO decide if switch this to a simple linear
         self.value_head = nn.Sequential(
@@ -349,7 +349,7 @@ class ValueHead(nn.Module):
                 config.mlp_expand_factor * config.embed_dim, config.value_size
             ),
             torch.nn.Tanh()
-        ),
+        )
 
     def forward(self, cls_token):
         return self.value_head(cls_token)
