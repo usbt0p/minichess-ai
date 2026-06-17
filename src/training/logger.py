@@ -1,4 +1,6 @@
-import torch.utils.tensorboard as tb
+import os
+import time
+import torch.nn as nn
 
 class TensorBoardLogger:
     """
@@ -10,6 +12,7 @@ class TensorBoardLogger:
         self.writer = None
         if run_dir:
             try:
+                import torch.utils.tensorboard as tb # circular import...
                 self.writer = tb.SummaryWriter(log_dir=run_dir)
                 print(f"[INFO] TensorBoard SummaryWriter initialized at: '{run_dir}'")
             except Exception as e:
@@ -77,7 +80,7 @@ def save_run_metadata(trace_dir, config, encoder_config, description):
     except Exception as e:
         print(f"[WARNING] Could not write metadata to TensorBoard: {e}")
 
-def generate_run_name(config: TrainingConfig, encoder_config: EncoderConfig) -> str:
+def generate_run_name(config: 'TrainingConfig', encoder_config: 'EncoderConfig') -> str:
     """Generates a normalized, unique, and descriptive run name for the experiment."""
     # Base dataset name from path
     dataset_name = "data"
