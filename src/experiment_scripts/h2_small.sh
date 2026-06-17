@@ -24,8 +24,9 @@ python3 src/training/train_transformer.py data/gardner_depth4/d4_val.txt 64 \
     --autocast none \
     --lr 0.0030 \
     --representation simple \
-    --run_name trnsf_d4_dk64_depth3_simple \
+    --run_name h2_abl \
     --save_dir experiments/h2_ablation_1 \
+    2>&1 \
     | tee experiments/h2_ablation_1/trnsf_d4_dk64_depth3_simple.log
 
 
@@ -40,8 +41,9 @@ python3 src/training/train_transformer.py data/gardner_depth4/d4_val.txt 64 \
     --lr 0.0030 \
     --representation simple \
     --factorized_policy \
-    --run_name trnsf_d4_dk64_depth3_facted \
+    --run_name h2_abl \
     --save_dir experiments/h2_ablation_1 \
+    2>&1 \
     | tee experiments/h2_ablation_1/trnsf_d4_dk64_depth3_facted.log
 
 # ----------------- Spatial Transformer + simple Head -----------------
@@ -54,8 +56,9 @@ python3 src/training/train_transformer.py data/gardner_depth4/d4_val.txt 64 \
     --autocast none \
     --lr 0.0030 \
     --representation spatial \
-    --run_name trnsf_d4_dk64_depth3_spatial_simple \
+    --run_name h2_abl \
     --save_dir experiments/h2_ablation_1 \
+    2>&1 \
     | tee experiments/h2_ablation_1/trnsf_d4_dk64_depth3_spatial_simple.log
 
 # ----------------- Spatial Transformer + Factorized Head -----------------
@@ -69,6 +72,7 @@ python3 src/training/train_transformer.py data/gardner_depth4/d4_val.txt 64 \
     --lr 0.0030 \
     --representation spatial \
     --factorized_policy \
-    --run_name trnsf_d4_dk64_depth3_spatial_fact \
+    --run_name h2_abl \
     --save_dir experiments/h2_ablation_1 \
+    2>&1 \
     | tee experiments/h2_ablation_1/trnsf_d4_dk64_depth3_spatial_fact.log

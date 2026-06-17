@@ -12,6 +12,7 @@ python3 src/models/fnnPromotionMasking.py data/gardner_depth4/d4_val.txt \
     --epochs 50 \
     --run_name mlp_small \
     --save_dir experiments/exp1_mlp_transf \
+    2>&1 \
     | tee experiments/exp1_mlp_transf/mlp_small.log
 
 echo "Starting MLP Big baseline (hidden_size=1024)"
@@ -22,4 +23,5 @@ python3 src/models/fnnPromotionMasking.py data/gardner_depth4/d4_val.txt \
     --epochs 50 \
     --run_name mlp_big \
     --save_dir experiments/exp1_mlp_transf \
+    2>&1 \
     | tee experiments/exp1_mlp_transf/mlp_big.log
