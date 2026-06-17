@@ -89,6 +89,8 @@ def _parse_chunk(chunk_data, promotions, piece_map):
             masks_arr[i, m_idx] = True                           
 
         move = lines[1][5:].strip()
+        # pyffish doesn't give us promotions in gardner. so we do it ourselves. 
+        # it's reasonable to assume promotion to queen is always the best one, except in niche cases
         if promotions and len(move) == 4:
             file_from = ord(move[0]) - ord("a")
             rank_from = int(move[1]) - 1

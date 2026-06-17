@@ -1,32 +1,10 @@
 
-- posiblemente sea buena idea hacer que la red supervisada prediga tammbien la score? sigue los targets del paper 
-
-- datos en uso: puedo usar más seguramente. no setoy usando los plys, ni el turno, y puede que haya mas
-
-- el curriculum learning se puede hacer contra otros modelos "decentes" como por ejemplo full ataque, o una ponderacion simple de (mate, jaque, captura, desarrollo)
-
-- abstraer cosas repetitivas del trainign pipeline
-- asegurar una validación correcta sin contaminación
-- añadir test split al dataloader
-
-# cambios en el stats.cpp
-
-- vamos a hacer caso a karpathy. revisar los datos primero; comprobar duplicados, unir los distintos datasets y ver cuantos tengo realmente
-    - parser del dataset en binario
-    - analizar edge cases de los datos: ver cuantas promotions hay y como están distribuidas
-    para saber si es importante representarlas (modificar archivo c++)
-    - si los datos no son suficientes... probar a generar más y en el peor de los casos, investigar alguna alternativa como a) destilar otro modelo más grande b) probar contrastive learning c) resignarse a puro RL
-
-- pensar si compensa tunear dinamicamente el peso de cada perdida, ya que creo que a la hora de buscar las mejores jugadas la value orienta mejor
-
----
-
-
 # ORDEN DEL DIA
 
-- add scalar loss to the model (gradient norm, l2?) and gradient histogram (less frequent since it adds overhead, maybe in all of the first 5 epochs and then every 5?). remember to detach or call cpu
+- escribir a david con experimentos hechos y pedir consejo sobre ablaciones. igual mejor opensourcear repo para q lo vea todo
 
-- run the new ablatable experiments on the 3090. verify statistical significance and hypotheses
+- verify statistical significance and hypotheses: figure out if more runs with different random seeds are needed, and what statistical test is best for proving significance
+    - find out the cause of the error in the 3090. it dont support torch.compile, but error is
 
 - get the README ready for making the repo public.
 
@@ -34,7 +12,7 @@
 
 - add .agents file and simple skills
 
-- check if grad clipping might be fucking me up
+- mejora de performance: añadir cabeza categórica de valor. ver si mejora. igual quitar dropout  y subir grad clipping...
 
 - updates in the docs:
   - add info about the dataset. annex holds figures with stats (escribir en la docu sobre el dataset. dar un sample. estadisticas en el anexo. explicar profundidades)
@@ -56,6 +34,7 @@
 
 # ideas no tan urgentes
 
+
 -  ver si mejora el tiempo hacer non_blocking los tensores: https://docs.pytorch.org/tutorials/intermediate/pinmem_nonblock.html
 - idea! puede ser que flashattn no sea tan util por lo pequeño de la secuencia, y como se sacrifica precision en bfloat16, mejor usar float32 con efficientAttention o otro backend? refs:
     - https://docs.pytorch.org/tutorials/intermediate/scaled_dot_product_attention_tutorial.html
@@ -69,6 +48,7 @@
     - more residuals never hurt! figure out where they might be needed
 - unit test the dataset parser! if it's not tested we cant trust it
 
+- pensar si compensa tunear dinamicamente el peso de cada perdida, ya que creo que a la hora de buscar las mejores jugadas la value orienta mejor (homocedastic whatever loss)
 
 
 
@@ -155,3 +135,14 @@ while they train:
     - compare, draw conclusions. prove statistical significance
 
 - ^did the above, but bat. changing 2 independent varibales makes finding results and conclusions impossible. ablate one by one!!
+
+## 1706
+- ran the exps for the ablation thing
+
+- add scalar loss to the model (gradient norm, l2?) and gradient histogram (less frequent since it adds overhead, maybe in all of the first 5 epochs and then every 5?). remember to detach or call cpu
+
+- also log head activaation outputs
+
+- run the new ablatable experiments on the 3090. 
+
+-  refactor a bunch of stuff from train
