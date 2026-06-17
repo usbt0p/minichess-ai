@@ -332,6 +332,28 @@ class MatrixPolicyHead(nn.Module):
 
         return torch.cat([base_moves, promo_logits], dim=1)  # (B, 704)
 
+class ValueHead(nn.Module):
+    """Simple feedforward value head. 
+    Projects the CLS token to a scalar value.
+    """
+    def __init__(config: EncoderConfig):
+        super().__init__()
+        # TODO decide if switch this to a simple linear
+        self.value_head = nn.Sequential(
+            nn.Linear(
+                config.embed_dim, config.mlp_expand_factor * config.embed_dim
+            ),
+            nn.GELU(),
+            nn.Dropout(config.mlp_dropout), # TODO CAREFUL WITH THIS DURING PPO, SET TO model.eval() !!!!
+            nn.Linear(
+                config.mlp_expand_factor * config.embed_dim, config.value_size
+            ),
+            torch.nn.Tanh()
+        ),
+
+    def forward(self, cls_token):
+        return self.value_head(cls_token)
+
 
 class MiniChessTransformerEncoder(nn.Module):
     """
@@ -397,21 +419,11 @@ class MiniChessTransformerEncoder(nn.Module):
             self.backbone.col_pos_embed = nn.Embedding(5, config.embed_dim)
             self.cls_pos_embed = nn.Parameter(torch.zeros(1, 1, config.embed_dim))
 
+        # the main heads live here. additional auxilary heads get added dinamically if specified
         self.heads = nn.ModuleDict(
             dict(
                 policy=MatrixPolicyHead(config),
-                # TODO decide if switch this to a simple linear
-                value=nn.Sequential(
-                    nn.Linear(
-                        config.embed_dim, config.mlp_expand_factor * config.embed_dim
-                    ),
-                    nn.GELU(),
-                    nn.Dropout(config.mlp_dropout), # TODO CAREFUL WITH THIS DURING PPO, SET TO model.eval() !!!!
-                    nn.Linear(
-                        config.mlp_expand_factor * config.embed_dim, config.value_size
-                    ),
-                    torch.nn.Tanh()
-                ),
+                value=ValueHead(config),
             )
         )
         

@@ -15,7 +15,7 @@ from src.training.utils import (
     plot_loss,
     decode_move_indices
 )
-from src.training.logging import TensorBoardLogger, generate_run_name, save_run_metadata
+from src.training.logger import TensorBoardLogger, generate_run_name, save_run_metadata
 
 @time_this
 def train_model(
@@ -122,14 +122,11 @@ def train_model(
 
                 if debug_flag: # useful for debugging tensor dims
                     print("[DEBUG TENSOR SIZES]:")
-                    print("\tfeatures (flat_state): ", features.shape)
-                    print("\tresults: ", results.shape)
-                    print("\tvalue_result: ", value_result.shape)
-                    print("\tmoves: ", moves.shape)
+                    print("\tfeatures (flat_state): ", features.shape); print("\tresults: ", results.shape)
+                    print("\tvalue_result: ", value_result.shape); print("\tmoves: ", moves.shape)
                     print("\tpolicy_logits: ", policy_logits.shape)
                     if len(outputs) == 5:
-                        print("\taux_from: ", aux_from.shape)
-                        print("\taux_to: ", aux_to.shape)
+                        print("\taux_from: ", aux_from.shape); print("\taux_to: ", aux_to.shape); 
                         print("\taux_promo: ", aux_promo.shape)
                     print("\n")
                     debug_flag = False
@@ -137,8 +134,10 @@ def train_model(
                 loss.backward()
 
                 # Gradient clipping for Transformer block stability
-                grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-                epoch_grad_norms.append(grad_norm.item() if isinstance(grad_norm, torch.Tensor) else float(grad_norm))
+                grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0) # TODO hmmmmm maybe increase
+                epoch_grad_norms.append(
+                    grad_norm.item() if isinstance(grad_norm, torch.Tensor) else float(grad_norm)
+                    )
 
                 optimizer.step()
 
@@ -444,4 +443,4 @@ if __name__ == '__main__':
     #     validation_test(model, val_loader, device=train_config.device)
     #     test_model_holdout(model, train_config)
 
-    print("\n"*3, "/\\"*10, "\n"*3) # this is just for the experiments
+    print("\n"*3, "/\\"*40, "\n"*3) # this is just for the experiments
