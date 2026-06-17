@@ -87,31 +87,3 @@ def parse_args():
     parser.add_argument("--autocast", type=str, choices=["bfloat16", "float16", "float32", "auto", "none"], default="bfloat16", help="Autocast precision mode (default: bfloat16)")
     
     return parser.parse_args()
-
-
-def generate_run_name(config: TrainingConfig, encoder_config: EncoderConfig) -> str:
-    """Generates a normalized, unique, and descriptive run name for the experiment."""
-    # Base dataset name from path
-    dataset_name = "data"
-    if config.data_path:
-        base_name = os.path.basename(config.data_path)
-        dataset_name = os.path.splitext(base_name)[0]
-        # Remove common extensions/suffixes
-        dataset_name = dataset_name.replace(".train_val", "").replace(".test", "").replace(".txt", "")
-
-    timestamp = time.strftime("%Y%m%d_%H%M%S")
-    
-    # Base name (default to 'run' if not provided)
-    base_run = config.run_name if config.run_name else "run"
-    # Clean directory delimiters
-    base_run = base_run.replace("/", "_").replace("\\", "_")
-    
-    # Extract architecture params
-    d_k = encoder_config.embed_dim if encoder_config else "unknown"
-    depth = encoder_config.num_blocks if encoder_config else "unknown"
-    lr = config.lr
-    bs = config.batch_size
-    repr_str = config.representation
-    fact_str = "fact" if config.use_factorized_policy else "nofact"
-    
-    return f"{timestamp}_{dataset_name}_{base_run}_{repr_str}_{fact_str}_dk{d_k}_depth{depth}_lr{lr:.2e}_bs{bs}"

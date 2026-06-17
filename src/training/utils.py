@@ -36,50 +36,6 @@ def configure_optimizers(model, weight_decay, learning_rate, device_type):
 
     return optimizer
 
-def save_run_metadata(trace_dir, config, encoder_config, description):
-    """
-    Saves TrainingConfig, EncoderConfig, and user description as a markdown file 
-    and also logs them as TensorBoard text summaries.
-    """
-    os.makedirs(trace_dir, exist_ok=True)
-    
-    # 1. Write metadata to context.md
-    md_path = os.path.join(trace_dir, "context.md")
-    
-    lines = []
-    if description:
-        lines.append(f"# Run Description\n{description}\n")
-    else:
-        lines.append("# Run Description\nNo description provided.\n")
-        
-    lines.append("# Configurations\n")
-    lines.append("## TrainingConfig")
-    lines.append("```python")
-    lines.append(str(config))
-    lines.append("```\n")
-    
-    if encoder_config is not None:
-        lines.append("## EncoderConfig")
-        lines.append("```python")
-        lines.append(str(encoder_config))
-        lines.append("```\n")
-        
-    with open(md_path, "w") as f:
-        f.write("\n".join(lines))
-    print(f"[INFO] Run metadata written to '{md_path}'")
-    
-    # 2. Write to TensorBoard using SummaryWriter
-    try:
-        from torch.utils.tensorboard import SummaryWriter
-        writer = SummaryWriter(log_dir=trace_dir)
-        writer.add_text("Metadata/Description", description or "No description provided.")
-        writer.add_text("Metadata/TrainingConfig", str(config))
-        if encoder_config is not None:
-            writer.add_text("Metadata/EncoderConfig", str(encoder_config))
-        writer.close()
-    except Exception as e:
-        print(f"[WARNING] Could not write metadata to TensorBoard: {e}")
-
 def configure_profiler(config, prof_name, trace_filename=None, schedule=None):
     if not schedule:
         active_steps = max(1, config.profile_steps - 4)
@@ -123,6 +79,7 @@ def estimate_training_time(model, train_loader, val_loader, config, num_warmup: 
     """
     Estimates training time per epoch and total training time by performing 
     actual forward/backward warmups and timed runs.
+    This is a huge ass funcition, but it's worth it for some big runs with high d_k transformer values.
     """
     print("\n=== Estimating Training Time ===")
     device = config.device
