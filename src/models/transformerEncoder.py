@@ -37,8 +37,16 @@ class EncoderConfig:
     attn_backend: str = "auto"
     autocast_mode: str = "none"
 
+    representation: str = "simple"
+    use_factorized_policy: bool = False
+
     # for reference: https://www.pythonmorsels.com/customizing-dataclass-initialization/
     def __post_init__(self):
+        if self.representation == "spatial":
+            self.input_size = 28
+        else:
+            self.input_size = 27
+            
         assert self.policy_size == (25*24) + self.promotion_size, "Policy must be possible moves + possible promotions"
         # not mine! https://stackoverflow.com/questions/57025836/how-to-check-if-a-given-number-is-a-power-of-two
         # is_power_of_two = lambda n: (n & (n-1) == 0) and n != 0 
@@ -177,8 +185,94 @@ class ChessEmbeddingSimple(nn.Module):
         # Combine into a single sequence of 27 tokens
         flat_state = torch.cat([board_flat, rep_shifted, halfmove_shifted], dim=1)
 
+        # TODO see if its good to scale embeddings to [0.0, 1.0]
         # Output shape: (B, 27, embedding_dim)
         return self.embedding(flat_state)
+
+
+def reconstruct_spatial_representation(board_flat, repetitions, halfmoves, active_players):
+    """
+    Reconstructs the 15-channel spatial representation from flat inputs.
+    board_flat: (B, 25) values 0-12
+    repetitions: (B, 1) values 0-2
+    halfmoves: (B, 1) values 0-75
+    active_players: (B, 1) values 0 (black) or 1 (white)
+    
+    Returns:
+    (B, 15, 5, 5) float tensor
+    """
+    B = board_flat.size(0)
+    
+    # 1. 12 piece channels
+    one_hot = F.one_hot(board_flat.long(), num_classes=13).float()
+    pieces_spatial = one_hot[:, :, :12].permute(0, 2, 1).reshape(B, 12, 5, 5)
+    
+    # 2. Active player channel: (B, 1, 5, 5) filled with active_players (0 or 1)
+    active_spatial = active_players.view(B, 1, 1, 1).expand(B, 1, 5, 5).float()
+    
+    # 3. Repetition channel: (B, 1, 5, 5) filled with repetitions / 2.0
+    rep_spatial = (repetitions.view(B, 1, 1, 1).expand(B, 1, 5, 5).float() / 2.0)
+    
+    # 4. Halfmove channel: (B, 1, 5, 5) filled with halfmoves / 75.0
+    halfmove_spatial = (halfmoves.view(B, 1, 1, 1).expand(B, 1, 5, 5).float() / 75.0)
+    
+    # Concatenate all channels
+    spatial_tensor = torch.cat([pieces_spatial, active_spatial, rep_spatial, halfmove_spatial], dim=1)
+    
+    return spatial_tensor
+
+
+class BoardEmbeddingSpatial(nn.Module):
+    """Maps a 15-channel 5x5 board state into a continuous embedding space.
+    Preserves spatial structure by projecting the channels of each cell.
+    """
+    def __init__(self, config: EncoderConfig, num_channels: int = 15):
+        super().__init__()
+        self.proj = nn.Linear(num_channels, config.embed_dim)
+        
+    def forward(self, spatial_board):
+        # spatial_board: (B, 15, 5, 5)
+        # Permute to (B, 5, 5, 15) and reshape to (B, 25, 15)
+        B = spatial_board.size(0)
+        x = spatial_board.permute(0, 2, 3, 1).reshape(B, 25, -1)
+        return self.proj(x)
+
+
+class FactorizedPolicyHeads(nn.Module):
+    """Computes factored origin, destination, and promotion policy heads.
+    Outputs:
+    - Origin logits: (B, 25)
+    - Destination logits: (B, 25)
+    - Promotion logits: (B, 9)
+    """
+    def __init__(self, config: EncoderConfig):
+        super().__init__()
+        self.proj_from = nn.Sequential(
+            nn.Linear(config.embed_dim, config.policy_head_hidden_dim),
+            nn.GELU(),
+            nn.Dropout(config.mlp_dropout),
+            nn.Linear(config.policy_head_hidden_dim, 1)
+        )
+        self.proj_to = nn.Sequential(
+            nn.Linear(config.embed_dim, config.policy_head_hidden_dim),
+            nn.GELU(),
+            nn.Dropout(config.mlp_dropout),
+            nn.Linear(config.policy_head_hidden_dim, 1)
+        )
+        self.proj_promo = nn.Sequential(
+            nn.Linear(config.embed_dim, config.policy_head_hidden_dim),
+            nn.GELU(),
+            nn.Dropout(config.mlp_dropout),
+            nn.Linear(config.policy_head_hidden_dim, 9)
+        )
+
+    def forward(self, board_tokens, cls_token):
+        # board_tokens: (B, 25, D)
+        # cls_token: (B, D)
+        from_logits = self.proj_from(board_tokens).squeeze(-1) # (B, 25)
+        to_logits = self.proj_to(board_tokens).squeeze(-1) # (B, 25)
+        promo_logits = self.proj_promo(cls_token) # (B, 9)
+        return from_logits, to_logits, promo_logits
 
 
 class MatrixPolicyHead(nn.Module):
@@ -238,21 +332,42 @@ class MatrixPolicyHead(nn.Module):
 
         return torch.cat([base_moves, promo_logits], dim=1)  # (B, 704)
 
+class ValueHead(nn.Module):
+    """Simple feedforward value head. 
+    Projects the CLS token to a scalar value.
+    """
+    def __init__(self, config: EncoderConfig):
+        super().__init__()
+        # TODO decide if switch this to a simple linear
+        self.value_head = nn.Sequential(
+            nn.Linear(
+                config.embed_dim, config.mlp_expand_factor * config.embed_dim
+            ),
+            nn.GELU(),
+            nn.Dropout(config.mlp_dropout), # TODO CAREFUL WITH THIS DURING PPO, SET TO model.eval() !!!!
+            nn.Linear(
+                config.mlp_expand_factor * config.embed_dim, config.value_size
+            ),
+            torch.nn.Tanh()
+        )
+
+    def forward(self, cls_token):
+        return self.value_head(cls_token)
+
 
 class MiniChessTransformerEncoder(nn.Module):
     """
     Transformer encoder for 5x5 Minichess.
 
-    Input: flat vector of 27 bytes: 25 for the board, with a unique int for each piece type,
-        1 for the number of repetitions and 1 for the number of moves until the 50-move rule kicks in.
+    Input: flat vector of 27 bytes (simple) or 28 bytes (spatial).
     Output: 704 neurons for policy (600 for moves (25*24) + 104 (13*4*2) for promotions), 1 for result.
         No moves for en passant or castling, because they are not allowed in 5x5 Minichess.
 
     Architecture:
-        1. Input layer: flat vector of 27 bytes.
+        1. Input layer: flat vector of 27 or 28 bytes.
         2. Embedding layer: embedding size of embed_dim = 256. 
-            map categorical vector data to a continuous vector space and concat 1 CLS tokn
-        3. Positional encoding: simple linear positional encoding. add 1 for CLS token
+            map categorical vector data to a continuous vector space and concat 1 CLS token
+        3. Positional encoding: simple linear positional encoding (simple) or 2D row/col positional encoding (spatial).
         4. N transformer blocks:
             0. residual stream from previous layer (or input to the first layer)
             1. pre-rmsnorm
@@ -272,6 +387,7 @@ class MiniChessTransformerEncoder(nn.Module):
                 4. concat both and return logits
             2. value head
                 1. linear expand -> gelu -> dropout -> linear
+            3. (Optional) Factorized auxiliary policy heads (origin, destination, promotion)
     """
 
     def __init__(self, config: EncoderConfig):
@@ -282,11 +398,10 @@ class MiniChessTransformerEncoder(nn.Module):
         # learnable global state token, NLP cross-encoder style. initialized to zeros for "no meaning"
         self.cls_token = nn.Parameter(torch.zeros(1, 1, config.embed_dim))
 
-
+        is_spatial = (config.representation == "spatial")
         self.backbone = nn.ModuleDict(
             dict(
-                w_embed=ChessEmbeddingSimple(config),
-                w_pos_embed=nn.Embedding(config.input_size + 1, config.embed_dim), # add CLS token
+                w_embed=BoardEmbeddingSpatial(config) if is_spatial else ChessEmbeddingSimple(config),
                 embed_dropout=nn.Dropout(config.embed_dropout),
                 transformer_blocks=nn.ModuleList(
                     [TransformerBlock(config) for _ in range(config.num_blocks)]
@@ -295,24 +410,25 @@ class MiniChessTransformerEncoder(nn.Module):
                 final_norm=nn.RMSNorm(config.embed_dim),
             )
         )
+        
+        if not is_spatial:
+            self.backbone.w_pos_embed = nn.Embedding(config.input_size + 1, config.embed_dim)
+        else:
+            # embed row and cols separately so the model can lear 2d position easier
+            self.backbone.row_pos_embed = nn.Embedding(5, config.embed_dim)
+            self.backbone.col_pos_embed = nn.Embedding(5, config.embed_dim)
+            self.cls_pos_embed = nn.Parameter(torch.zeros(1, 1, config.embed_dim))
 
+        # the main heads live here. additional auxilary heads get added dinamically if specified
         self.heads = nn.ModuleDict(
             dict(
                 policy=MatrixPolicyHead(config),
-                # TODO decide if switch this to a simple linear
-                value=nn.Sequential(
-                    nn.Linear(
-                        config.embed_dim, config.mlp_expand_factor * config.embed_dim
-                    ),
-                    nn.GELU(),
-                    nn.Dropout(config.mlp_dropout), # TODO CAREFUL WITH THIS DURING PPO, SET TO model.eval() !!!!
-                    nn.Linear(
-                        config.mlp_expand_factor * config.embed_dim, config.value_size
-                    ),
-                    torch.nn.Tanh()
-                ),
+                value=ValueHead(config),
             )
         )
+        
+        if config.use_factorized_policy:
+            self.heads['factorized_policy'] = FactorizedPolicyHeads(config)
 
         # Apply custom weight initialization if enabled
         if config.custom_init:
@@ -361,36 +477,58 @@ class MiniChessTransformerEncoder(nn.Module):
         embedding, batched matmul and CLS token handling. 
 
         Args:
-        - `input`: must be tensor of size `(batch_dim, seq_len=27, embed_dim)`. Will get transformed into
-            `(batch_dim, seq_len=28, embed_dim)`.
+        - `input`: must be tensor of size `(batch_dim, seq_len=27 or 28)`.
 
         Out:
         - Policy logits tensor of size `(batch_dim, policy_size=704)`.
         - Value predictions tensor of size `(batch_dim, 1)`.
+        - Optional: origin, destination, and promotion logits if use_factorized_policy is True.
         '''
         B, S = input.size()
         assert S == self._config.input_size, f"Expected sequence length {self._config.input_size}, got {S}"
         device = input.device
 
-        # before forwarding, we must split the tensor and pass to the chess embedder
-        board_flat, repetitions, halfmove_50 = torch.split(input, [25, 1, 1], dim=1)
-        
         # Check device type at runtime to configure autocast context manager
         autocast_enabled = (device.type == 'cuda' and self.autocast_enabled_if_cuda)
 
         with torch.autocast(device_type=device.type, dtype=self.autocast_dtype, enabled=autocast_enabled):
-            tok_embed = self.backbone.w_embed(board_flat, repetitions, halfmove_50)
+            if self._config.representation == "spatial":
+                board_flat, repetitions, halfmove_50, active_players = torch.split(input, [25, 1, 1, 1], dim=1)
+                spatial_board = reconstruct_spatial_representation(board_flat, repetitions, halfmove_50, active_players)
+                tok_embed = self.backbone.w_embed(spatial_board) # (B, 25, D)
+                
+                # Prepend expanded CLS token array to sequence dimension
+                cls_tokens = self.cls_token.expand(B, 1, -1)
+                x = torch.cat([cls_tokens, tok_embed], dim=1)  # (B, 26, D)
+                
+                # 2D absolute positional embeddings. will create 2 matrices with the rank and file of each square
+                grid_y, grid_x = torch.meshgrid(
+                    torch.arange(5, device=device),
+                    torch.arange(5, device=device),
+                    indexing="ij"
+                )
+                row_emb = self.backbone.row_pos_embed(grid_y.reshape(-1))  # (25, D)
+                col_emb = self.backbone.col_pos_embed(grid_x.reshape(-1))  # (25, D)
+                board_pos_embed = row_emb + col_emb  # (25, D)
+                
+                cls_pos = self.cls_pos_embed.squeeze(0)  # (1, D)
+                pos_embed = torch.cat([cls_pos, board_pos_embed], dim=0)  # (26, D)
+                
+                x = self.backbone.embed_dropout(x + pos_embed)
+            else:
+                board_flat, repetitions, halfmove_50 = torch.split(input, [25, 1, 1], dim=1)
+                tok_embed = self.backbone.w_embed(board_flat, repetitions, halfmove_50)
 
-            # Prepend expanded CLS token array to sequence dimension
-            cls_tokens = self.cls_token.expand(B, 1, -1)
-            x = torch.cat([cls_tokens, tok_embed], dim=1)  # (B, 28, D)
+                # Prepend expanded CLS token array to sequence dimension
+                cls_tokens = self.cls_token.expand(B, 1, -1)
+                x = torch.cat([cls_tokens, tok_embed], dim=1)  # (B, 28, D)
 
-            # simple pos absolute pos embeddings
-            # TODO make these less shitty, maybe nn.RoPE or some learnable thing
-            pos = torch.arange(0, S + 1, dtype=torch.long, device=device)  # shape (input_size, )
-            pos_embed = self.backbone.w_pos_embed(pos)  # gets converted to (input_size, emb_dim)
+                # simple pos absolute pos embeddings
+                pos = torch.arange(0, S + 1, dtype=torch.long, device=device)  # shape (S + 1, )
+                pos_embed = self.backbone.w_pos_embed(pos)
 
-            x = self.backbone.embed_dropout(x + pos_embed)  # sum is broadcasted across batch dimension
+                x = self.backbone.embed_dropout(x + pos_embed)  # sum is broadcasted across batch dimension
+
             for block in self.backbone.transformer_blocks:
                 x = block(x)
             x = self.backbone.final_norm(x)
@@ -398,7 +536,7 @@ class MiniChessTransformerEncoder(nn.Module):
             # now: the problem! how do we go from (batch, seq_len, embed_d) to
             # (B, policy) y (B, value) in the heads? this is why we use CLS for value, and  the special policy head
             # with batch matmul between projections of the embedings
-
+            
             # separate CLS from "board representation" (board tokens). 
             # metadata tokens are not explicitly used, but they have affected toks [0,26] thanks to the attention 
             cls_output = x[:, 0, :]           # (B, D)
@@ -406,8 +544,12 @@ class MiniChessTransformerEncoder(nn.Module):
 
             policy_logits = self.heads.policy(board_tokens, cls_output)
             value_pred = self.heads.value(cls_output)
+            
+            if self._config.use_factorized_policy:
+                from_logits, to_logits, promo_logits = self.heads.factorized_policy(board_tokens, cls_output)
+                return policy_logits.float(), value_pred.float(), from_logits.float(), to_logits.float(), promo_logits.float()
 
-        # now, since we autocasted to bfloat16 previously, we need to go back to float32 to avoid 
+        # now, since we might have autocasted to bfloat16 previously, we need to go back to float32 to avoid 
         # numerical stability issues with the loss (like what a GradScaler does)
         return policy_logits.float(), value_pred.float() 
 
@@ -419,8 +561,15 @@ class MiniChessTransformerEncoder(nn.Module):
         """
         n_params = sum(p.numel() for p in self.parameters())
         if non_embedding:
-            n_params -= self.backbone.w_pos_embed.weight.numel()
-            n_params -= self.backbone.w_embed.embedding.weight.numel()
+            if self._config.representation == "spatial":
+                n_params -= self.backbone.row_pos_embed.weight.numel()
+                n_params -= self.backbone.col_pos_embed.weight.numel()
+                n_params -= self.backbone.w_embed.proj.weight.numel()
+                if self.backbone.w_embed.proj.bias is not None:
+                    n_params -= self.backbone.w_embed.proj.bias.numel()
+            else:
+                n_params -= self.backbone.w_pos_embed.weight.numel()
+                n_params -= self.backbone.w_embed.embedding.weight.numel()
         return n_params
 
     @classmethod

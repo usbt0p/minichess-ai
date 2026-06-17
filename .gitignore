@@ -15,6 +15,7 @@ data/
 data.back/
 blog/
 papers/
+experiments/
 *.wiki
 
 # tex and documentation

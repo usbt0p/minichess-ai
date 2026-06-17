@@ -1,48 +1,38 @@
 
-- posiblemente sea buena idea hacer que la red supervisada prediga tammbien la score? sigue los targets del paper 
-
-- datos en uso: puedo usar más seguramente. no setoy usando los plys, ni el turno, y puede que haya mas
-
-- el curriculum learning se puede hacer contra otros modelos "decentes" como por ejemplo full ataque, o una ponderacion simple de (mate, jaque, captura, desarrollo)
-
-- abstraer cosas repetitivas del trainign pipeline
-- asegurar una validación correcta sin contaminación
-- añadir test split al dataloader
-
-# cambios en el stats.cpp
-
-- vamos a hacer caso a karpathy. revisar los datos primero; comprobar duplicados, unir los distintos datasets y ver cuantos tengo realmente
-    - parser del dataset en binario
-    - analizar edge cases de los datos: ver cuantas promotions hay y como están distribuidas
-    para saber si es importante representarlas (modificar archivo c++)
-    - si los datos no son suficientes... probar a generar más y en el peor de los casos, investigar alguna alternativa como a) destilar otro modelo más grande b) probar contrastive learning c) resignarse a puro RL
-
-
----
-
-
 # ORDEN DEL DIA
 
+- escribir a david con experimentos hechos y pedir consejo sobre ablaciones. igual mejor opensourcear repo para q lo vea todo
 
-now i need to:
-- tomarse en serio split train-val-test, hacer uno de test
-- fix some arquitecture recipes (big and small) and commit to them for now
-- fix hiperparams for them (lr, batch size, dtype and sdpa kernel)
-- just go ahead and train them fully, like 50 epochs for example (al entrenar: probar con todo mezclado VS. con primero depth 2 e incrementar)
+- verify statistical significance and hypotheses: figure out if more runs with different random seeds are needed, and what statistical test is best for proving significance
+    - find out the cause of the error in the 3090. it dont support torch.compile, but error is
 
-while they train:
+- get the README ready for making the repo public.
 
-- design coirrectly the inductive bias i mentioned for the input and output
-  - choose one and see how to use it
-  - see what needs to change in the code
+- implement and verify the script for running tournaments with multiple models
+
+- add .agents file and simple skills
+
+- mejora de performance: añadir cabeza categórica de valor. ver si mejora. igual quitar dropout  y subir grad clipping...
 
 - updates in the docs:
   - add info about the dataset. annex holds figures with stats (escribir en la docu sobre el dataset. dar un sample. estadisticas en el anexo. explicar profundidades)
+  - explain the test holdout strategy and why it's important to separate games using plies.  
   - update the transformer architecture
-
-- develop experiment metodology for checking what exactly inductive biases achieve, and if they verify the hypotheses
+  - explain separately the backbone of the transformer and the head(s). 
+  - explain the encoding of the inputs for each model (mlp and transformer w/ and w/out inductive bias)
 
 - develop the "procedure": what i do, starting from data and going trough the steps in processing, creating the model, choosing params, training it, testing experiments...
+
+- tune lr and other adam hyperparams on highest batchsize possible on a 3090. refer to google tuning playbook. do for different d_k and depths. stick to it 
+
+- while this is going, put up some tests:
+    - for dataloaders (?)
+    - for parsing, and parsing working in different modes (mlp, transformer, transformer with inductive bias). for 
+    - for forward passes of the models going right
+    - for training dry runs and stuff being correctly saved: tensorboard, directories, .pt files, test evaluation...
+    - for decode_move_indices and uci_to_index
+
+# ideas no tan urgentes
 
 
 -  ver si mejora el tiempo hacer non_blocking los tensores: https://docs.pytorch.org/tutorials/intermediate/pinmem_nonblock.html
@@ -58,6 +48,7 @@ while they train:
     - more residuals never hurt! figure out where they might be needed
 - unit test the dataset parser! if it's not tested we cant trust it
 
+- pensar si compensa tunear dinamicamente el peso de cada perdida, ya que creo que a la hora de buscar las mejores jugadas la value orienta mejor (homocedastic whatever loss)
 
 
 
@@ -123,3 +114,35 @@ while they train:
 ## 0306
 
 - escribir a leandro sobre gpu server
+
+## 14-16/06
+now i need to:
+- tomarse en serio split train-val-test, hacer uno de test
+- fix some arquitecture recipes (big and small) and commit to them for now
+- fix hiperparams for them (lr, batch size, dtype and sdpa kernel)
+- just go ahead and train them fully, like 50 epochs for example (al entrenar: probar con todo mezclado VS. con primero depth 2 e incrementar)
+
+while they train:
+
+- design coirrectly the inductive bias i mentioned for the input and output
+  - choose one and see how to use it
+  - see what needs to change in the code
+
+- train reproducibly and cleanly:
+    - first DECIDE ON THE DATA SPLIT USED! meaning: d2, d3 or d4 or merged? use this throughout the whole pipeline
+    - then SPLIT IN TRAIN/TEST!!!! hold test out and use for later proofs.
+    - small mlp simple encoding, big mlp simple encoding, small standard encoding, big standard encoding, small 2d + factored head encoding, big 2d + factored head encoding (consult previous results in mlp since its been long ago). pick adequate lr, stick with normal batch size and dtype
+    - compare, draw conclusions. prove statistical significance
+
+- ^did the above, but bat. changing 2 independent varibales makes finding results and conclusions impossible. ablate one by one!!
+
+## 1706
+- ran the exps for the ablation thing
+
+- add scalar loss to the model (gradient norm, l2?) and gradient histogram (less frequent since it adds overhead, maybe in all of the first 5 epochs and then every 5?). remember to detach or call cpu
+
+- also log head activaation outputs
+
+- run the new ablatable experiments on the 3090. 
+
+-  refactor a bunch of stuff from train

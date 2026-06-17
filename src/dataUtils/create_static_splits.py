@@ -112,8 +112,8 @@ def create_static_splits(txt_path, test_ratio=0.03, seed=42):
     print(">> Done successfully!")
 
 if __name__ == "__main__":
-    txt_path = "data/gardner_depth3_incomplete/gen_gardner_d3.txt"
+    txt_path = "data/gardner_depth4/gen_gardner_d4.txt"
     if len(sys.argv) > 1:
         txt_path = sys.argv[1]
         
-    create_static_splits(txt_path)
+    create_static_splits(txt_path, test_ratio=0.03)

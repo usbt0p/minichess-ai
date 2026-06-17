@@ -312,7 +312,7 @@ Esta escasez de señal dificulta las fases iniciales del entrenamiento, justific
 
 \subsection{Marco práctico}\label{sec:marco_practico}
 
-\subsubsection{Codificación del Espacio de Estados (Input)}
+\subsubsection{Codificación del Espacio de Estados (Input)}\label{sec:encoder_input}
 
 Para evaluar la Hipótesis 1, se instrumentarán y compararán distintas representaciones del tablero de ajedrez 5x5, analizando su impacto en la asimilación espacial del modelo Transformer.
 
@@ -326,7 +326,7 @@ Para evaluar la Hipótesis 1, se instrumentarán y compararán distintas represe
 
 \placeholderfig{figura ilustrativa con una visualización de las distintas codificaciones de entrada}{Visualización de codificaciones de entrada. De izquierda a derecha: a, b, c...}{fig:codificaciones_entrada}
 
-\subsubsection{Codificación del Espacio de Acciones (Output)}
+\subsubsection{Codificación del Espacio de Acciones (Output)}\label{sec:encoder_output}
 
 De manera análoga, la forma en que la red proyecta sus predicciones altera drásticamente la topología del espacio de optimización. Se implementarán las siguientes cabezas de salida:
 
@@ -335,7 +335,7 @@ De manera análoga, la forma en que la red proyecta sus predicciones altera drá
     
     En Minichess, los peones en las columnas exteriores (a, e) tienen 2 opciones al coronar (avance o captura simple), mientras que los peones en columnas centrales (b, c, d) tienen 3. Esto resulta en $(2+3+3+3+2) = 13$ movimientos de promoción. Multiplicado por las 4 piezas posibles de promoción (Reina, Torre, Alfil, Caballo) y los 2 colores, se añaden 104 neuronas. La salida de la política (\textit{policy head}) será, por tanto, un vector estricto de \textbf{704 neuronas}.
 
-    \item \textbf{Política Factorizada (Origen-Destino):} En lugar de predecir sobre el espacio completo de 704 acciones, la salida de la política se bifurca en dos cabezas: una cabeza que predice la casilla de origen del movimiento (vector de tamaño 25) y una segunda cabeza que predice la casilla de destino del movimiento (vector de tamaño 25). Esto reduce el espacio de salida de 704 a 50 dimensiones en total, simplificando la tarea de optimización del gradiente. Se debe añadir también una cabeza adicional para predecir la pieza de promoción, codificada como 9 neuronas (4 piezas posibles por cada color + 1 para no promoción). El total de neuronas asciende a 59.
+    \item \textbf{Política Factorizada (Origen-Destino) como Tarea Auxiliar:} Esta codificación no sustituye a la política discreta plana principal de 704 salidas; añade cabezas auxiliares para informar más del gradiente de pérdida durante el entrenamiento. Se compone de tres cabezas complementarias: una para la casilla de origen del movimiento (25 salidas), otra para la casilla de destino (25 salidas) y una tercera para predecir la clase de promoción (9 salidas). La pérdida de estas cabezas se pondera con un factor de 0.5 y se suma a la pérdida total. Esto reduce el espacio de salida de 704 a 59 dimensiones en total, simplificando la tarea de optimización del gradiente. El objetivo es facilitar el aprendizaje de las representaciones del backbone de atención, y acelerar la convergencia inicial del entrenamiento proporcionando una señal de error más explícita y estructurada.
     
     \item \textbf{Política con codificación por filas/columnas:} En esta variante, la política se factoriza aún más para predecir por separado la fila y la columna de origen y destino. Esto se implementa mediante cuatro cabezas de salida: una para la fila de origen (5 neuronas), una para la columna de origen (5 neuronas), una para la fila de destino (5 neuronas), una para la columna de destino (5 neuronas) y una para la coronación (9 neuronas). Esto reduce el espacio de salida a solo 29 dimensiones, aunque introduce una mayor complejidad en la decodificación de las acciones. 
     
@@ -352,18 +352,20 @@ De manera análoga, la forma en que la red proyecta sus predicciones altera drá
 La arquitectura neural propuesta se basa en un modelo \textbf{Transformer Encoder} que procesa el estado del tablero de forma bidireccional, permitiendo que cada componente preste atención a todos los demás, y se describe a continuación:
 \begin{enumerate}
 
-    \item \textbf{Capa de Proyección de Entrada:} La capa inicial mapea la representación plana de 27 tokens del tablero. Consta de 25 casillas (clasificando las piezas y el estado de cuadrícula vacía), además de la cuenta de repeticiones y la regla de los 50 movimientos. Adicionalmente, se concatena un \textbf{token de clase} \textit{CLS}, obteniendo un tensor de dimensiones $28 \times d_{\text{model}}$. Los 28 tokens se proyectan linealmente a una dimensión $d_k$.
-    
-    \item \textbf{Codificación Posicional Absoluta:} Para inyectar información geométrica y espacial en las secuencias, se añade un \textit{embedding} posicional absoluto \texttt{w\_pos\_embed} en 1D, asignando un vector a cada uno de los 28 elementos de la secuencia y sumándoselo.
-
-    \textcolor{red}{\textbf{LOS 2 MÉTODOS SIGUIENTES ESTAN AQUÍ COMO REFERENCIA, POR POSIBILIDAD DE IMPLEMENTARLOS EN EL FUTURO, PERO EL QUE SE USA ES EL DESCRITO ANTES:}}
+    \item \textbf{Capa de Proyección de Entrada:} Dependiendo de la representación seleccionada (de las mencionadas en la sección~\ref{sec:encoder_input}):
     \begin{itemize}
-        \item se suma un vector de codificación posicional 2D (con componentes seno y coseno correspondientes a las coordenadas de fila y columna de cada casilla) al embedding de cada casilla. \href{https://stackoverflow.com/questions/77444485/using-positional-encoding-in-pytorch}{(referencia implementación)}
-            
+        \item \textit{Para la representación plana simple:} Consta de 25 casillas (que clasifican las piezas o casilla vacía), más la cuenta de repeticiones y la regla de los 50 movimientos (27 elementos en total). Adicionalmente, se concatena un \textbf{token de clase} \textit{CLS}, resultando en una secuencia de 28 tokens que se proyectan a la dimensión $d_k$ mediante una tabla de embeddings.
         
-        \item se aplica RoPE (\textit{Rotary Positional Encoding}), el estándar actual de codificación posicional en modelos de lenguaje y Transformers \cite{DBLP:journals/corr/abs-2104-09864}. Este codifica la posición de cada casilla mediante rotaciones en el espacio de embeddings, permitiendo que el modelo capture relaciones espaciales de manera más flexible. \href{https://meta-pytorch.org/torchtune/0.3/generated/torchtune.modules.RotaryPositionalEmbeddings.html}{(referencia pytorch)}
+        \item \textit{Para la representación espacial (estilo AlphaZero):} El tablero reconstruye un tensor de dimensiones $15 \times 5 \times 5$ (12 canales de piezas, 1 canal para el jugador activo, 1 canal de repeticiones y 1 canal de halfmove clock). Cada una de las 25 casillas del tablero cuenta con un vector de 15 canales que se proyecta linealmente a la dimensión $d_k$. Adicionalmente, se concatena el \textbf{token de clase} \textit{CLS}, resultando en una secuencia de 26 tokens.
+
     \end{itemize}
     
+    \item \textbf{Codificación Posicional:}
+    \begin{itemize}
+        \item \textit{Para la representación plana simple:} Se añade un \textit{embedding} posicional absoluto \texttt{w\_pos\_embed} unidimensional de tamaño 28, asignando un vector aprendido a cada posición de la secuencia.
+        \item \textit{Para la representación espacial:} Se inyecta información geométrica explícita en 2D. Se definen dos tablas de embeddings aprendidas: \texttt{row\_pos\_embed} de tamaño \texttt{(5, D)} (para las filas) y \texttt{col\_pos\_embed} de tamaño \texttt{(5, D)} (para las columnas). Para cada una de las 25 posiciones del tablero en la coordenada $(y, x)$, su codificación posicional es la suma de los embeddings de su fila y su columna. Para el token CLS se concatena un parámetro aprendido independiente \texttt{cls\_pos\_embed}.
+        \item \textcolor{red}{TODO: posible RoPE??}  \href{https://meta-pytorch.org/torchtune/0.3/generated/torchtune.modules.RotaryPositionalEmbeddings.html}{(referencia pytorch)}
+    \end{itemize}
     
     \item \textbf{Pila de Bloques Encoder:} El tensor resultante se procesa a través de una serie de $L$ capas de codificación con $h$ cabezas. Cada capa contiene:
     \begin{itemize}
@@ -375,10 +377,12 @@ La arquitectura neural propuesta se basa en un modelo \textbf{Transformer Encode
         $$\text{FFN}(x) := FC_{expand}(x) \rightarrow \text{GELU} \rightarrow FC_{project}(x) \rightarrow \text{Dropout}$$
     \end{itemize}
 
-    \item \textbf{Cabezas de Salida:} Tras la última normalización RMS, el estado se divide, extrayendo el tensor del \textit{CLS token} y aislando los $25$ vectores resultantes del estado final de las iteraciones de atención sobre las celdas del tablero. A continuación se bifurca en dos procesos independientes:
+    \item \textbf{Cabezas de Salida:} Tras la última normalización RMS, el estado se divide, extrayendo el tensor del \textit{CLS token} y aislando los $25$ vectores resultantes del estado final de las iteraciones de atención sobre las celdas del tablero. A continuación se bifurca en los siguientes procesos:
     \begin{itemize}
         \item \textbf{Cabeza de Política Orientada a Relaciones (``\textit{Matrix Policy Head}"):} Proyecta cada uno de los 25 \textit{tokens} de las casillas paralelamente evaluando si estas funcionan como origen (\texttt{proj\_from}) y como destino (\texttt{proj\_to}) mediante MLPs. A continuación realiza un producto interno espacial (\textit{batched matmul}) entre estas incrustaciones elaborando una matriz de correlación $25 \times 25$. Paralelamente, se obtienen otros $104$ \textit{logits} del tensor \textit{CLS} que reflejan opciones de promoción, y se concatenan a los $600$ movimientos ordinarios. Obtenemos por lo tanto, una distribución de $704$ \textit{acciones}.
         \item \textbf{Cabeza de Valor (\textit{Value Head}):} Procesa únicamente el \textit{token CLS} final en un \textit{MLP} denso (Expansión Lineal, GELU, Dropout, Reducción de dim a escalar, Tanh) que acota la salida en el intervalo $[-1, 1]$.
+
+        \item \textbf{Cabezas Auxiliares de Política Factorizada:} Estas cabezas no se activan siempre. Se trata de las cabezas mencionada en la sección~\ref{sec:encoder_output}. Decodifican las representaciones del tablero y de CLS mediante tres proyecciones independientes en logits de casilla de origen (25), destino (25) y tipo de promoción (9). Estas cabezas se evalúan únicamente durante el entrenamiento supervisado, con propósitos de mejora de la señal de error.
     \end{itemize}
 
 \end{enumerate}
@@ -633,7 +637,13 @@ Cosas a incluír:
 \end{itemize}
 
 \subsection{Hiperparámetros del Entrenamiento}
+
 \textcolor{red}{TODO: rellenar datos tras hyperparam search}
+
+\textit{"Fixed hyperparameters will have their values fixed in the current round of experiments. These are hyperparameters whose values do not need to (or we do not want them to) change when comparing different values of the scientific hyperparameters. By fixing certain hyperparameters for a set of experiments, we must accept that conclusions derived from the experiments might not be valid for other settings of the fixed hyperparameters. In other words, fixed hyperparameters create caveats for any conclusions we draw from the experiments."} 
+Referencia: \href{https://github.com/google-research/tuning_playbook#identifying-scientific-nuisance-and-fixed-hyperparameters}{Deep Learning Tuning Playbook, Google 2023}
+
+
 \begin{table}[htbp]
     \centering
     \begin{tabular}{|l|c|c|}

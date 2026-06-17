@@ -31,7 +31,7 @@ class MinichessFfnDataset(Dataset):
 
         print(f">> Parsing dataset from text: {file_path}")
         features_arr, halfmoves_arr, moves_arr, masks_arr, results_arr, scores_arr = parse_minichess_text_file(
-            file_path, promotions=promotions
+            file_path, promotions=promotions # TODO quitar esto, siempre quereemos promo
         )
 
         self.features = torch.from_numpy(features_arr)
@@ -73,15 +73,16 @@ class MinichessFfnDataset(Dataset):
 class MinichessTransformerDataset(Dataset):
     """
     Dataset wrapper for Transformer models.
-    Yields 27-element sequences (25 board square tokens, 1 repetition token, 1 halfmove token).
+    Yields 27-element (simple) or 28-element (spatial) sequences.
     """
 
     @time_this 
-    def __init__(self, file_path, promotions=False, use_cache=True, subsample_ratio=1.0):
+    def __init__(self, file_path, promotions=False, use_cache=True, subsample_ratio=1.0, representation="simple"):
         super().__init__()
+        self.representation = representation
         
         # Check for cached binary version
-        suffix = ".transformer"
+        suffix = ".spatial" if representation == "spatial" else ".transformer"
         cache_path = f"{file_path}{suffix}.pt"
         if use_cache and os.path.exists(cache_path):
             print(f">> Loading cached dataset from {cache_path}...")
@@ -92,11 +93,19 @@ class MinichessTransformerDataset(Dataset):
             self.scores = cached_data['scores']
             self.masks = cached_data['masks']
             self.halfmoves = cached_data.get('halfmoves', torch.zeros(len(self.features), dtype=torch.uint8))
+            self.active_players = cached_data.get('active_players', torch.zeros(len(self.features), dtype=torch.uint8))
         else:
             print(f">> Parsing dataset from text: {file_path}")
-            features_arr, halfmoves_arr, moves_arr, masks_arr, results_arr, scores_arr = parse_minichess_text_file(
-                file_path, promotions=promotions
-            )
+            if representation == "spatial":
+                features_arr, halfmoves_arr, active_players_arr, moves_arr, masks_arr, results_arr, scores_arr = parse_minichess_text_file(
+                    file_path, promotions=promotions, return_active_player=True
+                )
+                self.active_players = torch.from_numpy(active_players_arr)
+            else:
+                features_arr, halfmoves_arr, moves_arr, masks_arr, results_arr, scores_arr = parse_minichess_text_file(
+                    file_path, promotions=promotions, return_active_player=False
+                )
+                self.active_players = torch.zeros(len(features_arr), dtype=torch.uint8)
 
             self.features = torch.from_numpy(features_arr)
             self.halfmoves = torch.from_numpy(halfmoves_arr)
@@ -107,14 +116,17 @@ class MinichessTransformerDataset(Dataset):
 
             if use_cache:
                 print(f">> Saving cached dataset to {cache_path}...")
-                torch.save({
+                cache_dict = {
                     'features': self.features,
                     'halfmoves': self.halfmoves,
                     'moves': self.moves,
                     'masks': self.masks,
                     'results': self.results,
                     'scores': self.scores
-                }, cache_path)
+                }
+                if representation == "spatial":
+                    cache_dict['active_players'] = self.active_players
+                torch.save(cache_dict, cache_path)
 
         if subsample_ratio < 1.0:
             N = int(len(self.features) * subsample_ratio)
@@ -125,6 +137,7 @@ class MinichessTransformerDataset(Dataset):
             self.scores = self.scores[:N]
             self.masks = self.masks[:N]
             self.halfmoves = self.halfmoves[:N]
+            self.active_players = self.active_players[:N]
 
     def __len__(self):
         return len(self.features)
@@ -136,8 +149,11 @@ class MinichessTransformerDataset(Dataset):
         repetition = torch.tensor([0], dtype=torch.long)  
         halfmove = self.halfmoves[idx].long().unsqueeze(0)  # Shape: (1,)
         
-        # Combine into a single sequence of 27 tokens
-        flat_state = torch.cat([board, repetition, halfmove], dim=0)
+        if self.representation == "spatial":
+            active_player = self.active_players[idx].long().unsqueeze(0) # Shape: (1,)
+            flat_state = torch.cat([board, repetition, halfmove, active_player], dim=0) # Shape: (28,)
+        else:
+            flat_state = torch.cat([board, repetition, halfmove], dim=0) # Shape: (27,)
         
         return flat_state, self.moves[idx], self.results[idx], self.scores[idx], self.masks[idx]
 
