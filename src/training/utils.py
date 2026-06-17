@@ -8,7 +8,7 @@ import torch.nn as nn
 import torch.optim as optim
 from src.utils.utils import time_this
 
-def configure_optimizers(model, weight_decay, learning_rate, device_type):
+def configure_optimizers(model, weight_decay, learning_rate, device_type, beta1=0.9, beta2=0.999, eps=1e-8):
     # start with all of the candidate parameters
     param_dict = {pn: p for pn, p in model.named_parameters()}
     # filter out those that do not require grad
@@ -31,7 +31,7 @@ def configure_optimizers(model, weight_decay, learning_rate, device_type):
     fused_available = 'fused' in inspect.signature(optim.AdamW).parameters
     use_fused = fused_available and device_type == 'cuda'
     extra_args = dict(fused=True) if use_fused else dict()
-    optimizer = optim.AdamW(optim_groups, lr=learning_rate, **extra_args)
+    optimizer = optim.AdamW(optim_groups, lr=learning_rate, betas=(beta1, beta2), eps=eps, **extra_args)
     print(f"using fused AdamW: {use_fused}")
 
     return optimizer

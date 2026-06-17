@@ -36,9 +36,10 @@ def train_model(
         run_dir = f"{config.save_dir}/{config.run_name}"
         save_run_metadata(run_dir, config, encoder_config, config.profile_desc or f"Experiment run: {config.run_name}")
     elif config.profile_name is not None:
-        run_dir = f"./log/{config.profile_name}"
+        run_dir = f"./profiles/{config.profile_name}"
         save_run_metadata(run_dir, config, encoder_config, config.profile_desc)
 
+    # only log if a run name has been set or
     tb_logger = TensorBoardLogger(run_dir if config.run_name else None)
 
     profile_training = config.profile_name is not None
@@ -52,7 +53,10 @@ def train_model(
         model, 
         weight_decay=config.weight_decay, 
         learning_rate=config.lr, 
-        device_type=config.device
+        device_type=config.device,
+        beta1=config.beta1,
+        beta2=config.beta2,
+        eps=config.eps
     )
     print(f"Using device: {config.device}")
 
@@ -383,6 +387,9 @@ if __name__ == '__main__':
         patience=4,
         lr=args.lr,
         weight_decay=2e-5,
+        beta1=args.beta1,
+        beta2=args.beta2,
+        eps=args.eps,
         custom_init=args.custom_init,
         run_name=args.run_name,
         save_dir=args.save_dir,

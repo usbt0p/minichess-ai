@@ -18,8 +18,13 @@ class TrainingConfig:
     num_workers: int
     num_epochs: int
     patience: int
+
+    # optimizer settings
     lr: float = 2e-3
     weight_decay: float = 2e-5
+    beta1: float = 0.9
+    beta2: float = 0.999
+    eps: float = 1e-8
     
     subsample_ratio: float = 1.0
     custom_init: bool = False
@@ -69,6 +74,10 @@ def parse_args():
     parser.add_argument("--custom_init", action="store_true", help="Enable GPT-2 style weight initialization")
     parser.add_argument("--run_name", type=str, default=None, help="Descriptive name of the run to save metadata and logs")
     parser.add_argument("--save_dir", type=str, default=None, help="Directory where run folders will be saved")
+    
+    parser.add_argument("--beta1", type=float, default=0.9, help="AdamW beta1 (default: 0.9)")
+    parser.add_argument("--beta2", type=float, default=0.999, help="AdamW beta2 (default: 0.999)")
+    parser.add_argument("--eps", type=float, default=1e-8, help="AdamW epsilon (default: 1e-8)")
 
     # Representation and factorized policy options
     parser.add_argument("--representation", type=str, choices=["simple", "spatial"], default="simple", help="Input representation style (default: simple)")
