@@ -17,40 +17,6 @@ from src.training.utils import (
 )
 from src.training.logging import TensorBoardLogger, generate_run_name, save_run_metadata
 
-class TensorBoardLogger:
-    """
-    Custom TensorBoard logger to handle metric and histogram logging.
-    Takes care itself of not logging when Tensorboard is not available, or when
-    the run directory is not specified / there is no writer.
-    """
-    def __init__(self, run_dir: str = None):
-        self.writer = None
-        if run_dir:
-            try:
-                from torch.utils.tensorboard import SummaryWriter
-                self.writer = SummaryWriter(log_dir=run_dir)
-                print(f"[INFO] TensorBoard SummaryWriter initialized at: '{run_dir}'")
-            except Exception as e:
-                print(f"[WARNING] Could not initialize TensorBoard writer: {e}")
-
-    def log_epoch(self, epoch: int, metrics: dict):
-        if self.writer is None:
-            return
-        for tag, value in metrics.items():
-            self.writer.add_scalar(tag, value, epoch)
-
-    def log_gradient_histograms(self, epoch: int, model: nn.Module):
-        if self.writer is None:
-            return
-        for name, param in model.named_parameters():
-            if param.grad is not None:
-                # Detach and copy to CPU to avoid memory/device leakage
-                self.writer.add_histogram(f"Gradients/{name}", param.grad.detach().cpu(), epoch)
-
-    def close(self):
-        if self.writer is not None:
-            self.writer.close()
-
 @time_this
 def train_model(
     model,
