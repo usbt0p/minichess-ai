@@ -33,7 +33,7 @@ def train_model(
     # Setup run directory and TensorBoard writer
     run_dir = None
     if config.run_name:
-        run_dir = f"{config.save_dir}/{config.run_name}"
+        run_dir = os.path.join(config.save_dir, config.run_name) if config.save_dir else config.run_name
         save_run_metadata(run_dir, config, encoder_config, config.profile_desc or f"Experiment run: {config.run_name}")
     elif config.profile_name is not None:
         run_dir = f"./profiles/{config.profile_name}"

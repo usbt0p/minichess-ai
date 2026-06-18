@@ -17,15 +17,15 @@ optuna.logging.set_verbosity(optuna.logging.INFO)
 
 # Global configurations
 DATASET_PATH = "data/d4/d4_val.txt"
-SUBSAMPLE_RATIO = 0.8
-EPOCHS = 12
+SUBSAMPLE_RATIO = 0.8 # leave 20% of data out for speed
+EPOCHS = 15
 BATCH_SIZE = 8192
 NUM_WORKERS = 12
-TRIALS_PER_CONFIG = 25
+TRIALS_PER_CONFIG = 35
 TUNING_DIR = "logs/tuning"
 
 # depends on what speed we want vs precision...
-torch.set_float32_matmul_precision('highest')
+torch.set_float32_matmul_precision('high')
 
 # Configurations to optimize
 CONFIGS_TO_TUNE = [
@@ -54,8 +54,8 @@ class TuningObjective:
         # IMPORTANT!!
         lr = trial.suggest_float("lr", 4e-5, 1e-2, log=True)
         beta1 = trial.suggest_float("beta1", 0.85, 0.95)
-        weight_decay = trial.suggest_float("weight_decay", 1e-5, 0.1)
-        #eps = trial.suggest_float("eps", 1e-9, 1e-6, log=True)
+        weight_decay = trial.suggest_float("weight_decay", 1e-4, 0.1)
+        eps = trial.suggest_float("eps", 1e-9, 1e-7)
             
         # log folder for TensorBoard tracing
         run_name = f"tuning/{self.study_name}_trial{trial.number}_lr{lr:.6f}_beta1{beta1:.4f}_wd{weight_decay:.2e}"
@@ -177,10 +177,10 @@ def main():
         
         best_trial = study.best_trial
         print(f"\n=== STUDY {study_name} COMPLETE ===")
-        print(f"  Best Val Move Accuracy: {best_trial.value:.4f}")
-        print(f"  Best Learning Rate: {best_trial.params['lr']:.6e}")
-        print(f"  Best Beta1: {best_trial.params['beta1']:.4f}")
-        print(f"  Best Epsilon: {best_trial.params['eps']:.2e}")
+        print(f"  Best Val Move Accuracy: {best_trial.value:.5f}")
+        print(f"  Best Learning Rate: {best_trial.params['lr']:.5e}")
+        print(f"  Best Beta1: {best_trial.params['beta1']:.5f}")
+        print(f"  Best Weight Decay: {best_trial.params['weight_decay']:.5e}")
         
         # Save a summary file for this specific configuration study
         summary_path = os.path.join(TUNING_DIR, f"{study_name}_summary.json")
@@ -191,7 +191,7 @@ def main():
                 "best_move_accuracy": best_trial.value,
                 "best_lr": best_trial.params["lr"],
                 "best_beta1": best_trial.params["beta1"],
-                "best_eps": best_trial.params["eps"],
+                "best_weight_decay": best_trial.params["weight_decay"],
                 "best_trial_number": best_trial.number
             }, f, indent=4)
             
@@ -200,7 +200,7 @@ def main():
             "best_acc": best_trial.value,
             "best_lr": best_trial.params["lr"],
             "best_beta1": best_trial.params["beta1"],
-            "best_eps": best_trial.params["eps"]
+            "best_weight_decay": best_trial.params["weight_decay"]
         })
     summary_table(summary_results)
 
