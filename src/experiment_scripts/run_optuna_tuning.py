@@ -72,7 +72,7 @@ class TuningObjective:
             weight_decay=weight_decay,
             lr=lr,
             beta1=beta1,
-            #eps=eps,
+            eps=eps,
             
             custom_init=False,  # Enable custom init for training stability at batch size 4096
             run_name=run_name,
@@ -117,14 +117,6 @@ class TuningObjective:
             print(traceback.format_exc())
             print(f"  ⚠️[TRIAL FAILED]")
             return 0.0 # Return 0.0 on failure to penalize the hyperparameter choice
-
-def summary_table(summary_results):
-    print("\n" + "=" * 70)
-    print("ALL OPTUNA STUDIES COMPLETE. SUMMARY:")
-    print("=" * 70)
-    for res in summary_results:
-        print(f"  {res['study']:<30} | Best Acc: {res['best_acc']:.4f} | Best LR: {res['best_lr']:.6e} | Best Beta1: {res['best_beta1']:.4f} | Best Eps: {res['best_eps']:.2e}")
-    print("=" * 70)
 
 def main():
     os.makedirs(TUNING_DIR, exist_ok=True)
@@ -181,7 +173,7 @@ def main():
         print(f"  Best Learning Rate: {best_trial.params['lr']:.5e}")
         print(f"  Best Beta1: {best_trial.params['beta1']:.5f}")
         print(f"  Best Weight Decay: {best_trial.params['weight_decay']:.5e}")
-        
+        print(f"  Best Eps: {best_trial.params['eps']:.5e}")
         # Save a summary file for this specific configuration study
         summary_path = os.path.join(TUNING_DIR, f"{study_name}_summary.json")
         with open(summary_path, "w") as f:
@@ -192,6 +184,7 @@ def main():
                 "best_lr": best_trial.params["lr"],
                 "best_beta1": best_trial.params["beta1"],
                 "best_weight_decay": best_trial.params["weight_decay"],
+                "best_eps": best_trial.params["eps"],
                 "best_trial_number": best_trial.number
             }, f, indent=4)
             
@@ -200,9 +193,9 @@ def main():
             "best_acc": best_trial.value,
             "best_lr": best_trial.params["lr"],
             "best_beta1": best_trial.params["beta1"],
-            "best_weight_decay": best_trial.params["weight_decay"]
+            "best_weight_decay": best_trial.params["weight_decay"],
+            "best_eps": best_trial.params["eps"]
         })
-    summary_table(summary_results)
 
 if __name__ == "__main__":
     main()
