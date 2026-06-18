@@ -25,3 +25,12 @@ dependencies = [
     "onnxscript",
     "pyffish>=0.0.88",
 ]
+
+[tool.pyrefly]
+project-includes = [
+    "**/*.py*",
+    "**/*.ipynb",
+]
+search-path = ["."]
+disable-search-path-heuristics = true
+disable-type-errors-in-ide = true

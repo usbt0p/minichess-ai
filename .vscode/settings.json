@@ -1,4 +1,6 @@
 {
     "python.envFile": "${workspaceFolder}/.env",
-    "latex-workshop.latex.auxDir": "/home/usbt0p/TFG/doc/aux"
+    "latex-workshop.latex.auxDir": "/home/usbt0p/TFG/doc/aux",
+    "python.pyrefly.disableTypeErrors": true,
+    "python.pyrefly.typeCheckingMode": "off"
 }
