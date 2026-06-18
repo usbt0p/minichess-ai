@@ -373,7 +373,7 @@ def test_model_holdout(model, train_config):
 
 if __name__ == '__main__':
     args = parse_args()
-    set_seed(42)
+    set_seed(args.seed) # defaults to 42
     d_k = args.embed_dim
 
     # Initialize train configurations
@@ -419,8 +419,8 @@ if __name__ == '__main__':
         representation=train_config.representation,
         use_factorized_policy=train_config.use_factorized_policy,
     )
-    # TODO donde poner esto
-    torch.set_float32_matmul_precision('highest')
+    
+    torch.set_float32_matmul_precision(args.precision)
     
     print(encoder_config)
 

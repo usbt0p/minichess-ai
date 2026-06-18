@@ -64,9 +64,11 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Train MiniChess Transformer")
     parser.add_argument("data_path", type=str, help="Path to the dataset file")
     parser.add_argument("embed_dim", type=int, help="Embedding dimension (d_k)")
+
+    parser.add_argument("--seed", type=int, default=42, help="Random seed (default: 42)")
+    parser.add_argument("--precision", type=str, default="high", help="Mixed precision mode (default: high). Options: medium, high, highest")
     
     # Optimizer & Training Hyperparams
-    parser.add_argument("--lr", type=float, default=2e-3, help="Learning rate (default: 2e-3)")
     parser.add_argument("--batch_size", type=int, default=512, help="Batch size (default: 512)")
     parser.add_argument("--epochs", type=int, default=5, help="Number of training epochs (default: 5)")
     parser.add_argument("--num_blocks", type=int, default=4, help="Number of transformer blocks (default: 4)")
@@ -75,6 +77,8 @@ def parse_args():
     parser.add_argument("--run_name", type=str, default=None, help="Descriptive name of the run to save metadata and logs")
     parser.add_argument("--save_dir", type=str, default=None, help="Directory where run folders will be saved")
     
+    parser.add_argument("--lr", type=float, default=2e-3, help="Learning rate (default: 2e-3)")
+    parser.add_argument("--weight_decay", type=float, default=2e-5, help="Weight decay (default: 2e-5)")
     parser.add_argument("--beta1", type=float, default=0.9, help="AdamW beta1 (default: 0.9)")
     parser.add_argument("--beta2", type=float, default=0.999, help="AdamW beta2 (default: 0.999)")
     parser.add_argument("--eps", type=float, default=1e-8, help="AdamW epsilon (default: 1e-8)")

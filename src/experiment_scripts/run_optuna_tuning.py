@@ -54,11 +54,11 @@ class TuningObjective:
         # IMPORTANT!!
         lr = trial.suggest_float("lr", 4e-5, 1e-2, log=True)
         beta1 = trial.suggest_float("beta1", 0.85, 0.95)
-        weight_decay = trial.suggest_float("weight_decay", 1e-6, 1e-4, log=True)
+        weight_decay = trial.suggest_float("weight_decay", 1e-5, 0.1)
         #eps = trial.suggest_float("eps", 1e-9, 1e-6, log=True)
             
         # log folder for TensorBoard tracing
-        run_name = f"tuning/{self.study_name}_trial{trial.number}_lr{lr:.6f}_beta1{beta1:.4f}_eps{eps:.2e}"
+        run_name = f"tuning/{self.study_name}_trial{trial.number}_lr{lr:.6f}_beta1{beta1:.4f}_wd{weight_decay:.2e}"
         
         train_config = TrainingConfig(
             data_path=DATASET_PATH,
@@ -94,7 +94,7 @@ class TuningObjective:
         model = MiniChessTransformerEncoder(encoder_config)
         model = torch.compile(model)
  
-        print(f"\n  --> Trial {trial.number}: Testing LR = {lr:.6e}, Beta1 = {beta1:.4f}, Epsilon = {eps:.2e}")
+        print(f"\n  --> Trial {trial.number}: Testing LR = {lr:.6e}, Beta1 = {beta1:.4f}, Weight Decay = {weight_decay:.2e}")
         start_time = time.time()
         
         try:
