@@ -636,45 +636,48 @@ Cosas a incluír:
     \item explicaciones más en profundidad de cosas que puedan preguntar en la defensa
 \end{itemize}
 
-\subsection{Hiperparámetros del Entrenamiento}
+\subsection{Hiperparámetros del Entrenamiento y Estudio de Ablación}
 
-\textcolor{red}{TODO: rellenar datos tras hyperparam search}
+En esta sección se detallan los hiperparámetros fijos empleados en las fases de entrenamiento y, en particular, en el estudio de ablación de arquitectura diseñado para responder a la Hipótesis 2. Este estudio sistemático varía la representación del tablero (\textit{simple} vs. \textit{spatial}) y la utilización o no de la cabeza de política factorizada, repitiéndose bajo un conjunto de semillas aleatorias distintas para evaluar la estabilidad del aprendizaje y mitigar efectos del ruido estocástico.
 
-\textit{"Fixed hyperparameters will have their values fixed in the current round of experiments. These are hyperparameters whose values do not need to (or we do not want them to) change when comparing different values of the scientific hyperparameters. By fixing certain hyperparameters for a set of experiments, we must accept that conclusions derived from the experiments might not be valid for other settings of the fixed hyperparameters. In other words, fixed hyperparameters create caveats for any conclusions we draw from the experiments."} 
-Referencia: \href{https://github.com/google-research/tuning_playbook#identifying-scientific-nuisance-and-fixed-hyperparameters}{Deep Learning Tuning Playbook, Google 2023}
+Siguiendo las recomendaciones del \textit{Deep Learning Tuning Playbook} de Google \cite{deeplearningtuningplaybook}, para realizar comparaciones rigurosas sobre las variables científicas del modelo se mantuvieron fijos los hiperparámetros molestos y de infraestructura táctica. El uso de un tamaño de lote grande ($B = 16384$) maximiza el paralelismo y la estabilidad del gradiente en la GPU, requiriendo un ajuste de los hiperparámetros del optimizador (tasa de aprendizaje y estabilidad numérica) obtenidos mediante un proceso de ajuste de Optuna.
 
+La Tabla~\ref{tab:hiperparametros_ablation} detalla la configuración y valores específicos de estos hiperparámetros fijos empleados durante las 30 épocas del estudio de ablación.
 
 \begin{table}[htbp]
     \centering
-    \begin{tabular}{|l|c|c|}
+    \begin{tabular}{|p{4.5cm}|p{3cm}|p{8.5cm}|}
     \hline
-    \textbf{Hiperparámetro (Símbolo)} & \textbf{Valor} & \textbf{Descripción} \\
+    \textbf{Hiperparámetro (Símbolo)} & \textbf{Valor} & \textbf{Descripción / Contexto Experimental} \\
     \hline
-    \multicolumn{3}{|c|}{\textbf{Arquitectura Transformer}} \\
-    \hline
-    Dimensión oculta ($d_{\text{model}}$) & & \\
-    Número de capas Encoder ($L$) & & \\
-    Cabezas de atención ($h$) & & \\
-    \hline
-    \multicolumn{3}{|c|}{\textbf{Aprendizaje por Refuerzo (PPO)}} \\
-    \hline
-    Tasa de aprendizaje base ($lr$) & & \\
-    Batch size ($B$) & & \\
-    Número de epochs PPO ($K$) & & \\
-    Constante de descuento ($\gamma$) & & \\
-    Parámetro GAE ($\lambda$) & & \\
-    Márgen de Clipping ($\epsilon$) & & \\
-    Coeficiente de Entropía ($c_2$) & & \\
-    Coeficiente de Valor ($c_1$) & & \\
+    Dataset de entrada & \texttt{d4\_val.txt} & Dataset filtrado obtenido a partir de partidas generadas a profundidad 4. \\ \hline
+    Split train/validation & 97\% / 3\% & División del dataset en conjuntos de entrenamiento y validación. \\ \hline
+    Dimensión de embedding ($d_k$) & 64 & Dimensión de los embeddings de entrada y proyección interna. \\ \hline
+    Número de bloques ($N$) & 3 & Número de bloques encoder del Transformer en el backbone. \\ \hline
+    Épocas de entrenamiento & 30 & Pasadas completas sobre el dataset. \\ \hline
+    Tamaño de lote ($B$) & 16384 & Batch size grande para aprovechamiento de GPU. \\ \hline
+    Backend de atención & \texttt{math} & Kernels de SDPA optimizados para Tensor Cores. \\ \hline
+    Autocast de precisión & \texttt{none} & Sin autocast, entrenamiento en float32. \\ \hline
+    Precisión de matmul & \texttt{high} & Precisión para operaciones de multiplicación matricial con Tensor Cores. \\ \hline
+    Tasa de aprendizaje ($lr$) & 0.002842 & Tasa de aprendizaje optimizada tras la exploración de hiperparámetros con Optuna. \\ \hline
+    Weight decay ($\lambda$) & $2\times 10^{-5}$ & Decaimiento de pesos (penalización L2) para AdamW. \\ \hline
+    AdamW $\beta_1$ & 0.9244 & Coeficiente de promedio móvil del gradiente de primer orden en AdamW. \\ \hline
+    AdamW $\beta_2$ & 0.999 & Coeficiente de promedio móvil del gradiente de segundo orden (por defecto). \\ \hline
+    AdamW $\epsilon$ & $3.6618\times 10^{-9}$ & Parámetro de estabilidad numérica para evitar divisiones por cero. \\ \hline
+    Semillas aleatorias ($Seed$) & 42, 123, 2026, 777, 8765 & Múltiples semillas para evaluar estabilidad estocástica de los resultados. \\
     \hline
     \end{tabular}
-    \caption{Tabla de hiperparámetros de los modelos y del algoritmo PPO.}
-    \label{tab:hiperparametros}
+    \caption{Hiperparámetros fijos empleados en las ejecuciones del estudio de ablación de arquitectura.}
+    \label{tab:hiperparametros_ablation}
 \end{table}
 
-Los hiperparámetros fijos se eligieron también siguiendo las recomendaciones del \textit{tuning playbook} de DeepMind: modelos simples al inicio, learning rate constante para evitar complicaciones, maximizar el batch size para un entrenamiento más rápido, tunear solo los hiperparámertos importantes para el batch (parametros de optimizador, learning rate). \href{https://github.com/google-research/tuning_playbook#choosing-the-optimizer:~:text=Our%20guiding%20principle%20is%20to,%28see%20Shallue%20et%20al%2E%202018%29%2E}{"Our guiding principle is to always use simplest, lowest resource configuration that yields good results.}
+Los hiperparámetros fijos se eligieron también siguiendo las recomendaciones del \textit{tuning playbook} de DeepMind: modelos simples al inicio, learning rate constante para evitar complicaciones, maximizar el batch size para un entrenamiento más rápido, tunear solo los hiperparámertos importantes para el batch (parametros de optimizador, learning rate). \href{https://github.com/google-research/tuning_playbook#choosing-the-optimizer:~:text=Our%20guiding%20principle%20is%20to,%28see%20Shallue%20et%20al%2E%202018%29%2E}{\textit{"Our guiding principle is to always use simplest, lowest resource configuration that yields good results.}}
 
 El cambio de batch size requirió de ajustes varios, por lo mencionado en la guía: \href{https://github.com/google-research/tuning_playbook#choosing-the-optimizer:~:text=The%20hyperparameters%20that%20interact%20most%20strongly%20with%20the%20batch%20size%2C%20and%20therefore%20are%20most%20important%20to%20tune%20separately%20for%20each%20batch%20size%2C%20are%20the%20optimizer%20hyperparameters%20%28e%2Eg%2E%20learning%20rate%2C%20momentum%29%20and%20the%20regularization%20hyperparameters%2E}{\textit{"The hyperparameters that interact most strongly with the batch size, and therefore are most important to tune separately for each batch size, are the optimizer hyperparameters (e.g. learning rate, momentum) and the regularization hyperparameters."}}
+
+Cabe destacar que los resultados obtenidos se obtuvieron para un conjunto fijo de hiperparámetros. Esto no quita que puedan existir otros conjuntos de hiperparámetros que den mejores resultados, pero para el estudio de ablación realizado no se variaron los hiperparámetros más allá de los que se querían estudiar. No se asegura independencia condicional entre distintos conjuntos de hiperparámetros, y esto limita la extrapolación de resultados a otros conjuntos de hiperparámetros. 
+\textit{"Fixed hyperparameters will have their values fixed in the current round of experiments. These are hyperparameters whose values do not need to (or we do not want them to) change when comparing different values of the scientific hyperparameters. By fixing certain hyperparameters for a set of experiments, we must accept that conclusions derived from the experiments might not be valid for other settings of the fixed hyperparameters. In other words, fixed hyperparameters create caveats for any conclusions we draw from the experiments."} 
+Referencia: \href{https://github.com/google-research/tuning_playbook#identifying-scientific-nuisance-and-fixed-hyperparameters}{Deep Learning Tuning Playbook, Google 2023}
 
 
 \end{document}

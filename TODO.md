@@ -10,6 +10,12 @@ Otros problemas:
 
 - escribir a david con experimentos hechos y pedir consejo sobre ablaciones. igual mejor opensourcear repo para q lo vea todo
 
+- rsync polling script for pulling results from ablations trough ssh (need ssh key!!)
+
+-  plantearse registrar alguna otra métrica de performance a parte de accuracy... (f1, precision, recall, precision@k, recall@k, map@50, etc)
+
+- sobre el test estadístico: hay q ejecutar los checlkpoints contra el holdout de test. pero para el "torneo"... cómo hago esto? uso una sola semilla? porque son 6 modelos entotal: baseline random, baseline ffn, input simple y cabezas simples, input simple y cabezas factorizadas, input 2d y cabezas simples, input 2d y cabezas factorizadas. 6*6 = 36 runs... 
+
 - verify statistical significance and hypotheses: figure out if more runs with different random seeds are needed, and what statistical test is best for proving significance
     - find out the cause of the error in the 3090. it dont support torch.compile. it was some illegal memory access in CUDA, meybe related to fused adamw
 
@@ -158,3 +164,5 @@ while they train:
 - test the pyffish python api works as expected
 - run hyperparam optim on 3090 searching for best lr and optim params for the biggest batch size i can on 3090, in order to speed up training
 - on the other 3090: run ablation experiments for the 4 versions of the supervised transformer: simple input & simple heads, simple input & factored heads, 2d input & simple heads, 2d input & factored heads. use same hyperparams for all to ensure fair comparison and no extra independent variables.
+
+- input simple y cabezas simples, input simple y cabezas factorizadas, input 2d y cabezas simples, input 2d y cabezas factorizadas
