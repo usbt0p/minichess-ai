@@ -672,4 +672,9 @@ Referencia: \href{https://github.com/google-research/tuning_playbook#identifying
     \label{tab:hiperparametros}
 \end{table}
 
+Los hiperparámetros fijos se eligieron también siguiendo las recomendaciones del \textit{tuning playbook} de DeepMind: modelos simples al inicio, learning rate constante para evitar complicaciones, maximizar el batch size para un entrenamiento más rápido, tunear solo los hiperparámertos importantes para el batch (parametros de optimizador, learning rate). \href{https://github.com/google-research/tuning_playbook#choosing-the-optimizer:~:text=Our%20guiding%20principle%20is%20to,%28see%20Shallue%20et%20al%2E%202018%29%2E}{"Our guiding principle is to always use simplest, lowest resource configuration that yields good results.}
+
+El cambio de batch size requirió de ajustes varios, por lo mencionado en la guía: \href{https://github.com/google-research/tuning_playbook#choosing-the-optimizer:~:text=The%20hyperparameters%20that%20interact%20most%20strongly%20with%20the%20batch%20size%2C%20and%20therefore%20are%20most%20important%20to%20tune%20separately%20for%20each%20batch%20size%2C%20are%20the%20optimizer%20hyperparameters%20%28e%2Eg%2E%20learning%20rate%2C%20momentum%29%20and%20the%20regularization%20hyperparameters%2E}{\textit{"The hyperparameters that interact most strongly with the batch size, and therefore are most important to tune separately for each batch size, are the optimizer hyperparameters (e.g. learning rate, momentum) and the regularization hyperparameters."}}
+
+
 \end{document}

@@ -1,4 +1,13 @@
-Hey! These architecture diagrams were LLM generated, there might be some inaccuracies.
+Some diagrams for model architectures.
+These architecture diagrams were LLM generated, there might be some inaccuracies!
+
+Diagrams:
+1. [MLP Baseline](#mlp-baseline-fnnpromotionmaskingpy)
+2. [Transformer Block Feed-Forward Network](#transformer-block-feed-forward-network-mlp)
+3. [Transformer Block](#transformer-block-transformerblock)
+4. [Policy Head](#policy-head-matrixpolicyhead)
+5. [Value Head](#value-head-valuehead)
+6. [MiniChess Transformer Encoder Full Architecture](#minichess-transformer-encoder-full-architecture)
 
 ---
 

@@ -24,6 +24,7 @@ dependencies = [
     "onnx",
     "onnxscript",
     "pyffish>=0.0.88",
+    "pytest>=9.1.0",
 ]
 
 [tool.pyrefly]

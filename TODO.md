@@ -1,18 +1,24 @@
 
 # ORDEN DEL DIA
 
-- escribir a david con experimentos hechos y pedir consejo sobre ablaciones. igual mejor opensourcear repo para q lo vea todo
-
-- verify statistical significance and hypotheses: figure out if more runs with different random seeds are needed, and what statistical test is best for proving significance
-    - find out the cause of the error in the 3090. it dont support torch.compile, but error is
-
-- get the README ready for making the repo public.
+Otros problemas:
+- Las curvas de value head parecen planas. puede que haya un desequilibrio entre las pérdidas
+- Variabilidad alta en biases de value head
+- Cómo "leo" los histogramas de gradiente para saber si las capas profundas los propagan correctamente? 
 
 - implement and verify the script for running tournaments with multiple models
 
+- escribir a david con experimentos hechos y pedir consejo sobre ablaciones. igual mejor opensourcear repo para q lo vea todo
+
+- verify statistical significance and hypotheses: figure out if more runs with different random seeds are needed, and what statistical test is best for proving significance
+    - find out the cause of the error in the 3090. it dont support torch.compile. it was some illegal memory access in CUDA, meybe related to fused adamw
+
 - add .agents file and simple skills
 
-- mejora de performance: añadir cabeza categórica de valor. ver si mejora. igual quitar dropout  y subir grad clipping...
+- mejora de performance: añadir cabeza categórica de valor. ver si mejora. igual quitar dropout y subir grad clipping...
+    - the derivative of $\tanh(x)$ is $1 - \tanh^2(x)$. As the prediction approaches $+1.0$ or $-1.0$, the derivative approaches $0$. If the model is highly confident but wrong (e.g., predicting $+0.99$ for a position that actually ends in a loss $-1.0$), the gradient drops to near-zero, making it extremely difficult for the optimizer to correct the error.
+    - A categorical Value Head (KataGo / modern Leela): Instead of predicting a single scalar float, the model outputs logits for a discrete distribution over game outcomes (e.g., 3 classes: [Loss, Draw, Win]). This completely avoids regression saturation and yields much more stable gradients. This might be added as auxiliary though
+    - Since $p_{\text{loss}}, p_{\text{draw}}, p_{\text{win}}$ (where $p_{\text{loss}} + p_{\text{draw}} + p_{\text{win}} = 1.0$), this can be mapped to continuous values via $$V = (-1.0 \times p_{\text{loss}}) + (0.0 \times p_{\text{draw}}) + (1.0 \times p_{\text{win}}) = p_{\text{win}} - p_{\text{loss}}$$
 
 - updates in the docs:
   - add info about the dataset. annex holds figures with stats (escribir en la docu sobre el dataset. dar un sample. estadisticas en el anexo. explicar profundidades)
@@ -20,8 +26,6 @@
   - update the transformer architecture
   - explain separately the backbone of the transformer and the head(s). 
   - explain the encoding of the inputs for each model (mlp and transformer w/ and w/out inductive bias)
-
-- develop the "procedure": what i do, starting from data and going trough the steps in processing, creating the model, choosing params, training it, testing experiments...
 
 - tune lr and other adam hyperparams on highest batchsize possible on a 3090. refer to google tuning playbook. do for different d_k and depths. stick to it 
 
@@ -34,6 +38,7 @@
 
 # ideas no tan urgentes
 
+- maybe... using some LR scheduler (warmup + decay) would be nice
 
 -  ver si mejora el tiempo hacer non_blocking los tensores: https://docs.pytorch.org/tutorials/intermediate/pinmem_nonblock.html
 - idea! puede ser que flashattn no sea tan util por lo pequeño de la secuencia, y como se sacrifica precision en bfloat16, mejor usar float32 con efficientAttention o otro backend? refs:
@@ -146,3 +151,10 @@ while they train:
 - run the new ablatable experiments on the 3090. 
 
 -  refactor a bunch of stuff from train
+
+## 18-19/06
+- correctly develop the experiment "procedure": what i do, starting from data and going trough the steps in processing, creating the model, choosing params, training it, testing experiments... i havent written it in the docs tough
+- get the README ready for making the repo public.
+- test the pyffish python api works as expected
+- run hyperparam optim on 3090 searching for best lr and optim params for the biggest batch size i can on 3090, in order to speed up training
+- on the other 3090: run ablation experiments for the 4 versions of the supervised transformer: simple input & simple heads, simple input & factored heads, 2d input & simple heads, 2d input & factored heads. use same hyperparams for all to ensure fair comparison and no extra independent variables.
