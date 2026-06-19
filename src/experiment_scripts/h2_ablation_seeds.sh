@@ -3,7 +3,7 @@
 export PYTHONPATH="."
 
 # 5 seeds for the ablation study
-SEEDS=(42 123 2026 777 8765)
+SEEDS=(2026 777 8765) # 42 123 
 
 # configurations to run
 # Format: representation|factorized_policy|suffix
@@ -20,7 +20,7 @@ for SEED in "${SEEDS[@]}"; do
     echo "========================================================================"
     
     # Establish run directory based on the seed
-    SAVE_DIR="experiments/h2_ablation_seed_${SEED}"
+    SAVE_DIR="experiments/h2_ablation_bigbatch_seed_${SEED}"
     mkdir -p "$SAVE_DIR"
 
     # Loop over each architecture configuration
@@ -47,11 +47,14 @@ for SEED in "${SEEDS[@]}"; do
             --seed "$SEED" \
             --num_blocks 3 \
             --epochs 30 \
-            --batch_size 512 \
+            --batch_size 16384 \
             --attn_backend math \
             --autocast none \
             --precision high \
-            --lr 0.0030 \
+            --lr 0.002842 \
+            --weight_decay 0.00125 \ # 2e-05 was hardcoded...
+            --beta1 0.9244 \
+            --eps 3.6618e-09 \
             --representation "$REPR" \
             $OPT_ARGS \
             --run_name "$RUN_NAME" \

@@ -62,41 +62,50 @@ class TrainingConfig:
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Train MiniChess Transformer")
-    parser.add_argument("data_path", type=str, help="Path to the dataset file")
-    parser.add_argument("embed_dim", type=int, help="Embedding dimension (d_k)")
-
-    parser.add_argument("--seed", type=int, default=42, help="Random seed (default: 42)")
-    parser.add_argument("--precision", type=str, default="high", help="Mixed precision mode (default: high). Options: medium, high, highest")
     
-    # Optimizer & Training Hyperparams
-    parser.add_argument("--batch_size", type=int, default=512, help="Batch size (default: 512)")
-    parser.add_argument("--epochs", type=int, default=5, help="Number of training epochs (default: 5)")
+    # Dataset and path / meta-parameters
+    parser.add_argument("data_path", type=str, help="Path to the dataset file")
+    parser.add_argument("--use_cache", type=bool, default=True, help="Use cached .pt files instead of raw data (default: True)")
+    parser.add_argument("--subsample", type=float, default=1.0, help="Percentage of the dataset to use (e.g. 0.5 for 50%%)")
+    parser.add_argument("--run_name", type=str, default=None, help="Descriptive name of the run to save metadata and logs")
+    parser.add_argument("--save_dir", type=str, default=None, help="Directory where run folders will be saved")
+
+    # Model recipe and architecture parameters. most of these are found in src.models.transformerEncoder.EncoderConfig
+    parser.add_argument("embed_dim", type=int, help="Embedding dimension (d_k)")
+    parser.add_argument("--num_heads", type=int, default=8, help="Number of attention heads (default: 8)")
     parser.add_argument("--num_blocks", type=int, default=4, help="Number of transformer blocks (default: 4)")
     parser.add_argument("--mlp_expand", type=int, default=4, help="MLP hidden dimension expand factor (default: 4)")
     parser.add_argument("--custom_init", action="store_true", help="Enable GPT-2 style weight initialization")
-    parser.add_argument("--run_name", type=str, default=None, help="Descriptive name of the run to save metadata and logs")
-    parser.add_argument("--save_dir", type=str, default=None, help="Directory where run folders will be saved")
+    parser.add_argument("--precision", type=str, default="high", help="Mixed precision mode (default: high). Options: medium, high, highest")
+
+    # Representation and factorized policy options
+    parser.add_argument("--representation", type=str, choices=["simple", "spatial"], default="simple", help="Input representation style (default: simple)")
+    parser.add_argument("--factorized_policy", action="store_true", help="Enable factorized policy auxiliary heads and loss")
+
+    # Backend options for model attention and tensor processing
+    # careful with these, bad combinations can break things silently! 
+    parser.add_argument("--attn_backend", type=str, choices=["math", "efficient", "flash", "auto"], default="auto", help="Scaled Dot-Product Attention backend (default: auto)")
+    parser.add_argument("--autocast", type=str, choices=["bfloat16", "float16", "float32", "auto", "none"], default="bfloat16", help="Autocast precision mode (default: bfloat16)")
     
+    # Training Hyperparams
+    parser.add_argument("--seed", type=int, default=42, help="Random seed (default: 42)")
+    parser.add_argument("--train_ratio", type=float, default=0.97, help="Ratio of the dataset to use for training (default: 0.97)")
+    parser.add_argument("--batch_size", type=int, default=512, help="Batch size (default: 512)")
+    parser.add_argument("--epochs", type=int, default=5, help="Number of training epochs (default: 5)")
+    parser.add_argument("--patience", type=int, default=4, help="Patience for early stopping (default: 4)")
+    parser.add_argument("--num_workers", type=int, default=12, help="Number of workers for data loading (default: 12)")
+    
+    # Optimizer hyperparams
     parser.add_argument("--lr", type=float, default=2e-3, help="Learning rate (default: 2e-3)")
     parser.add_argument("--weight_decay", type=float, default=2e-5, help="Weight decay (default: 2e-5)")
     parser.add_argument("--beta1", type=float, default=0.9, help="AdamW beta1 (default: 0.9)")
     parser.add_argument("--beta2", type=float, default=0.999, help="AdamW beta2 (default: 0.999)")
     parser.add_argument("--eps", type=float, default=1e-8, help="AdamW epsilon (default: 1e-8)")
 
-    # Representation and factorized policy options
-    parser.add_argument("--representation", type=str, choices=["simple", "spatial"], default="simple", help="Input representation style (default: simple)")
-    parser.add_argument("--factorized_policy", action="store_true", help="Enable factorized policy auxiliary heads and loss")
-
     # Profiler stuff
     parser.add_argument("--profile", type=str, default=None, help="Name of the profiling run (enables profiling)")
     parser.add_argument("--profile_steps", type=int, default=50, help="Number of profiling steps (default: 50)")
     parser.add_argument("--profile_desc", type=str, default=None, help="String description of the profiling run")
     parser.add_argument("--profile_filename", type=str, default=None, help="Custom filename for the trace (default: worker name)")
-    
-    parser.add_argument("--subsample", type=float, default=1.0, help="Percentage of the dataset to use (e.g. 0.5 for 50%%)")
-    
-    # careful with these, bad combinations can break things silently! 
-    parser.add_argument("--attn_backend", type=str, choices=["math", "efficient", "flash", "auto"], default="auto", help="Scaled Dot-Product Attention backend (default: auto)")
-    parser.add_argument("--autocast", type=str, choices=["bfloat16", "float16", "float32", "auto", "none"], default="bfloat16", help="Autocast precision mode (default: bfloat16)")
     
     return parser.parse_args()
