@@ -1,16 +1,31 @@
 
 # ORDEN DEL DIA
 
+- implement and verify the script for running tournaments with multiple models:
+    - test random vs random (works). 
+        - report any inconsistencies
+        - collect 2-3 games and manually verify them
+    - test random vs models
+        - ensure model loading is correct
+        - check result performance and ensure its right
+        - collect 2-3 games and manually verify them
+        - measure execution time for estimating how much it takes to run simulations
+    - test models vs models
+        - two different models with difference in accuracies
+        - check result performance and ensure its right
+        - measure execution time
+    - one it works as-is, refactor the todos in the script
+
+- 10 experiments from the ablations are ready! so they can be scp's here and analyzed, pull them and start making a script to run checkpoints against holdout, extract data and and produce plots / tables 
+    - dk_128 are on their way too
+
+- rsync polling script for pulling results from ablations trough ssh (need ssh key!!)
+
+- subir datos a huggingface
 Otros problemas:
 - Las curvas de value head parecen planas. puede que haya un desequilibrio entre las pérdidas
 - Variabilidad alta en biases de value head
 - Cómo "leo" los histogramas de gradiente para saber si las capas profundas los propagan correctamente? 
-
-- implement and verify the script for running tournaments with multiple models
-
-- escribir a david con experimentos hechos y pedir consejo sobre ablaciones. igual mejor opensourcear repo para q lo vea todo
-
-- rsync polling script for pulling results from ablations trough ssh (need ssh key!!)
 
 -  plantearse registrar alguna otra métrica de performance a parte de accuracy... (f1, precision, recall, precision@k, recall@k, map@50, etc)
 
@@ -166,3 +181,4 @@ while they train:
 - on the other 3090: run ablation experiments for the 4 versions of the supervised transformer: simple input & simple heads, simple input & factored heads, 2d input & simple heads, 2d input & factored heads. use same hyperparams for all to ensure fair comparison and no extra independent variables.
 
 - input simple y cabezas simples, input simple y cabezas factorizadas, input 2d y cabezas simples, input 2d y cabezas factorizadas
+- escribir a david con experimentos hechos y pedir consejo sobre ablaciones. igual mejor opensourcear repo para q lo vea todo
