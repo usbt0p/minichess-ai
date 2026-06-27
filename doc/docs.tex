@@ -276,7 +276,7 @@ Donde $Q$ (Query), $K$ (Key) y $V$ (Value) son matrices obtenidas mediante proye
 
 $$Q=XW^Q, \quad K=XW^K, \quad V=XW^V$$
 
-$W^Q, W^K, W^V$ son matrices de pesos entrenables, y $d_k$ representa la dimensión de las claves (configurada en \textcolor{red}{[TODO: definir tamaño de d\_k]} para esta implementación). Este mecanismo se replica en cada una de las $h$ cabezas de atención, permitiendo capturar distintas relaciones entre las piezas. El resultado se concatena y se proyecta linealmente de vuelta a la dimensión original de la entrada. 
+$W^Q, W^K, W^V$ son matrices de pesos entrenables, y $d_k$ representa la dimensión de las claves, el cual puee variar entre configuraciones de arquitectura. Este mecanismo se replica en cada una de las $h$ cabezas de atención, permitiendo capturar distintas relaciones entre las piezas. El resultado se concatena y se proyecta linealmente de vuelta a la dimensión original de la entrada. 
 
 $$\text{MultiHead}(X) = \text{Concat}(\text{head}_1, ..., \text{head}_h)W^O$$
 
@@ -462,36 +462,54 @@ El desarrollo práctico e investigativo del proyecto se implementará utilizando
     \item \textbf{Lenguaje de programación:} \texttt{Python} 3.12+ por su extenso soporte y bibliotecas nativas de Deep Learning. 
     \item \textbf{Framework de Deep Learning:} \texttt{PyTorch} para el diseño de redes neuronales, cálculo automático de gradientes y aceleración en GPU.
     \item \textbf{Motor de Ajedrez:} Se emplea \texttt{Fairy-Stockfish}, una versión de Stockfish para variantes personalizadas, a través de la API \texttt{pyffish} de Python y a través de su CLI propia para generación de datos para la fase de aprendizaje supervisado. Este motor proporciona: (a) validación robusta y rápida de la legalidad de movimientos y reglas de la variante Gardner $5\times5$, y (b) evaluaciones heurísticas adecuadas para inicializar la red mediante aprendizaje supervisado.
-    \item \textbf{Seguimiento de experimentos:} \texttt{Weights \& Biases} (wandb) para la visualización en tiempo real del progreso de entrenamiento, entropía de la política, pérdida multiobjetivo y curvas de convergencia.
+    \item \textbf{Seguimiento de experimentos:} \texttt{tensorboard} se utilizó para la visualización en tiempo real del progreso de entrenamiento, entropía de la política, pérdida multiobjetivo y curvas de convergencia.
     \item \textbf{Reproducibilidad, dependencias y manejo de módulos en Python:} \texttt{uv} para la gestión de entornos virtuales y dependencias, asegurando la portabilidad y reproducibilidad del código (\texttt{uv} permite generar archivos de requisitos específicos y fijar una versión de Python).
 \end{itemize}
 
-\subsubsection{Descripción del conjunto de datos}
+\subsubsection{Descripción del conjunto de datos (borrador)}
 
 \textcolor{red}{TODO: poner una muestra, explicar modificaciones (mascaras añadidas p ej), estadísticas en el anexo (con imagenes...)}
 
 - las estadísticas más importantes ponerlas aqui (ratio draws)
-- explicar importancia de distintas profundidades. DECIDIR DEFINITIVAMENTE si el self play final lo voy a hacer con una mezcla o con uno solo.
-- hacer que jueguen entre ellos distintos modelos a distintas profundidades en caso de que use varias
+- explicar importancia de distintas profundidades. DECIDIR DEFINITIVAMENTE si el aprendizaje supervisado final lo voy a hacer con una mezcla o con uno solo. update: finalmente lo estoy haciendo solo con la versión de depth 4.
+- hacer que jueguen entre ellos distintos modelos a distintas profundidades en caso de que use varias. update: en ppi esto ya no es viable
 - explicar peculiaridades: quiescent positions, filtrado de posiciones repetidas, filtrado de posiciones tácticas puras. explicar lo de las coronaciones que solo son a una dama, y el ratio de victorias por color...
+es importante aclarar que son datos complejos: modelar búsqueda de profundidad 4 y además con el añadido de filtrar posiciones tácticas simples (capturas, movimientos excesivamente forzados, etc) lleva a la red a tener que internalizar o patrones muy complejos o la idea de búsqueda en profundidad. además de tener que hacer esto con las recompensas dispersas y con poca densidad informativa que son la victoria / derrota / empate
 - para esto habrá bastante informacion seguramente en las entradas de blog que escribí
 
 
+\subsubsection{Descripción del conjunto de datos}
 
+\textcolor{red}{TODO explicar como se ve el conjunto de datos, como es una instancia... los datos que importan y los que no... menos slop. }
+
+Para el entrenamiento en la fase de aprendizaje supervisado, se ha optado por utilizar exclusivamente un conjunto de datos sintéticos generado con una profundidad de búsqueda de 4 jugadas \texttt{fairy-stockfish}, descartando por completo el uso de mezclas con evaluaciones de profundidades inferiores (D2 o D3). Este conjunto de datos definitivo cuenta con un volumen total de 60,030,000 posiciones, el cual ha sido procesado mediante una división estricta de un $97\%$ para el conjunto de entrenamiento (58,234,050 posiciones) y un $3\%$ reservado para el conjunto de validación (1,795,950 posiciones).
+
+La elección de entrenar el modelo únicamente con datos analizados a profundidad 4 responde a la necesidad de capturar la complejidad intrínseca del juego posicional y estratégico en el tablero reducido de Gardner $5\times5$. Modelar el comportamiento de un motor clásico a este nivel obliga a la arquitectura a ir más allá de heurísticas simples. El conjunto de datos presenta cierta complejidad debido a dos factores principales:
+
+\begin{itemize}
+    \item \textbf{Aislamiento de posiciones quiescentes (\textit{quiescent positions}):} Se han filtrado y eliminado sistemáticamente las posiciones tácticas puras (tales como capturas inmediatas de material o movimientos bajo jaques excesivamente forzados). Este filtrado es común en redes neuronales para ajedrez que se utilizan en conjunto con algún tipo de algoritmo de búsqueda, ya que garantiza que el Transformer no aprenda respuestas reactivas simples, sino que se vea obligado a internalizar patrones posicionales complejos o a emular conceptualmente la propia idea de búsqueda en profundidad bajo condiciones de recompensas totalmente dispersas y de baja densidad informativa (las señales terminales de victoria, derrota o empate).
+    \item \textbf{Filtrado de posiciones repetidas:} Se ha aplicado un proceso de deduplicación sobre el archivo crudo para eliminar estados idénticos del tablero, previniendo memorización y posible contaminación de los conjuntos de validación o test.
+\end{itemize}
+
+Asimismo, el conjunto de datos cuenta con particularidades estructurales en el espacio de acciones e indicadores de balance del juego:
+\begin{itemize}
+    \item \textbf{Restricción en las coronaciones:} A diferencia del modelo teórico que contempla opciones múltiples de promoción, los movimientos de coronación registrados en este conjunto de datos se encuentran limitados exclusivamente a la dama, debido a una limitación en la librería de generación de datos. En la práctica, esta suele ser la mejor jugada disponible, y no representa un sacrificio de calidad excesivo. La codificación de salida de l ared neuronal sigue permitiendo la sub-coronación, en caso de ser necesaria en la fase de RL. 
+    \item \textbf{Métricas de distribución y balance:} El análisis estadístico del conjunto de posiciones refleja las propiedades simétricas y el margen de ventaja del entorno analizado. Más estadisticas acerca del conjunto de datos pueden encontrarse en el anexo. \textcolor{red}{[PLACEHOLDER: Insertar aquí el ratio exacto de tablas (draws ratio) y la proporción o porcentaje de victorias por color (blancas vs. negras) extraídos de tus scripts de análisis]}.
+\end{itemize}
 
 \subsection{Diseño experimental}
 
 \textcolor{red}{\textbf{TODO!: ESTO ES LO MÁS IMPORTANTE AHORA MISMO! TENGO QUE TENERLO ESCRITO PARA ESTRUCTURAR COMO LO VOY A HACER. FIJAR POCAS VARIACIONES. DECIDIR HIPERPARÁMETROS, MODEL RECIPE, CARACTERÍATICAS DE ENTRENAMIENTO COMO (ATTN BACKEND, BATCH SIZE, TAMAÑO TEST...) FIJOS Y TIRAR CON ELLOS}}
 
+Esto es braindump:
 \begin{itemize}
     \item Primero, los experimentos supervisados:
-         \begin{itemize}
+        \begin{itemize}
             \item PRIMERO asegurar que no haya aleatoriedad en los experimentos! fijar todas las semillas posibles. puede que por cosas de paralelismo y cuda esto sea imposible de todos modos
             \item tener en cuenta que 3 representaicones distintas para input y output resultan en muchas combinaciones. si hago ablación por separado, son 6. si hago combinaciones, son 9. si reduzco a 2 in y 2 out, son 4 por separado y 4 en combinación (?)
             \item la ablacion puede que haya que hacerla con varias semillas
-            \item ahora si, el experimento. basicamente, con paramatros fijos, es cambiar los inputs y output como se menciona en cada uno, y luego ejecutar cada uno y comparar resultados: para mismos epochs, minima loss, maxima acc, tiempo de entrenamiento, convergencia alcanzada o no, velocidad de convergencia (pendiente de loss inicial?)... pensar esto un poco mejor de todos modos
-            \item estudio riguroso. es decir, usar significatividad estadística para las medidas! algun test de hipótesis de los que vi en faa o en estadçística  
-
+            \item ahora si, el experimento. basicamente, con paramatros fijos, es cambiar los inputs y output como se menciona en cada uno, y luego ejecutar cada uno y comparar resultados: para mismos epochs, minima loss, maxima acc, tiempo de entrenamiento, convergencia alcanzada o no, velocidad de convergencia (pendiente de loss inicial?), número de pesos de la red (con y sin embeddings)... pensar esto un poco mejor de todos modos. además, la loss de los modelos que añaden política factorizada tiene una magnitud mayor tal y como está ahora ($\text{loss\_value} + \text{loss\_policy} + 0.5 \cdot \text{loss\_factored}$ VS. $\text{loss\_value} + \text{loss\_policy}$), y por tanto no es directamente comparable
+            \item estudio riguroso. es decir, usar significatividad estadística para las medidas! algun test de hipótesis de los que vi en faa o en estadística. update: esto 
         \end{itemize}
 
     \item Luego, PPO:
@@ -501,6 +519,45 @@ El desarrollo práctico e investigativo del proyecto se implementará utilizando
 
 \end{itemize}
 
+Esto es el diseño de verdad de los experimentos:
+
+\begin{enumerate}
+\item \textbf{Fijar una ``receta" de red neuronal y de entrenamiento:} hiperparámetros de la red como la dimension de embeddings o bloques transformer + hiperparámetros de entrenamiento como LR, batch size, epochs y parametros de AdamW.
+\item \textbf{Definimos 4 versiones:} 1 representa al modelo base y las 3 restantes, ablaciones sobre este. Las 4 versiones son:
+    \begin{itemize}
+        \item (Baseline) Codificación de input simple. Cabezas simples: política y valor.
+        \item Codificación de input simple. Cabezas factorizadas: política, valor y política factorizada. 
+        \item Codificación de input bidimensional (estilo AlphaZero). Cabezas simples: política y valor.
+        \item Codificación de input bidimensional (estilo AlphaZero). Cabezas factorizadas: política, valor y política factorizada. 
+    \end{itemize}
+\item \textbf{Seleccionar varias semillas fijas (10).}
+\item \textbf{Para cada semilla, repetir los siguientes pasos para eliminar el factor de aleatoriedad:}
+    \begin{itemize}
+        \item Para cada versión de las mencionadas anteriormente:
+
+            \begin{enumerate}
+
+                \item Ejecutar un entrenamiento completo, manteniendo todos los hiperparámetros fijos.
+                \item Registrar y guardar resultados: loss de train y validation para cada cabeza, accuracy en train y validation, checkpoint del mejor modelo, numero de parámetros, FLOPs estimados...
+                \item Luego, ejecutar este checkpoint contra el conjunto de test para obtener los resultados finales para estudiar el efecto de cada versión sobre el modelo
+                
+            \end{enumerate}
+    
+    \end{itemize}
+    
+\item \textbf{Una vez obtenidos los resultados de test para las semillas, utilizar algún tipo de test estadístico para confirmar / desmentir si la hipótesis es estadísticamente significativa.} Se debe comprobar que la hipótesis se cumple teniendo en cuenta la variabilidad de los resultados entre semillas. 
+Outputs esperados: tabla con resultados medios y desviación estándar de cada versión, gráficas que muestren la evolución media y varianza de loss y accuracy (media = línea, varianza = sombreado), y alguna forma de representar el test estadístico que confirme / desmienta la hipótesis, como por ejemplo un boxplot de los resultados de test para cada versión (?).
+
+\item \textbf{Para testear más allá de la accuracy o loss, hay que enfrentar los modelos entre ellos}
+    \begin{enumerate}
+        \item Inicialmente, elegir una sola semilla. Usar esta para todos los modelos. (Si hay tiempo hacer con otras semillas)
+        \item A las 4 variantes anteriores, añadir 2 modelos más: un MLP base y un Agente aleatorio. Plantearse también un agente basado en heurística (por ejemplo, que juegue siempre la jugada que permita comer)
+        \item Para cada par de modelos, ejecutar un torneo round-robin de 100 partidas
+        \item Registrar resultados y calcular winrate, ELO estimado (entender como se calcula), entropía de la política, etc.
+        \item Analizar los resultados y ver si confirman / desmienten la hipótesis.
+        \item Output buscado: una matriz de tamaño NxN (N = número de modelos) con los resultados de winrate entre cada par de modelos, y una tabla con el ELO estimado de cada modelo.
+    \end{enumerate}
+\end{enumerate}
 
 \newpage
 % 5.12. Planificación y seguimiento
