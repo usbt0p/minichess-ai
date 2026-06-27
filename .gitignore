@@ -16,6 +16,7 @@ data.back/
 blog/
 papers/
 experiments/
+results/
 *.wiki
 
 # tex and documentation

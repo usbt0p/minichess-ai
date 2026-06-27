@@ -2,6 +2,7 @@ import os
 import sys
 import argparse
 import random
+import json
 import numpy as np
 import torch
 import torch.nn as nn
@@ -83,7 +84,7 @@ class RandomAgent(ChessAgent):
         self.name = "RandomAgent"
         
     def select_move(self, fen: str, legal_moves: list, temperature: float = 1.0):
-        return random.choice(legal_moves), 0.0
+        return random.choice(legal_moves), 0.0, []
 
 class ModelAgent(ChessAgent):
     def __init__(self, model_type, model_path, config_args, device="cpu"):
@@ -186,41 +187,78 @@ class ModelAgent(ChessAgent):
         probs = F.softmax(policy_logits[legal_indices], dim=-1)
         entropy = -torch.sum(probs * torch.log(probs + 1e-9)).item()
         
-        # TODO this is a problem. The usual way lis to use the value to orient the sampling.
+        # Extract top-6 probabilities
+        move_probs = sorted(zip(legal_moves, probs.tolist()), key=lambda x: x[1], reverse=True)
+        top_6 = [{"move": m, "prob": round(p, 4)} for m, p in move_probs[:6]]
+
+        # this is a problem: The usual way is to use the value to orient the sampling.
         # But to do that we have to do tree search of at least depth 1.
         # The thing is: is there a way of computing, from the current board tensor and,
         # given all the legal moves, all of the possible boards in constant time? that is, 
         # "spawning" the children boards of depth 1
 
-        # TODO the thing is it would probably be good to have both the value and the policy
-        # as methods for selecting moves. but that has to be implemented and correctly abstracted
-        # for now the policy is enough...
+        # what we'll do is to have both the value and the policy
+        # as methods for selecting moves. filter top-k moves by the policy, create
+        # a batch of positions after applying those moves, and then getting their values
 
-        # TODO the best thing to do might be to have policy pick top-k moves, calculate their fens, and then use the value to select the best one
-  
-        if temperature == 0.0:
-            # Greedy selection
-            best_idx = torch.argmax(masked_logits).item()
-        else:
-            # Stochastic sampling, like llms do
-            scaled_logits = masked_logits / temperature
-            probs = F.softmax(scaled_logits[legal_indices], dim=-1)
-            selected_local_idx = torch.multinomial(probs, 1).item()
-            best_idx = legal_indices[selected_local_idx]
-        # TODO also would be good to have an option that returns the top-k moves
+        k = min(6, len(legal_moves)) # TODO let's fix k at 6 for now. but it might be worth it to change it later. 
+        top_k_moves_info = move_probs[:k]
+        top_k_moves = [m for m, p in top_k_moves_info]
+        
+        # Generate FENs and features for each child position
+        batch_features = []
+        for move in top_k_moves:
+            child_fen = pyffish.get_fen("gardner", fen, [move])
+            child_parts = child_fen.split(" ")
             
-        move_uci = index_to_uci(best_idx)
-        # if decoded move is somehow invalid, fail loudly
-        if move_uci not in legal_moves:
-            raise IllegalMoveError(move_uci, legal_moves)
+            child_board_features = np.full(25, 12, dtype=np.uint8)
+            parse_fen_to_features(child_parts[0], PIECE_MAP, child_board_features)
+            child_board_tensor = torch.from_numpy(child_board_features).long().to(self.device)
             
-        return move_uci, entropy
+            if self.model_type == "mlp":
+                one_hot = torch.zeros((25, 13), dtype=torch.float32, device=self.device)
+                one_hot.scatter_(1, child_board_tensor.unsqueeze(1), 1.0)
+                features = one_hot.flatten()
+            else:
+                child_halfmove = int(child_parts[4]) if len(child_parts) > 4 else 0
+                child_halfmove_tensor = torch.tensor([child_halfmove], dtype=torch.long, device=self.device)
+                
+                child_repetition = int(child_parts[5]) if len(child_parts) > 5 else 0
+                child_repetition_tensor = torch.tensor([child_repetition], dtype=torch.long, device=self.device)
+                
+                if self.representation == "spatial":
+                    child_active_player = 1 if child_parts[1] == 'w' else 0
+                    child_active_player_tensor = torch.tensor([child_active_player], dtype=torch.long, device=self.device)
+                    features = torch.cat([child_board_tensor, child_repetition_tensor, child_halfmove_tensor, child_active_player_tensor], dim=0)
+                else:
+                    features = torch.cat([child_board_tensor, child_repetition_tensor, child_halfmove_tensor], dim=0)
+            batch_features.append(features)
+            
+        features_batch = torch.stack(batch_features, dim=0)
+        
+        with torch.no_grad():
+            if self.model_type == "mlp":
+                _, value_preds = self.model(features_batch, mask=None)
+            else:
+                _, value_preds = self.model(features_batch)
+                    
+        value_preds = value_preds.squeeze(-1) # remove extra batch dim
+        # the child board has the opponent as the active player,
+        # minimizing the opponent's value maximizes our own expected outcome.
+        best_move_idx = torch.argmin(value_preds).item()
+        best_move = top_k_moves[best_move_idx]
+            
+        if best_move not in legal_moves:
+            raise IllegalMoveError(best_move, legal_moves)
+            
+        return best_move, entropy, top_6
 
-def get_game_status(start_fen: str, movelist: list) -> tuple:
+def get_game_status_with_reason(start_fen: str, movelist: list) -> tuple:
     """
-    Determines if the game has ended and returns the result.
-    Returns: (ended: bool, result: str)
-      result: "white" (White won), "black" (Black won), "draw" (Draw), or "ongoing"
+    Determines if the game has ended and returns (ended, result, reason).
+    result: "white", "black", "draw", or "ongoing"
+    reason: "checkmate", "stalemate", "insufficient_material", "50_move_rule",
+            "3_repetition_rule", "none"
     """
     current_fen = pyffish.get_fen("gardner", start_fen, movelist)
     
@@ -231,41 +269,49 @@ def get_game_status(start_fen: str, movelist: list) -> tuple:
         active_player = current_fen.split(" ")[1]
         if in_check:
             # Checkmate: active player loses, opponent wins
-            return True, "black" if active_player == 'w' else "white"
+            return True, "black" if active_player == 'w' else "white", "checkmate"
         else:
             # Stalemate: draw
-            return True, "draw"
+            return True, "draw", "stalemate"
             
     # check insufficient material
     insufficient = pyffish.has_insufficient_material("gardner", start_fen, movelist)
     if insufficient == (True, True): # if neither player has enough material to win
-        return True, "draw"
+        return True, "draw", "insufficient_material"
         
     # check repetition or 50-move rule
+    parts = current_fen.split(" ")
+    halfmove_clock = int(parts[4]) if len(parts) > 4 else 0
+    
     opt_ended, _ = pyffish.is_optional_game_end("gardner", start_fen, movelist)
     if opt_ended:
-        return True, "draw"
+        if halfmove_clock >= 100:
+            return True, "draw", "50_move_rule"
+        else:
+            return True, "draw", "3_repetition_rule"
         
-    return False, "ongoing"
+    return False, "ongoing", "none"
 
-def play_game(agent_white : ChessAgent, agent_black : ChessAgent, max_moves=150, temperature=0.1):
+def play_game(agent_white : ChessAgent, agent_black : ChessAgent, max_moves=100, temperature=0.1):
+
+    # TODO make this not output to stdout somehow, it contaminates the logs
     pyffish.set_option("UCI_Variant", "gardner")
     start_fen = pyffish.start_fen("gardner")
     
     movelist = []
+    move_history = []
     entropies_white = []
     entropies_black = []
     
     while True:
         # Check current game status using full move history for repetition & 50-move rules
-        ended, result = get_game_status(start_fen, movelist)
+        ended, result, reason = get_game_status_with_reason(start_fen, movelist)
         if ended:
-            # TODO return also the moves, so we have a complete game log
-            return result, len(movelist), entropies_white, entropies_black
+            return result, reason, len(movelist), move_history, entropies_white, entropies_black
             
         # Hard limit to prevent infinite loops (max_moves treated as max half-moves)
         if len(movelist) >= max_moves:
-            return "draw", len(movelist), entropies_white, entropies_black
+            return "draw", "max_moves", len(movelist), move_history, entropies_white, entropies_black
             
         current_fen = pyffish.get_fen("gardner", start_fen, movelist)
         legal = pyffish.legal_moves("gardner", current_fen, [])
@@ -275,15 +321,18 @@ def play_game(agent_white : ChessAgent, agent_black : ChessAgent, max_moves=150,
         active_player = parts[1]
         
         if active_player == 'w':
-            move, ent = agent_white.select_move(current_fen, legal, temperature)
+            move, ent, top_6 = agent_white.select_move(current_fen, legal, temperature)
             entropies_white.append(ent)
+            move_history.append({"move": move, "player": "white", "entropy": ent, "top_6": top_6})
         else:
-            move, ent = agent_black.select_move(current_fen, legal, temperature)
+            move, ent, top_6 = agent_black.select_move(current_fen, legal, temperature)
             entropies_black.append(ent)
+            move_history.append({"move": move, "player": "black", "entropy": ent, "top_6": top_6})
             
         movelist.append(move)
 
-def run_tournament(agent1, agent2, num_games=20, max_moves=150, temperature=0.1):
+
+def run_tournament(agent1, agent2, num_games=20, max_moves=150, temperature=0.1, save_log=None):
     print(f"\n=== Tournament: {agent1.name} vs {agent2.name} ({num_games} games) ===")
     
     agent1_wins = 0
@@ -292,6 +341,28 @@ def run_tournament(agent1, agent2, num_games=20, max_moves=150, temperature=0.1)
     
     entropies_agent1 = []
     entropies_agent2 = []
+    
+    reasons_count = {
+        "checkmate": 0,
+        "stalemate": 0,
+        "insufficient_material": 0,
+        "50_move_rule": 0,
+        "3_repetition_rule": 0,
+        "max_moves": 0
+    }
+    
+    color_stats = {
+        "agent1": {
+            "white": {"wins": 0, "losses": 0, "draws": 0},
+            "black": {"wins": 0, "losses": 0, "draws": 0}
+        },
+        "agent2": {
+            "white": {"wins": 0, "losses": 0, "draws": 0},
+            "black": {"wins": 0, "losses": 0, "draws": 0}
+        }
+    }
+    
+    games_log = []
     
     for game_idx in range(num_games):
         # Alternate colors
@@ -302,7 +373,7 @@ def run_tournament(agent1, agent2, num_games=20, max_moves=150, temperature=0.1)
             white, black = agent2, agent1
             agent1_color = "black"
             
-        winner, moves, ent_w, ent_b = play_game(white, black, max_moves, temperature)
+        winner, reason, moves_len, movelist, ent_w, ent_b = play_game(white, black, max_moves, temperature)
         
         # Collect entropies
         if agent1_color == "white":
@@ -312,17 +383,51 @@ def run_tournament(agent1, agent2, num_games=20, max_moves=150, temperature=0.1)
             entropies_agent1.extend(ent_b)
             entropies_agent2.extend(ent_w)
             
+        # Update statistics
+        reasons_count[reason] = reasons_count.get(reason, 0) + 1
+        
         if winner == "draw":
             draws += 1
             result_str = "Draw"
+            if agent1_color == "white":
+                color_stats["agent1"]["white"]["draws"] += 1
+                color_stats["agent2"]["black"]["draws"] += 1
+            else:
+                color_stats["agent1"]["black"]["draws"] += 1
+                color_stats["agent2"]["white"]["draws"] += 1
         elif winner == agent1_color:
             agent1_wins += 1
             result_str = f"{agent1.name} won"
+            if agent1_color == "white":
+                color_stats["agent1"]["white"]["wins"] += 1
+                color_stats["agent2"]["black"]["losses"] += 1
+            else:
+                color_stats["agent1"]["black"]["wins"] += 1
+                color_stats["agent2"]["white"]["losses"] += 1
         else:
             agent2_wins += 1
             result_str = f"{agent2.name} won"
+            if agent1_color == "white":
+                color_stats["agent1"]["white"]["losses"] += 1
+                color_stats["agent2"]["black"]["wins"] += 1
+            else:
+                color_stats["agent1"]["black"]["losses"] += 1
+                color_stats["agent2"]["white"]["wins"] += 1
             
-        print(f"  Game {game_idx + 1:02d}: Winner: {result_str} | Moves: {moves}")
+        game_detail = {
+            "game_idx": game_idx + 1,
+            "white": white.name,
+            "black": black.name,
+            "winner": winner,
+            "reason": reason,
+            "num_moves": moves_len,
+            "moves": movelist,
+            "entropies_white": [float(e) for e in ent_w],
+            "entropies_black": [float(e) for e in ent_b]
+        }
+        games_log.append(game_detail)
+            
+        print(f"  Game {game_idx + 1:02d}: Winner: {result_str:15s} | Reason: {reason:22s} | Moves: {moves_len}")
         
     # Calculate win rates
     total_games = num_games
@@ -331,9 +436,6 @@ def run_tournament(agent1, agent2, num_games=20, max_moves=150, temperature=0.1)
     draw_rate = draws / total_games * 100
     
     # Calculate Elo difference using the standard formula
-    # E_A = 1 / (1 + 10^((R_B - R_A)/400))
-    # Let's approximate the performance rating difference
-    # TODO idk if this is right, i need an intuition on how the elo works
     score1 = agent1_wins + 0.5 * draws
     p1 = score1 / total_games
     if p1 >= 0.99:
@@ -352,20 +454,67 @@ def run_tournament(agent1, agent2, num_games=20, max_moves=150, temperature=0.1)
     print(f"{agent1.name:25s}: {agent1_wins} wins ({win_rate1:.1f}%)")
     print(f"{agent2.name:25s}: {agent2_wins} wins ({win_rate2:.1f}%)")
     print(f"Draws                    : {draws} ({draw_rate:.1f}%)")
-    print("-"*50)
+    print("-" * 50)
+    print("COLOR STATS BREAKDOWN:")
+    w1 = color_stats["agent1"]["white"]
+    b1 = color_stats["agent1"]["black"]
+    print(f"  {agent1.name} (Agent 1):")
+    print(f"    As White: {w1['wins']} wins, {w1['losses']} losses, {w1['draws']} draws")
+    print(f"    As Black: {b1['wins']} wins, {b1['losses']} losses, {b1['draws']} draws")
+    w2 = color_stats["agent2"]["white"]
+    b2 = color_stats["agent2"]["black"]
+    print(f"  {agent2.name} (Agent 2):")
+    print(f"    As White: {w2['wins']} wins, {w2['losses']} losses, {w2['draws']} draws")
+    print(f"    As Black: {b2['wins']} wins, {b2['losses']} losses, {b2['draws']} draws")
+    print("-" * 50)
+    print("Termination Reasons Breakdown:")
+    for r, count in reasons_count.items():
+        print(f"  {r:22s}: {count:3d} ({count / total_games * 100:.1f}%)")
+    print("-" * 50)
     print(f"Approx Elo Difference (Model1 - Model2): {elo_diff:+.1f}")
     print(f"Average Policy Entropy ({agent1.name}): {avg_entropy1:.4f}")
     print(f"Average Policy Entropy ({agent2.name}): {avg_entropy2:.4f}")
     print("="*50 + "\n")
     
-    return {
+    results = {
         "agent1_wins": agent1_wins,
         "agent2_wins": agent2_wins,
         "draws": draws,
         "elo_diff": elo_diff,
         "avg_entropy1": avg_entropy1,
-        "avg_entropy2": avg_entropy2
+        "avg_entropy2": avg_entropy2,
+        "reasons": reasons_count,
+        "color_stats": color_stats
     }
+    
+    if save_log:
+        log_data = {
+            "agent1": {
+                "name": agent1.name,
+                "type": getattr(agent1, "model_type", "random"),
+            },
+            "agent2": {
+                "name": agent2.name,
+                "type": getattr(agent2, "model_type", "random"),
+            },
+            "summary": {
+                "total_games": total_games,
+                "agent1_wins": agent1_wins,
+                "agent2_wins": agent2_wins,
+                "draws": draws,
+                "elo_diff": float(elo_diff),
+                "avg_entropy1": float(avg_entropy1),
+                "avg_entropy2": float(avg_entropy2),
+                "reasons": reasons_count,
+                "color_stats": color_stats
+            },
+            "games": games_log
+        }
+        with open(save_log, "w") as f:
+            json.dump(log_data, f, indent=2)
+        print(f"[INFO] Detailed tournament log saved to {save_log}")
+        
+    return results
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Evaluate Minichess models in a tournament setting")
@@ -392,6 +541,7 @@ if __name__ == "__main__":
     parser.add_argument("--temp", type=float, default=0.1, help="Temperature for move selection sampling (0.0 for greedy)")
     parser.add_argument("--device", type=str, default="cpu", help="Device to load neural networks ('cpu' or 'cuda')")
     parser.add_argument("--seed", type=int, default=42, help="Seed for reproducibility")
+    parser.add_argument("--save_log", type=str, default="", help="Path to save detailed tournament JSON log")
     
     args = parser.parse_args()
     
@@ -399,12 +549,12 @@ if __name__ == "__main__":
 
     # Example: run two random agents one against the other for 10 games
     '''
-    python src/chess/evaluate_tournament.py --agent1_type random --agent2_type random --num_games 10
+    python src/chess/agentVSagent.py --agent1_type random --agent2_type random --num_games 10
     '''
 
     # Example: run best model against random agent for 10 games with greedy policy
     '''
-    python src/chess/evaluate_tournament.py \
+    python src/chess/agentVSagent.py \
         --agent1_type transformer \
         --agent1_path "/home/usbt0p/TFG/experiments/test_value_refactor/20260620_013832_d4_val_trnsf_dk64_n3_value_refactor_spatial_nofact_dk64_depth3_lr3.00e-03_bs512/best_model.pth" \
         --agent1_dim 64 --agent1_blocks 3 \
@@ -417,7 +567,7 @@ if __name__ == "__main__":
 
     # Example: run two best models against each other for 20 games
     '''
-    python src/chess/evaluate_tournament.py --agent1_type transformer --agent1_path "../models/transformer_d4_best_model.pt" --agent1_dim 128 --agent1_blocks 6 --agent2_type transformer --agent2_path "../models/transformer_d2_best_model.pt" --agent2_dim 128 --agent2_blocks 6 --num_games 20 --temp 0.1 --device cuda
+    python src/chess/agentVSagent.py --agent1_type transformer --agent1_path "../models/transformer_d4_best_model.pt" --agent1_dim 128 --agent1_blocks 6 --agent2_type transformer --agent2_path "../models/transformer_d2_best_model.pt" --agent2_dim 128 --agent2_blocks 6 --num_games 20 --temp 0.1 --device cuda
     '''
     
     # Instantiate Agent 1
@@ -451,6 +601,13 @@ if __name__ == "__main__":
         agent2 = ModelAgent(args.agent2_type, args.agent2_path, config_2, device=args.device)
     
     # TODO similar to before, make some kind of factory for tournaments that handles the underlying agents and their configurations, but keeping them loosely coupled
-    results = run_tournament(agent1, agent2, num_games=args.num_games, max_moves=args.max_moves, temperature=args.temp)
+    results = run_tournament(
+        agent1, 
+        agent2, 
+        num_games=args.num_games, 
+        max_moves=args.max_moves, 
+        temperature=args.temp, 
+        save_log=args.save_log if args.save_log else None
+    )
 
     print(results)

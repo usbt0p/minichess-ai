@@ -7,7 +7,7 @@ import sys
 import os
 import pytest
 import pyffish
-from src.chess.evaluate_tournament import get_game_status
+from src.chess.agentVSagent import get_game_status
 
 # Add project root to python path to import pyffish correctly
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
