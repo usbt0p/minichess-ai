@@ -1,45 +1,14 @@
 
 # ORDEN DEL DIA
 
-- implement and verify the script for running tournaments with multiple models:
-    - test random vs random (works). 
-        - report any inconsistencies
-        - collect 2-3 games and manually verify them
-    - test random vs models
-        - ensure model loading is correct
-        - check result performance and ensure its right
-        - collect 2-3 games and manually verify them
-        - measure execution time for estimating how much it takes to run simulations
-    - test models vs models
-        - two different models with difference in accuracies
-        - check result performance and ensure its right
-        - measure execution time
-    - one it works as-is, refactor the todos in the script
+- refactor the todos in the script for tournaments. at the very least, separate the mlp agent from the transformer one, and put agents in their own module
+- committear todo lo ultimo a git. organizar en lugares apropiados.
+- mirar si subir los resultados? (results/tournaments/tournament_abl_dk64/) (results/ablations/ablations_dk64_n3)
+- eliminar benchmarks antiguos de mlp
+- pasar por test set los dk_128 del lab de auria
+- testeare la politica con valor * 5
+- luego hacer diseño experimental de la fase de PPO. decidir que gráficas y tablas quiero, que quiero observar exactamente.
 
-- 10 experiments from the ablations are ready! so they can be scp's here and analyzed, pull them and start making a script to run checkpoints against holdout, extract data and and produce plots / tables 
-    - dk_128 are on their way too
-
-- rsync polling script for pulling results from ablations trough ssh (need ssh key!!)
-
-- subir datos a huggingface
-Otros problemas:
-- Las curvas de value head parecen planas. puede que haya un desequilibrio entre las pérdidas
-- Variabilidad alta en biases de value head
-- Cómo "leo" los histogramas de gradiente para saber si las capas profundas los propagan correctamente? 
-
--  plantearse registrar alguna otra métrica de performance a parte de accuracy... (f1, precision, recall, precision@k, recall@k, map@50, etc)
-
-- sobre el test estadístico: hay q ejecutar los checlkpoints contra el holdout de test. pero para el "torneo"... cómo hago esto? uso una sola semilla? porque son 6 modelos entotal: baseline random, baseline ffn, input simple y cabezas simples, input simple y cabezas factorizadas, input 2d y cabezas simples, input 2d y cabezas factorizadas. 6*6 = 36 runs... 
-
-- verify statistical significance and hypotheses: figure out if more runs with different random seeds are needed, and what statistical test is best for proving significance
-    - find out the cause of the error in the 3090. it dont support torch.compile. it was some illegal memory access in CUDA, meybe related to fused adamw
-
-- add .agents file and simple skills
-
-- mejora de performance: añadir cabeza categórica de valor. ver si mejora. igual quitar dropout y subir grad clipping...
-    - the derivative of $\tanh(x)$ is $1 - \tanh^2(x)$. As the prediction approaches $+1.0$ or $-1.0$, the derivative approaches $0$. If the model is highly confident but wrong (e.g., predicting $+0.99$ for a position that actually ends in a loss $-1.0$), the gradient drops to near-zero, making it extremely difficult for the optimizer to correct the error.
-    - A categorical Value Head (KataGo / modern Leela): Instead of predicting a single scalar float, the model outputs logits for a discrete distribution over game outcomes (e.g., 3 classes: [Loss, Draw, Win]). This completely avoids regression saturation and yields much more stable gradients. This might be added as auxiliary though
-    - Since $p_{\text{loss}}, p_{\text{draw}}, p_{\text{win}}$ (where $p_{\text{loss}} + p_{\text{draw}} + p_{\text{win}} = 1.0$), this can be mapped to continuous values via $$V = (-1.0 \times p_{\text{loss}}) + (0.0 \times p_{\text{draw}}) + (1.0 \times p_{\text{win}}) = p_{\text{win}} - p_{\text{loss}}$$
 
 - updates in the docs:
   - add info about the dataset. annex holds figures with stats (escribir en la docu sobre el dataset. dar un sample. estadisticas en el anexo. explicar profundidades)
@@ -48,16 +17,12 @@ Otros problemas:
   - explain separately the backbone of the transformer and the head(s). 
   - explain the encoding of the inputs for each model (mlp and transformer w/ and w/out inductive bias)
 
-- tune lr and other adam hyperparams on highest batchsize possible on a 3090. refer to google tuning playbook. do for different d_k and depths. stick to it 
+# (BRAINDUMP): ideas no tan urgentes 
 
-- while this is going, put up some tests:
-    - for dataloaders (?)
-    - for parsing, and parsing working in different modes (mlp, transformer, transformer with inductive bias). for 
-    - for forward passes of the models going right
-    - for training dry runs and stuff being correctly saved: tensorboard, directories, .pt files, test evaluation...
-    - for decode_move_indices and uci_to_index
-
-# ideas no tan urgentes
+- mejora de performance: añadir cabeza categórica de valor. ver si mejora. igual quitar dropout y subir grad clipping...
+    - the derivative of $\tanh(x)$ is $1 - \tanh^2(x)$. As the prediction approaches $+1.0$ or $-1.0$, the derivative approaches $0$. If the model is highly confident but wrong (e.g., predicting $+0.99$ for a position that actually ends in a loss $-1.0$), the gradient drops to near-zero, making it extremely difficult for the optimizer to correct the error.
+    - A categorical Value Head (KataGo / modern Leela): Instead of predicting a single scalar float, the model outputs logits for a discrete distribution over game outcomes (e.g., 3 classes: [Loss, Draw, Win]). This completely avoids regression saturation and yields much more stable gradients. This might be added as auxiliary though
+    - Since $p_{\text{loss}}, p_{\text{draw}}, p_{\text{win}}$ (where $p_{\text{loss}} + p_{\text{draw}} + p_{\text{win}} = 1.0$), this can be mapped to continuous values via $$V = (-1.0 \times p_{\text{loss}}) + (0.0 \times p_{\text{draw}}) + (1.0 \times p_{\text{win}}) = p_{\text{win}} - p_{\text{loss}}$$
 
 - maybe... using some LR scheduler (warmup + decay) would be nice
 
@@ -76,6 +41,10 @@ Otros problemas:
 
 - pensar si compensa tunear dinamicamente el peso de cada perdida, ya que creo que a la hora de buscar las mejores jugadas la value orienta mejor (homocedastic whatever loss)
 
+-  quizás tenía que haber generado los datos sin filtrado quiescente. asi tendria un modelo que puede jugar sin búsqueda
+
+- subir datos a huggingface
+- add .agents file and simple skills
 
 
 ---
@@ -174,6 +143,7 @@ while they train:
 -  refactor a bunch of stuff from train
 
 ## 18-19/06
+- tune lr and other adam hyperparams on highest batchsize possible on a 3090. refer to google tuning playbook. do for different d_k and depths. stick to it 
 - correctly develop the experiment "procedure": what i do, starting from data and going trough the steps in processing, creating the model, choosing params, training it, testing experiments... i havent written it in the docs tough
 - get the README ready for making the repo public.
 - test the pyffish python api works as expected
@@ -182,3 +152,36 @@ while they train:
 
 - input simple y cabezas simples, input simple y cabezas factorizadas, input 2d y cabezas simples, input 2d y cabezas factorizadas
 - escribir a david con experimentos hechos y pedir consejo sobre ablaciones. igual mejor opensourcear repo para q lo vea todo
+
+# 20-23/06
+
+- implement and verify the script for running tournaments with multiple models:
+    - test random vs random (works). 
+        - report any inconsistencies
+        - collect 2-3 games and manually verify them
+    - test random vs models
+        - ensure model loading is correct
+        - check result performance and ensure its right
+        - collect 2-3 games and manually verify them
+        - measure execution time for estimating how much it takes to run simulations
+    - test models vs models
+        - two different models with difference in accuracies
+        - check result performance and ensure its right
+        - measure execution time
+- tournament works with value head, not with policy head
+
+# 30/06
+- 10 experiments from the ablations are ready! so they can be scp's here and analyzed, pull them and start making a script to run checkpoints against holdout, extract data and and produce plots / tables 
+- here, code is just a means to an end, so it's getting kinda sloppy. but its fine
+-  plantearse registrar alguna otra métrica de performance a parte de accuracy... (precision, recall, precision@k, recall@k, map@50, etc)
+
+# 1/06
+- fixed a lot of stuff in h2 conclusions and graphs. 
+- made conclusions for the experiment
+- remove unused dactorized policy (columns and rows)
+- añadir citas
+- añadir gráficas de las pérdidas desglosadas por cabeza, no solo la total!! mencionarlo en conclusion pero igual en el anexo mejor
+- reportar las funciones de pérdida de los dos modelos:
+    - loss = loss_p + loss_v
+    - loss_factor = loss_p + loss_v + 0.5 * loss_p_factored
+    - también detallar las formuilas (MSE y Cross Entropy with logits). en el anexo mejor
