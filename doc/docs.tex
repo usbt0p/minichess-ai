@@ -509,7 +509,7 @@ Asimismo, el conjunto de datos cuenta con particularidades estructurales en el e
 Para demostrar el efecto de distintas representaciones del input y de output, se ha llevado a cabo el siguiente experimento:
 
 \begin{enumerate}
-\item \textbf{Fijar una ``receta" de red neuronal y de entrenamiento:} hiperparámetros de la red como la dimension de embeddings o bloques transformer + hiperparámetros de entrenamiento como LR, batch size, epochs y parametros de AdamW (detalles en ~\ref{tab:hiperparametros_ablation})
+\item \textbf{Fijar una ``receta" de red neuronal y de entrenamiento:} hiperparámetros de la red como la dimension de embeddings o bloques transformer + hiperparámetros de entrenamiento como LR, batch size, epochs y parametros de AdamW (detalles en el anexo ~\ref{sec:hiperparametros_ablacion} y tabla~\ref{tab:hiperparametros_ablation})
 \item \textbf{Definimos 4 versiones:} 1 representa al modelo base y las 3 restantes, ablaciones sobre este. Las 4 versiones son:
     \begin{itemize}
         \item (Baseline) Codificación de input simple. Cabezas simples: política y valor.
@@ -611,7 +611,8 @@ La sigiente planificación es una aproximación orientada a la experimentación 
 
 \subsection{Efectos de la representación sobre la eficiencia y calidad del aprendizaje}
 
-Para contrastar la \textbf{Hipótesis 2}, que plantea que las representaciones estructuradas del tablero y del espacio de acciones mejoran la eficiencia del aprendizaje en comparación con las representaciones planas, se ha llevado a cabo una evaluación sistemática y un análisis estadístico riguroso sobre las 4 variantes de arquitectura bajo 10 semillas aleatorias independientes.
+Para contrastar la \textbf{Hipótesis 2}, que plantea que las representaciones estructuradas del tablero y del espacio de acciones mejoran la eficiencia del aprendizaje en comparación con las representaciones planas, se ha llevado a cabo una evaluación sistemática y un análisis estadístico sobre las 4 variantes de arquitectura bajo 10 semillas aleatorias independientes. Los detalles del modelo utilizado e hiperparámetros fijados pueden consultarse en el anexo ~\ref{sec:hiperparametros_ablacion}. 
+Cabe destacar que este modelo es relativamente pequeño (dimensión de embedding de 64, 3 capas transformer), y por tanto ve su capacidad limitada. Las conclusiones aquí obtenidas se desarrollan sobre este, pero se realizaron pruebas idénticas sobre un modelo ligeramente mayor (dimensión de embedding de 128, 5 capas transformer) y se obtuvieron conclusiones en la misma dirección. Estas pueden consultarse en el anexo ~\ref{sec:anexo_ablation_big_model}.
 
 \subsubsection{Evaluación en el Conjunto de Test Holdout y métricas utilizadas}
 
@@ -700,14 +701,14 @@ Los boxplots de la Figura~\ref{fig:boxplots_test} ilustran visualmente la disper
     \centering
     \begin{subfigure}[b]{0.48\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{figures/test_move_accuracy_boxplot.png}
+        \includegraphics[width=\textwidth]{figures/h2_results_dk64/test_move_accuracy_boxplot.png}
         \caption{Exactitud de Movimientos (Política)}
         \label{fig:box_move}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{0.48\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{figures/test_result_accuracy_boxplot.png}
+        \includegraphics[width=\textwidth]{figures/h2_results_dk64/test_result_accuracy_boxplot.png}
         \caption{Exactitud de Resultados (Valor)}
         \label{fig:box_res}
     \end{subfigure}
@@ -721,16 +722,16 @@ Para analizar el comportamiento dinámico durante el entrenamiento de 30 épocas
 
 \begin{figure}[htbp]
     \centering
-    \begin{subfigure}[b]{0.48\textwidth}
+    \begin{subfigure}[b]{0.6\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{figures/learning_curves_val_move_acc.png}
+        \includegraphics[width=\textwidth]{figures/h2_results_dk64/learning_curves_val_move_acc.png}
         \caption{Move Accuracy (Validation)}
         \label{fig:curve_val_move}
     \end{subfigure}
     \hfill
-    \begin{subfigure}[b]{0.48\textwidth}
+    \begin{subfigure}[b]{0.6\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{figures/learning_curves_val_res_acc.png}
+        \includegraphics[width=\textwidth]{figures/h2_results_dk64/learning_curves_val_res_acc.png}
         \caption{Result Accuracy (Validation)}
         \label{fig:curve_val_res}
     \end{subfigure}
@@ -745,7 +746,7 @@ Observamos que la exactitud del movimiento las curvas de los modelos planos y es
 Aunque la evaluación anterior sobre el conjunto de test permite medir la capacidad predictiva de los modelos en situaciones aisladas, el objetivo final del agente es interactuar con el jugador opuesto y ganar partidas reales de ajedrez, y las métricas no tienen por qué correlacionarse directamente con la capacidad de juego del agente. Con este fin, se diseñó un torneo round-robin enfrentando directamente a todos los agentes entre sí, para mostrar la capacidad de juego real. 
 
 \textbf{Configuración Experimental del Torneo:}
-El torneo se ejecutó fijando una serie de parámetros para garantizar la robustez de las comparaciones. Se disputaron 100 partidas por enfrentamiento, divididas equitativamente entre 50 partidas con blancas y 50 con negras para mitigar sesgos de color, con una única semilla (semilla 1) para todas las partidas. Se fijó un límite de 100 movimientos por partida (50 jugadas completas, en caso de alcanzar el límite se considera tablas) y se estableció una temperatura $\tau = 0.1$ para el muestreo de movimientos, y para evitar una política completamente codiciosa.
+El torneo se ejecutó fijando una serie de parámetros para garantizar la robustez de las comparaciones. Se disputaron 100 partidas por enfrentamiento, divididas equitativamente entre 50 partidas con blancas y 50 con negras para mitigar sesgos de color, con una única semilla (semilla 1) para todas las partidas. Se fijó un límite de 100 movimientos por partida (50 jugadas completas, en caso de alcanzar el límite se considera tablas) y se estableció una temperatura $\tau = 0.15$ para el muestreo de movimientos, y para evitar una política completamente codiciosa.
 
 Es importante explicar el mecanismo de selección de jugadas de los agentes Transformer. En cada turno, el agente utiliza su cabeza de política para extraer las $k$ mejores jugadas legales con mayor probabilidad, donde $k = \min(6, \text{número de jugadas legales})$. A continuación, genera los FEN correspondientes a los tableros resultantes de dichas jugadas y los introduce en lote (batch) a través de la cabeza de valor. El agente selecciona finalmente el movimiento que minimiza la predicción de valor del rival (equivalente a maximizar su propio valor debido al carácter de suma cero del juego). Esto equivale a una búsqueda de profundidad 1 en el árbol de juego, y es similar al proceso de AlphaZero, en el que la red de política se usa para reducir la anchura de la búsqueda MCT, y la red de valor se usa para reducir la profundidad.
 
@@ -781,16 +782,16 @@ La Figura~\ref{fig:matrices_winrate} muestra las matrices de tasa de victoria re
 
 \begin{figure}[htbp]
     \centering
-    \begin{subfigure}[b]{0.6\textwidth}
+    \begin{subfigure}[b]{0.45\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{figures/win_rate_matrix_with_draws_seed_1_extended.png}
+        \includegraphics[width=\textwidth]{figures/h2_results_dk64/win_rate_matrix_with_draws_seed_1_extended.png}
         \caption{Win Rate (con tablas)}
         \label{fig:win_draws}
     \end{subfigure}
     \hfill
-    \begin{subfigure}[b]{0.6\textwidth}
+    \begin{subfigure}[b]{0.45\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{figures/win_rate_matrix_no_draws_seed_1_extended.png}
+        \includegraphics[width=\textwidth]{figures/h2_results_dk64/win_rate_matrix_no_draws_seed_1_extended.png}
         \caption{Win Rate (solo victorias / derrotas)}
         \label{fig:win_nodraws}
     \end{subfigure}
@@ -816,6 +817,7 @@ Por otro lado, observamos que \textbf{el uso de una cabeza extra de política no
 
 Observamos también en el torneo, que \textbf{el agente heurístico de capturas} (\texttt{HeuristicAgent}, 1129.4 Elo) \textbf{obtiene puntuaciones más altas de lo inicialmente esperado}. Esto se debe sobre todo a los datos con los que han sido entrenados los modelos: posiciones con capturas y situaciones tácticas han sido filtradas y hacen que los modelos hayan visto pocos jaques, capturas, etc, y por tanto tengan dificultades para responder ante estas, ya que se encuentran fuera de la distribución de entrenamiento. Además, en un tablero reducido de $5\times5$, la proximidad constante de las piezas hace que cualquier despiste táctico de captura sea castigado al instante. 
 A pesar de su simplicidad, el heurístico supera al baseline MLP y al modelo plano simple. Sin embargo, los modelos espaciales \texttt{spatial\_nofact} (1168.8 Elo) y \texttt{spatial\_fact} (1135.2 Elo) logran superar al heurístico. Esto demuestra que los agentes basados en Transformer espacial han aprendido conceptos posicionales más sutiles (estructura de peones, control del centro y seguridad del rey) que les permiten maniobrar y tender trampas incluso sin búsqueda.
+Este efecto se mitiga al utilizar un modelo mayor, como se puede ver en el anexo ~\ref{sec:anexo_ablation_big_model}, y en los resultados de Elo asociados (Tabla~\ref{tab:eloration_ablation_tournament_dk128}).
 
 \textbf{Uno de los resultados más llamativos del torneo} es el rendimiento de \texttt{simple\_nofact}. En la evaluación supervisada estática de test, este modelo obtiene la mayor precisión de movimientos (Move Accuracy P@1 = 48.63\%) y de resultados (Result Accuracy = 71.88\%) de toda la categoría plana. No obstante, en juego real su rendimiento colapsa por completo, cayendo a 964.7 de Elo, situándose incluso por debajo del agente aleatorio (\texttt{RandomAgent}, 1000 Elo) y de la red MLP (\texttt{MLP\_Baseline}, 1007 Elo).
 
@@ -823,7 +825,7 @@ Esto ilustra una cierta desconexión entre las métricas estáticas supervisadas
 
 Un \textbf{detalle estadístico relevante} surge al analizar los enfrentamientos cruzados (Figura~\ref{fig:matrices_winrate}). El campeón \texttt{spatial\_nofact} obtuvo una tasa de victoria del $46.5\%$ contra \texttt{HeuristicAgent} (es decir, el heurístico ganó el enfrentamiento directo por un estrecho margen). Sin embargo, \texttt{spatial\_nofact} obtiene un Elo superior (1168.8) al de \texttt{HeuristicAgent} (1129.4). Esto se debe a la consistencia global: el modelo espacial es dominante contra los Transformers planos y el MLP (logrando por ejemplo un $75\%$ de victorias contra \texttt{simple\_fact} y \texttt{simple\_nofact}), mientras que el heurístico muestra un desempeño más irregular y menos dominante contra el resto de la tabla. 
 
-Cabe destacar, finalmente, que el ajedrez Gardner es un juego con tendencia al empate, dado que al ser un tablero tan pequeño situaciones de ahogado son muy comunes y el juego tiende a posiciones donde ambos jugadores se "traban", evitando dar ventajas al otro. Esto se puede ver claramente tanto en el torneo como en las estadístias del dataset, donde la tasa de empates es significativamente alta.
+Cabe destacar, finalmente, que el ajedrez Gardner es un juego con tendencia al empate, dado que al ser un tablero tan pequeño situaciones de ahogado son muy comunes y el juego tiende a posiciones donde ambos jugadores se "traban", evitando dar ventajas al otro. Esto se puede ver claramente tanto en el torneo como en las estadístias del dataset, donde la tasa de empates es significativamente alta. 
 
 \subsubsection{Conclusión sobre la Hipótesis 2}
 
@@ -895,7 +897,7 @@ Cosas a incluír:
     \item explicaciones más en profundidad de cosas que puedan preguntar en la defensa
 \end{itemize}
 
-\subsection{Hiperparámetros del Entrenamiento y Estudio de Ablación}
+\subsection{Hiperparámetros del Entrenamiento y Estudio de Ablación}\label{sec:hiperparametros_ablacion}
 
 En esta sección se detallan los hiperparámetros fijos empleados en las fases de entrenamiento y, en particular, en el estudio de ablación de arquitectura diseñado para responder a la Hipótesis 2. Este estudio sistemático varía la representación del tablero (\textit{simple} vs. \textit{spatial}) y la utilización o no de la cabeza de política factorizada, repitiéndose bajo un conjunto de semillas aleatorias distintas para evaluar la estabilidad del aprendizaje y mitigar efectos del ruido estocástico.
 
@@ -940,6 +942,224 @@ Cabe destacar que los resultados obtenidos se obtuvieron para un conjunto fijo d
 \textit{"Fixed hyperparameters will have their values fixed in the current round of experiments. These are hyperparameters whose values do not need to (or we do not want them to) change when comparing different values of the scientific hyperparameters. By fixing certain hyperparameters for a set of experiments, we must accept that conclusions derived from the experiments might not be valid for other settings of the fixed hyperparameters. In other words, fixed hyperparameters create caveats for any conclusions we draw from the experiments."} 
 Referencia: \href{https://github.com/google-research/tuning_playbook#identifying-scientific-nuisance-and-fixed-hyperparameters}{Deep Learning Tuning Playbook, Google 2023}
 
+\subsection{Resultados adicionales del estudio de ablación sobre un modelo mayor}\label{sec:anexo_ablation_big_model}
+
+Para corroborar la validez general de las conclusiones obtenidas en el estudio de ablación y descartar que los efectos de la representación dependan de una capacidad de red muy limitada, se replicó la metodología de experimentación sobre un modelo Transformer de mayor tamaño y profundidad. 
+
+En concreto, se incrementó la dimensión de los embeddings ($d_k$) a 128 (frente a 64 en el modelo base) y el número de bloques encoder del Transformer a 5 (frente a 3 en la arquitectura de ablación base). Para asegurar la robustez estadística, este modelo mayor se entrenó de forma independiente bajo 8 semillas aleatorias diferentes durante 30 épocas.
+
+En la Tabla~\ref{tab:model_parameters_comparison} se resume la comparativa del número total de parámetros entrenables y tamaño en memoria (en FP32) de las tres arquitecturas principales utilizadas en este trabajo.
+
+\begin{table}[htbp]
+    \centering
+    \small
+    \begin{tabular}{|l|c|c|c|}
+    \hline
+    \textbf{Modelo} & \textbf{Backbone / Configuración} & \textbf{N.º de Parámetros} & \textbf{Tamaño en Memoria} \\
+    \hline
+    \texttt{Transformer dk64\_n3} & $d_k = 64$, $N = 3$ layers & 212,649 & 0.81 MB \\
+    \texttt{Transformer dk128\_n5} & $d_k = 128$, $N = 5$ layers & 1,132,137 & 4.32 MB \\
+    \texttt{MLP\_Baseline} (Big MLP) & 4 capas lineales densas & 5,270,212 & 20.10 MB \\
+    \hline
+    \end{tabular}
+    \caption{Comparación de complejidad, parámetros entrenables y huella de memoria de los modelos evaluados.}
+    \label{tab:model_parameters_comparison}
+\end{table}
+
+A pesar de que el modelo \texttt{Transformer dk128\_n5} incrementa el número de parámetros en un factor de aproximadamente $5.3\times$ respecto al de ablación base, sigue siendo significativamente más compacto que el modelo \texttt{MLP\_Baseline} (el cual posee casi 5.27 millones de parámetros). La arquitectura Transformer demuestra una eficiencia de parámetros muy superior al MLP, ofreciendo mayor capacidad con un consumo de recursos significativamente menor.
+
+\subsubsection{Hiperparámetros de la Red de Mayor Capacidad}
+
+Los hiperparámetros de entrenamiento del modelo de mayor tamaño se optimizaron de forma adaptada a su capacidad, reduciendo ligeramente el tamaño del lote ($B = 12800$) y ajustando la tasa de aprendizaje ($lr = 0.001378$) para un entrenamiento eficiente en GPU. La Tabla~\ref{tab:hiperparametros_ablation_dk128} muestra la receta de hiperparámetros fijos empleada.
+
+\begin{table}[htbp]
+    \centering
+    \small
+    \begin{tabular}{|p{4.5cm}|p{3cm}|p{8.5cm}|}
+    \hline
+    \textbf{Hiperparámetro (Símbolo)} & \textbf{Valor} & \textbf{Descripción / Contexto Experimental} \\
+    \hline
+    Dataset de entrada & \texttt{d4\_val.txt} & Dataset filtrado obtenido a partir de partidas generadas a profundidad 4. \\ \hline
+    Split train/validation & 97\% / 3\% & División del dataset en conjuntos de entrenamiento y validación. \\ \hline
+    Dimensión de embedding ($d_k$) & 128 & Dimensión de los embeddings de entrada y proyección interna. \\ \hline
+    Número de bloques ($N$) & 5 & Número de bloques encoder del Transformer en el backbone. \\ \hline
+    Épocas de entrenamiento & 30 & Pasadas completas sobre el dataset. \\ \hline
+    Tamaño de lote ($B$) & 12800 & Batch size grande adaptado al tamaño de la memoria de la GPU. \\ \hline
+    Backend de atención & \texttt{math} & Kernels de SDPA optimizados para Tensor Cores. \\ \hline
+    Autocast de precisión & \texttt{none} & Sin autocast, entrenamiento en float32. \\ \hline
+    Tasa de aprendizaje ($lr$) & 0.0013783 & Tasa de aprendizaje optimizada para la escala del modelo. \\ \hline
+    Weight decay ($\lambda$) & 0.04996 & Decaimiento de pesos ajustado para regularización del modelo grande. \\ \hline
+    AdamW $\beta_1$ & 0.9053 & Coeficiente de promedio móvil del gradiente de primer orden en AdamW. \\ \hline
+    AdamW $\beta_2$ & 0.999 & Coeficiente de promedio móvil del gradiente de segundo orden (por defecto). \\ \hline
+    AdamW $\epsilon$ & $2.265 \times 10^{-8}$ & Parámetro de estabilidad numérica en AdamW. \\ \hline
+    Semillas aleatorias ($Seed$) & 123, 2026, 32, 42, 5000, 777, 8765, 912 & 8 semillas aleatorias independientes para comprobar consistencia. \\
+    \hline
+    \end{tabular}
+    \caption{Hiperparámetros empleados en el entrenamiento del modelo \texttt{Transformer dk128\_n5}.}
+    \label{tab:hiperparametros_ablation_dk128}
+\end{table}
+
+\subsubsection{Evaluación en Test Holdout}
+
+Los modelos grandes se evaluaron sobre el mismo conjunto de test estático. La Tabla~\ref{tab:resultados_test_ablation_dk128} reporta las medias y desviaciones estándar de las métricas de test consolidadas a lo largo de las 8 semillas independientes:
+
+\begin{table}[htbp]
+    \centering
+    \small
+    \begin{subtable}{\textwidth}
+        \centering
+        \setlength{\tabcolsep}{6pt}
+        \begin{tabular}{|l|c|c|c|}
+        \hline
+        \textbf{Modelo / Representación} & \textbf{Move Acc (P@1)} & \textbf{Precision@3} & \textbf{Precision@5} \\
+        \hline
+        \texttt{simple\_nofact} (Plano, Simple) & $53.33\% \pm 0.06\%$ & $87.21\% \pm 0.05\%$ & $96.51\% \pm 0.02\%$ \\
+        \texttt{simple\_fact} (Plano, Factorizado) & $53.01\% \pm 0.11\%$ & $86.96\% \pm 0.08\%$ & $96.40\% \pm 0.04\%$ \\
+        \texttt{spatial\_nofact} (2D, Simple) & $53.63\% \pm 0.33\%$ & $87.41\% \pm 0.21\%$ & $96.59\% \pm 0.09\%$ \\
+        \texttt{spatial\_fact} (2D, Factorizado) & $\mathbf{53.84}\% \pm 0.26\%$ & $\mathbf{87.48}\% \pm 0.17\%$ & $\mathbf{96.63}\% \pm 0.07\%$ \\
+        \hline
+        \end{tabular}
+        \caption{Métricas de la cabeza de política (movimientos) del modelo grande.}
+        \label{subtab:politica_dk128}
+    \end{subtable}
+    
+    \vspace{0.4cm}
+    
+    \begin{subtable}{\textwidth}
+        \centering
+        \setlength{\tabcolsep}{6pt}
+        \begin{tabular}{|l|c|c|}
+        \hline
+        \textbf{Modelo / Representación} & \textbf{Result Acc} & \textbf{Value MSE} \\
+        \hline
+        \texttt{simple\_nofact} (Plano, Simple) & $74.93\% \pm 0.09\%$ & $0.2548 \pm 0.0007$ \\
+        \texttt{simple\_fact} (Plano, Factorizado) & $75.08\% \pm 0.15\%$ & $0.2522 \pm 0.0012$ \\
+        \texttt{spatial\_nofact} (2D, Simple) & $\mathbf{82.28}\% \pm 0.10\%$ & $\mathbf{0.1396} \pm 0.0004$ \\
+        \texttt{spatial\_fact} (2D, Factorizado) & $81.99\% \pm 0.04\%$ & $0.1415 \pm 0.0004$ \\
+        \hline
+        \end{tabular}
+        \caption{Métricas de la cabeza de valor (resultado) del modelo grande.}
+        \label{subtab:valor_dk128}
+    \end{subtable}
+    
+    \caption{Rendimiento medio y desviación estándar de las métricas en test para el modelo grande \texttt{Transformer dk128\_n5} (8 semillas $\times$ 4 variantes).}
+    \label{tab:resultados_test_ablation_dk128}
+\end{table}
+
+\subsubsection{Análisis Estadístico y Test de Tukey HSD}
+
+Se aplicaron los mismos tests estadísticos a las métricas del modelo grande para contrastar formalmente los resultados:
+\begin{itemize}
+    \item \textbf{Exactitud de Movimiento (Política)}: El test de Shapiro-Wilk sobre la exactitud de movimientos arroja un p-valor de $0.0455$, indicando una desviación menor de la normalidad teórica. El análisis ANOVA de una vía arrojó un p-valor de $6.19 \times 10^{-7}$, ratificando diferencias altamente significativas. El test post-hoc de Tukey HSD revela lo siguiente:
+    \begin{itemize}
+        \item Al dotar al modelo de mayor capacidad ($d_k=128$, $N=5$), las arquitecturas con codificación espacial superan levemente en Move Accuracy a las planas. La diferencia es estadísticamente significativa entre \texttt{spatial\_fact} y \texttt{simple\_nofact} ($+0.51\%$, $p_{adj} = 0.0009$), así como entre \texttt{spatial\_fact} y \texttt{simple\_fact} ($+0.83\%$, $p_{adj} = 0.0$), corroborando el beneficio de la codificación espacial.
+        \item La factorización del espacio de acciones degrada menos el rendimiento que en el modelo pequeño, pero la comparación entre \texttt{simple\_fact} y \texttt{simple\_nofact} sigue mostrando una penalización estadísticamente significativa de $-0.32\%$ ($p_{adj} = 0.0481$).
+    \end{itemize}
+    \item \textbf{Exactitud de Resultado (Valor)}: El test de Shapiro-Wilk confirma una desviación de la normalidad ($p \approx 0.0$) como en la versión de dimensión 64. Aún así, el ANOVA global indica una significatividad enorme ($p = 1.90 \times 10^{-43}$). El test post-hoc de Tukey HSD ratifica:
+    \begin{itemize}
+        \item La codificación espacial 2D del tablero aporta una mejora muy significativa y consistente en la predicción del resultado. \texttt{spatial\_nofact} supera a \texttt{simple\_nofact} en $+7.35\%$ ($p_{adj} = 0.0$), y \texttt{spatial\_fact} supera a \texttt{simple\_fact} en $+6.91\%$ ($p_{adj} = 0.0$). Asimismo, el error MSE se reduce casi a la mitad (de $0.2548$ a $0.1396$).
+        \item La variante espacial simple \texttt{spatial\_nofact} supera a su contraparte factorizada \texttt{spatial\_fact} en $+0.29\%$ ($p_{adj} = 0.0001$).
+    \end{itemize}
+\end{itemize}
+
+Los boxplots de la Figura~\ref{fig:boxplots_test_dk128} ilustran la dispersión en test para las 8 semillas, confirmando la superioridad de los modelos espaciales en la cabeza de valor.
+
+\begin{figure}[htbp]
+    \centering
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/h2_results_dk128/test_move_accuracy_boxplot.png}
+        \caption{Exactitud de Movimientos (Política)}
+        \label{fig:box_move_dk128}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/h2_results_dk128/test_result_accuracy_boxplot.png}
+        \caption{Exactitud de Resultados (Valor)}
+        \label{fig:box_res_dk128}
+    \end{subfigure}
+    \caption{Distribución y variabilidad de las métricas en test para el modelo grande \texttt{Transformer dk128\_n5} sobre las 8 semillas.}
+    \label{fig:boxplots_test_dk128}
+\end{figure}
+
+\subsubsection{Curvas de Aprendizaje del Modelo Grande}
+
+Las curvas de aprendizaje promediadas a lo largo de las 8 semillas independientes se detallan en la Figura~\ref{fig:curvas_aprendizaje_dk128}. De forma similar a los modelos pequeños, las variantes espaciales muestran una convergencia superior y más rápida en la cabeza de valor (Figura~\ref{fig:curve_val_res_dk128}), alcanzando rápidamente el nivel óptimo de exactitud.
+
+\begin{figure}[htbp]
+    \centering
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/h2_results_dk128/learning_curves_val_move_acc.png}
+        \caption{Move Accuracy (Validation)}
+        \label{fig:curve_val_move_dk128}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/h2_results_dk128/learning_curves_val_res_acc.png}
+        \caption{Result Accuracy (Validation)}
+        \label{fig:curve_val_res_dk128}
+    \end{subfigure}
+    \caption{Curvas de aprendizaje promediadas para el modelo \texttt{Transformer dk128\_n5} (con área sombreada de desviación estándar).}
+    \label{fig:curvas_aprendizaje_dk128}
+\end{figure}
+
+\subsubsection{Torneo del modelo grande}
+
+Para complementar la evaluación y medir la habilidad práctica de juego de las variantes grandes, se ejecutó un torneo round-robin análogo al del modelo base. Los enfrentamientos se configuraron bajo las mismas condiciones (100 partidas por emparejamiento con intercambio de colores, límite de 100 movimientos, y temperatura de selección de jugada $\tau = 0.15$ para promover diversidad y mitigar loops repetitivos). Se utilizaron los checkpoints de los agentes entrenados bajo la semilla 42.
+
+La Tabla~\ref{tab:eloration_ablation_tournament_dk128} muestra los resultados de Elo obtenidos.
+
+\begin{table}[htbp]
+    \centering
+    \small
+    \begin{tabular}{|l|l|c|c|}
+    \hline
+    \textbf{Agente} & \textbf{Arquitectura / Tipo} & \textbf{Elo Rating} & \textbf{Entropía Media Política} \\
+    \hline
+    \texttt{spatial\_nofact} & Transformer (2D, Simple) & \textbf{1197.9} & 1.2778 \\
+    \texttt{simple\_nofact} & Transformer (Plano, Simple) & 1173.8 & 1.3460 \\
+    \texttt{spatial\_fact} & Transformer (2D, Factorizado) & 1159.1 & 1.2112 \\
+    \texttt{simple\_fact} & Transformer (Plano, Factorizado) & 1141.3 & 1.2854 \\
+    \texttt{HeuristicAgent} & Heurístico de capturas & 1138.7 & N/A \\
+    \texttt{MLP\_Baseline} & Perceptrón Multicapa & 1001.7 & 1.3063 \\
+    \texttt{RandomAgent} & Selección aleatoria uniforme & 1000.0 & N/A \\
+    \hline
+    \end{tabular}
+    \caption{Clasificación final y Elo de los agentes basados en el modelo grande \texttt{Transformer dk128\_n5} (Semilla 42).}
+    \label{tab:eloration_ablation_tournament_dk128}
+\end{table}
+
+A la vista de la clasificación de Elo, podemos extraer algunas conclusiones sobre el impacto de escalar la capacidad del modelo:
+\begin{itemize}
+    \item A diferencia del modelo pequeño ($d_k=64$), donde \texttt{simple\_nofact} sufría un colapso en el torneo cayendo por debajo del agente aleatorio (964.7 Elo), al incrementar la capacidad del Transformer a $d_k=128$, $N=5$, la variante \texttt{simple\_nofact} se recupera de manera notable, alcanzando el segundo puesto con \textbf{1173.8 Elo}.
+    \item El modelo \texttt{spatial\_nofact} se corona como el campeón del torneo con \textbf{1197.9 Elo}. La ventaja del sesgo inductivo espacial 2D se traduce en una superioridad posicional constante.
+    \item Mientras que en el modelo pequeño el heurístico superaba al baseline plano, aquí las cuatro variantes Transformer superan de forma significativa al agente heurístico (1138.7 Elo), evidenciando que el incremento de capacidad permite al Transformer aprender patrones estratégicos profundos que superan la táctica codiciosa de capturas del heurístico. El elo máximo de estos modelos también supera al del modelo pequeño por +30 puntos.
+\end{itemize}
+
+Las matrices de tasas de victorias (con y sin empates) del torneo del modelo grande se ilustran en la Figura~\ref{fig:matrices_winrate_dk128}.
+
+\begin{figure}[htbp]
+    \centering
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/h2_results_dk128/win_rate_matrix_with_draws_seed_42_extended.png}
+        \caption{Win Rate (con tablas)}
+        \label{fig:win_draws_dk128}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/h2_results_dk128/win_rate_matrix_no_draws_seed_42_extended.png}
+        \caption{Win Rate (solo victorias / derrotas)}
+        \label{fig:win_nodraws_dk128}
+    \end{subfigure}
+    \caption{Matrices cruzadas de tasas de victorias para el torneo del modelo grande \texttt{Transformer dk128\_n5} (Semilla 42).}
+    \label{fig:matrices_winrate_dk128}
+\end{figure}
+
 \subsection{Formulación Matemática de las Funciones de Pérdida}\label{sec:anexo_loss_details}
 
 Las pérdidas individuales que componen la función de optimización global durante la fase de aprendizaje supervisado de los modelos se formulan matemáticamente de la siguiente manera:
@@ -970,21 +1190,21 @@ Para analizar cómo cada cabeza de salida aprende las características supervisa
     \centering
     \begin{subfigure}[b]{0.32\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{figures/learning_curves_train_policy_loss.png}
+        \includegraphics[width=\textwidth]{figures/h2_results_dk64/learning_curves_train_policy_loss.png}
         \caption{Pérdida de Política ($\mathcal{L}_p$)}
         \label{fig:loss_policy_head}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{0.32\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{figures/learning_curves_train_value_loss.png}
+        \includegraphics[width=\textwidth]{figures/h2_results_dk64/learning_curves_train_value_loss.png}
         \caption{Pérdida de Valor ($\mathcal{L}_v$)}
         \label{fig:loss_value_head}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{0.32\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{figures/learning_curves_train_aux_loss.png}
+        \includegraphics[width=\textwidth]{figures/h2_results_dk64/learning_curves_train_aux_loss.png}
         \caption{Pérdida Auxiliar ($\mathcal{L}_{\text{aux}}$)}
         \label{fig:loss_aux_head}
     \end{subfigure}
@@ -1001,13 +1221,12 @@ Se puede observar claramente que:
 
 \subsection{Resultados Detallados de los Tests de Significatividad Estadística}\label{sec:anexos_significancia}
 
-En esta sección se reportan de manera detallada las tablas y p-valores de los análisis estadísticos realizados sobre el estudio de ablación (Hipótesis 2) para las 10 semillas independientes.
+En esta sección se reportan de manera detallada las tablas y p-valores de los análisis estadísticos realizados sobre el estudio de ablación (Hipótesis 2) para las 10 semillas independientes, para la versión del modelo con 64 dimensiones (dk64). .
 
 \subsubsection{Test de Normalidad (Shapiro-Wilk)}
 Se evalúa la hipótesis nula de que los datos proceden de una distribución normal. Para la exactitud de movimientos (política), se obtiene; $p\text{-valor} = 0.127205$. Al ser $p > 0.05$, no se rechaza la hipótesis nula de normalidad, lo que fundamenta el uso de la prueba ANOVA paramétrica, que requiere que los datos sigan una distribución normal.
 
 Para la exactitud del resultado (valor), el p-valor es prácticamente nulo ($p < 10^{-5}$). Esto indica una desviación de la normalidad teórica, por lo que no se puede usar ANOVA para comparar las medias de los grupos de valor. Aun así, dado el tamaño de la muestra y la magnitud de la direfencia estadística en los resultados que se observa en la figura~\ref{fig:box_res}, y el hecho de que ANOVA es bastante robusto a las violaciones de normalidad bajop ciertas condiciones, y aún sin alcanzar las 30 muestras recomendadas para que el teorema central del límite sea efectivo, el test estadístico puede considerarse adecuado. Por simplicidad se mantiene ANOVA y Turkey para ambos casos, pero pruebas utilizando tests no paramétricos (Kruskal-Wallis y  Mann-Whitney U) para el resultado de la cabeza de valor confirman la misma hipótesis obtenidas. 
-\textcolor{red}{habrá que ver si esto es riguroso...}
 
 \subsubsection{Test de Diferencias Globales (One-Way ANOVA)}
 El valor $p$ devuelto por el test de ANOVA informa sobre la probabilidad de observar los datos observados, o unos más extremos, si la hipótesis nula (que todas las medias son iguales) fuera cierta. Por lo tanto, p-valores pequeños sugieren que es poco probable que las medias de los grupos sean iguales. Se evalúa si existen diferencias significativas entre las medias de los cuatro grupos comparados:
