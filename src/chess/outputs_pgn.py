@@ -1,4 +1,4 @@
-'''brute force enumeration of the policy outputs
+'''brute force enumeration of the policy outputs, just to test
 '''
 from itertools import product
 
@@ -37,7 +37,7 @@ for t in prod:
 
 print(len(prod))
 
-# build the actual pgn moves
+# build the actual uci moves
 moves = []
 for t in prod:
     if isinstance(t[1][1], list):
@@ -48,3 +48,10 @@ for t in prod:
     moves.append(move)
 
 print(moves)
+
+from src.models.dataset_parser import uci_to_index
+
+for move in moves:
+    print(move, uci_to_index(move, promotions=True))
+    if uci_to_index(move, promotions=True) == 599:
+        print("found it!",move)

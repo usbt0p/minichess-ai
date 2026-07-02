@@ -1,3 +1,7 @@
+'''
+CLI util for pitting two agents against each other
+'''
+
 import argparse
 import torch
 from src.utils.utils import set_seed
