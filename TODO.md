@@ -1,14 +1,12 @@
 
 # ORDEN DEL DIA
 
-- refactor the todos in the script for tournaments. at the very least, separate the mlp agent from the transformer one, and put agents in their own module
-- committear todo lo ultimo a git. organizar en lugares apropiados.
+- check how i might handle the repetition and the "current player to move" for simple representation...
+- see if elo estimation can be done while the PPO is running
+
 - mirar si subir los resultados? (results/tournaments/tournament_abl_dk64/) (results/ablations/ablations_dk64_n3)
 - eliminar benchmarks antiguos de mlp
-- pasar por test set los dk_128 del lab de auria
-- testeare la politica con valor * 5
 - luego hacer diseño experimental de la fase de PPO. decidir que gráficas y tablas quiero, que quiero observar exactamente.
-
 
 - updates in the docs:
   - add info about the dataset. annex holds figures with stats (escribir en la docu sobre el dataset. dar un sample. estadisticas en el anexo. explicar profundidades)
@@ -175,7 +173,7 @@ while they train:
 - here, code is just a means to an end, so it's getting kinda sloppy. but its fine
 -  plantearse registrar alguna otra métrica de performance a parte de accuracy... (precision, recall, precision@k, recall@k, map@50, etc)
 
-# 1/06
+# 1/07
 - fixed a lot of stuff in h2 conclusions and graphs. 
 - made conclusions for the experiment
 - remove unused dactorized policy (columns and rows)
@@ -185,3 +183,11 @@ while they train:
     - loss = loss_p + loss_v
     - loss_factor = loss_p + loss_v + 0.5 * loss_p_factored
     - también detallar las formuilas (MSE y Cross Entropy with logits). en el anexo mejor
+
+# 2/07
+-  reportar numero de parámetros y memoria que ocupa el modelo!!
+- pasar por test set los dk_128 del lab de auria
+- añadir resultados del modelo grande 128 al anexo
+- refactor the todos in the script for tournaments. at the very least, separate the mlp agent from the transformer one, and put agents in their own module
+- testeare la politica con valor * 5
+- committear todo lo ultimo a git. organizar en lugares apropiados.
