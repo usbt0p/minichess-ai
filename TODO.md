@@ -4,8 +4,6 @@
 - check how i might handle the repetition and the "current player to move" for simple representation...
 - see if elo estimation can be done while the PPO is running
 
-- mirar si subir los resultados? (results/tournaments/tournament_abl_dk64/) (results/ablations/ablations_dk64_n3)
-- eliminar benchmarks antiguos de mlp
 - luego hacer diseño experimental de la fase de PPO. decidir que gráficas y tablas quiero, que quiero observar exactamente.
 
 - updates in the docs:
@@ -16,6 +14,8 @@
   - explain the encoding of the inputs for each model (mlp and transformer w/ and w/out inductive bias)
 
 # (BRAINDUMP): ideas no tan urgentes 
+
+- mirar si subir los resultados? (results/tournaments/tournament_abl_dk64/) (results/ablations/ablations_dk64_n3)
 
 - mejora de performance: añadir cabeza categórica de valor. ver si mejora. igual quitar dropout y subir grad clipping...
     - the derivative of $\tanh(x)$ is $1 - \tanh^2(x)$. As the prediction approaches $+1.0$ or $-1.0$, the derivative approaches $0$. If the model is highly confident but wrong (e.g., predicting $+0.99$ for a position that actually ends in a loss $-1.0$), the gradient drops to near-zero, making it extremely difficult for the optimizer to correct the error.
@@ -191,3 +191,6 @@ while they train:
 - refactor the todos in the script for tournaments. at the very least, separate the mlp agent from the transformer one, and put agents in their own module
 - testeare la politica con valor * 5
 - committear todo lo ultimo a git. organizar en lugares apropiados.
+
+# 3/07
+- eliminar benchmarks antiguos de mlp

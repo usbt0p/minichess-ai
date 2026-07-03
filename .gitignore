@@ -10,6 +10,7 @@ __pycache__
 *.pyi
 
 # project-specific
+benchmarks/
 variant-nnue-tools/
 data/
 data.back/
