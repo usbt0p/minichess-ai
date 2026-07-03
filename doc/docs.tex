@@ -7,6 +7,7 @@
 \graphicspath{{doc/}{./doc/}{./}}
 \usepackage{hyperref}
 \usepackage{pdfpages}
+\usepackage{subcaption}
 
 % paquetes para estilo
 % Ajuste de márgenes: 2.5cm es el estándar pero es mucho
@@ -276,7 +277,7 @@ Donde $Q$ (Query), $K$ (Key) y $V$ (Value) son matrices obtenidas mediante proye
 
 $$Q=XW^Q, \quad K=XW^K, \quad V=XW^V$$
 
-$W^Q, W^K, W^V$ son matrices de pesos entrenables, y $d_k$ representa la dimensión de las claves (configurada en \textcolor{red}{[TODO: definir tamaño de d\_k]} para esta implementación). Este mecanismo se replica en cada una de las $h$ cabezas de atención, permitiendo capturar distintas relaciones entre las piezas. El resultado se concatena y se proyecta linealmente de vuelta a la dimensión original de la entrada. 
+$W^Q, W^K, W^V$ son matrices de pesos entrenables, y $d_k$ representa la dimensión de las claves, el cual puee variar entre configuraciones de arquitectura. Este mecanismo se replica en cada una de las $h$ cabezas de atención, permitiendo capturar distintas relaciones entre las piezas. El resultado se concatena y se proyecta linealmente de vuelta a la dimensión original de la entrada. 
 
 $$\text{MultiHead}(X) = \text{Concat}(\text{head}_1, ..., \text{head}_h)W^O$$
 
@@ -314,14 +315,12 @@ Esta escasez de señal dificulta las fases iniciales del entrenamiento, justific
 
 \subsubsection{Codificación del Espacio de Estados (Input)}\label{sec:encoder_input}
 
-Para evaluar la Hipótesis 1, se instrumentarán y compararán distintas representaciones del tablero de ajedrez 5x5, analizando su impacto en la asimilación espacial del modelo Transformer.
+Para evaluar la Hipótesis 1, se instrumentarán y compararán dos representaciones del tablero de ajedrez 5x5, analizando su impacto en la asimilación espacial del modelo Transformer.
 
 \begin{itemize}
     \item \textbf{Representación plana simple (Byte Array):} El tablero se representa como un vector unidimensional de 27 \textit{bytes} (índices 0-24), correspondientes a las 25 casillas del tablero de Minichess. Cada casilla almacena un número entero que identifica unívocamente una de las 12 piezas posibles (6 blancas y 6 negras) o el estado de casilla vacía. Adicionalmente se almacenan el número de repeticiones y el número de jugadas sin capturas / jaques en los 2 bytes finales. Esta representación es minimalista pero computacionalmente eficiente, y delega en el Transformer la responsabilidad de deducir la geometría 2D del tablero.
 
     \item \textbf{Representación espacial (estilo AlphaZero):} El tablero se expande en un tensor multicanal de dimensiones $C \times 5 \times 5$. Cada canal $C$ está asignado a un tipo de pieza por color y actúa como un plano binario indicando su presencia o ausencia. Esta codificación facilita el reconocimiento de patrones espaciales a través de sesgos inductivos explícitos. Se añaden, además, canales binarios adicionales para variables de estado globales como el jugador al que le toca mover y los límites del half-move clock.
-
-    \item \textbf{Representaciones aumentadas (Heurísticas):} Se incorporarán planos adicionales que inyecten información posicional específica para guiar al Transformer, siguiendo las ideas de Czech Et al.\cite{czech2024representationmattersmasteringchess} Estos planos binarios codificarán información como: casillas ocupadas por piezas propias y del oponente, posiciones de todas las piezas dando jaque, la topología binaria del tablero (casillas blancas vs. negras), diferencia de material...
 \end{itemize}
 
 \placeholderfig{figura ilustrativa con una visualización de las distintas codificaciones de entrada}{Visualización de codificaciones de entrada. De izquierda a derecha: a, b, c...}{fig:codificaciones_entrada}
@@ -335,11 +334,7 @@ De manera análoga, la forma en que la red proyecta sus predicciones altera drá
     
     En Minichess, los peones en las columnas exteriores (a, e) tienen 2 opciones al coronar (avance o captura simple), mientras que los peones en columnas centrales (b, c, d) tienen 3. Esto resulta en $(2+3+3+3+2) = 13$ movimientos de promoción. Multiplicado por las 4 piezas posibles de promoción (Reina, Torre, Alfil, Caballo) y los 2 colores, se añaden 104 neuronas. La salida de la política (\textit{policy head}) será, por tanto, un vector estricto de \textbf{704 neuronas}.
 
-    \item \textbf{Política Factorizada (Origen-Destino) como Tarea Auxiliar:} Esta codificación no sustituye a la política discreta plana principal de 704 salidas; añade cabezas auxiliares para informar más del gradiente de pérdida durante el entrenamiento. Se compone de tres cabezas complementarias: una para la casilla de origen del movimiento (25 salidas), otra para la casilla de destino (25 salidas) y una tercera para predecir la clase de promoción (9 salidas). La pérdida de estas cabezas se pondera con un factor de 0.5 y se suma a la pérdida total. Esto reduce el espacio de salida de 704 a 59 dimensiones en total, simplificando la tarea de optimización del gradiente. El objetivo es facilitar el aprendizaje de las representaciones del backbone de atención, y acelerar la convergencia inicial del entrenamiento proporcionando una señal de error más explícita y estructurada.
-    
-    \item \textbf{Política con codificación por filas/columnas:} En esta variante, la política se factoriza aún más para predecir por separado la fila y la columna de origen y destino. Esto se implementa mediante cuatro cabezas de salida: una para la fila de origen (5 neuronas), una para la columna de origen (5 neuronas), una para la fila de destino (5 neuronas), una para la columna de destino (5 neuronas) y una para la coronación (9 neuronas). Esto reduce el espacio de salida a solo 29 dimensiones, aunque introduce una mayor complejidad en la decodificación de las acciones. 
-    
-    El objetivo es que, al permitir que el modelo aprenda de forma independiente las dinámicas de filas y columnas y la dinámica de origen y destino, se facilite la generalización al permitir a la red hacer predicciones "parciales" al inicio (reconocer la columna de origen sin necesidad de acertar la fila, o viceversa).
+    \item \textbf{Política Factorizada (Origen-Destino) como Tarea Auxiliar:} Esta codificación no sustituye a la política discreta plana principal de 704 salidas; añade una cabeza auxiliar para informar más del gradiente de pérdida durante el entrenamiento. Se compone de tres cabezas complementarias: una para la casilla de origen del movimiento (25 salidas), otra para la casilla de destino (25 salidas) y una tercera para predecir la clase de promoción (9 salidas). La pérdida de estas cabezas se pondera con un factor de 0.5 y se suma a la pérdida total. Esto reduce el espacio de salida de esta cabeza de 704 a 59 dimensiones en total, simplificando la tarea de optimización del gradiente. El objetivo es facilitar el aprendizaje de las representaciones del backbone de atención, y acelerar la convergencia inicial del entrenamiento proporcionando una señal de error más explícita y estructurada.
     
     \item \textbf{Cabeza de valor:} Se incluye una cabeza de valor que predice el valor esperado de la posición actual, lo que permite al modelo aprender a evaluar la calidad de las posiciones además de predecir acciones. Esta cabeza se implementa como una proyección lineal seguida de una activación $\tanh$ para acotar la salida en el rango $[-1, 1]$, donde -1 representa una derrota segura, 0 un empate y +1 una victoria segura. 
     
@@ -364,7 +359,6 @@ La arquitectura neural propuesta se basa en un modelo \textbf{Transformer Encode
     \begin{itemize}
         \item \textit{Para la representación plana simple:} Se añade un \textit{embedding} posicional absoluto \texttt{w\_pos\_embed} unidimensional de tamaño 28, asignando un vector aprendido a cada posición de la secuencia.
         \item \textit{Para la representación espacial:} Se inyecta información geométrica explícita en 2D. Se definen dos tablas de embeddings aprendidas: \texttt{row\_pos\_embed} de tamaño \texttt{(5, D)} (para las filas) y \texttt{col\_pos\_embed} de tamaño \texttt{(5, D)} (para las columnas). Para cada una de las 25 posiciones del tablero en la coordenada $(y, x)$, su codificación posicional es la suma de los embeddings de su fila y su columna. Para el token CLS se concatena un parámetro aprendido independiente \texttt{cls\_pos\_embed}.
-        \item \textcolor{red}{TODO: posible RoPE??}  \href{https://meta-pytorch.org/torchtune/0.3/generated/torchtune.modules.RotaryPositionalEmbeddings.html}{(referencia pytorch)}
     \end{itemize}
     
     \item \textbf{Pila de Bloques Encoder:} El tensor resultante se procesa a través de una serie de $L$ capas de codificación con $h$ cabezas. Cada capa contiene:
@@ -385,13 +379,24 @@ La arquitectura neural propuesta se basa en un modelo \textbf{Transformer Encode
         \item \textbf{Cabezas Auxiliares de Política Factorizada:} Estas cabezas no se activan siempre. Se trata de las cabezas mencionada en la sección~\ref{sec:encoder_output}. Decodifican las representaciones del tablero y de CLS mediante tres proyecciones independientes en logits de casilla de origen (25), destino (25) y tipo de promoción (9). Estas cabezas se evalúan únicamente durante el entrenamiento supervisado, con propósitos de mejora de la señal de error.
     \end{itemize}
 
+    \item \textbf{Funciones de Pérdida combinada:} Durante el entrenamiento supervisado se minimiza una función de pérdida multiobjetivo. Para las variantes sin pérdida factorizada auxiliar, la pérdida total $\mathcal{L}$ es la suma directa de la pérdida de la política principal $\mathcal{L}_p$ (entropía cruzada con logits), y la pérdida de valor, $\mathcal{L}_v$ (error cuadrático medio):
+    \begin{equation}
+        \mathcal{L} = \mathcal{L}_p + \mathcal{L}_v
+    \end{equation}
+    
+    Para las variantes con pérdida factorizada auxiliar, se añade la pérdida de la cabeza auxiliar factorizada, $\mathcal{L}_{\text{aux}}$ (entropía cruzada), escalada por un factor de regularización de $0.5$ para informar mejor al gradiente sin eclipsar la política principal:
+    \begin{equation}
+        \mathcal{L} = \mathcal{L}_p + \mathcal{L}_v + 0.5 \cdot \mathcal{L}_{\text{aux}}
+    \end{equation}
+    
+    Las formulaciones exactas de cada componente de pérdida se detallan en el Anexo~\ref{sec:anexo_loss_details}.
 \end{enumerate}
 
 La figura ~\ref{fig:encoder_arch} ilustra la arquitectura propuesta, mostrando el flujo de datos desde la entrada de la representación hasta las salidas de las cabezas de política y valor.
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=1\textwidth]{figures/Gemini_Generated_Diagram.png}
+    \includegraphics[width=1\textwidth]{figures/Gemini_Diagram_small.png}
     \caption{[Placeholder] Diagrama de la arquitectura utilizada (generado con IA, tiene errores / inconsistencias). Además, está desactualizado con respecto a la descripción anterior. Igual es mejor separar los diagramas de las cabezas, y hacerlos más abstractos en la arquitectura general.}
     \label{fig:encoder_arch}
 \end{figure}
@@ -462,45 +467,84 @@ El desarrollo práctico e investigativo del proyecto se implementará utilizando
     \item \textbf{Lenguaje de programación:} \texttt{Python} 3.12+ por su extenso soporte y bibliotecas nativas de Deep Learning. 
     \item \textbf{Framework de Deep Learning:} \texttt{PyTorch} para el diseño de redes neuronales, cálculo automático de gradientes y aceleración en GPU.
     \item \textbf{Motor de Ajedrez:} Se emplea \texttt{Fairy-Stockfish}, una versión de Stockfish para variantes personalizadas, a través de la API \texttt{pyffish} de Python y a través de su CLI propia para generación de datos para la fase de aprendizaje supervisado. Este motor proporciona: (a) validación robusta y rápida de la legalidad de movimientos y reglas de la variante Gardner $5\times5$, y (b) evaluaciones heurísticas adecuadas para inicializar la red mediante aprendizaje supervisado.
-    \item \textbf{Seguimiento de experimentos:} \texttt{Weights \& Biases} (wandb) para la visualización en tiempo real del progreso de entrenamiento, entropía de la política, pérdida multiobjetivo y curvas de convergencia.
+    \item \textbf{Seguimiento de experimentos:} \texttt{tensorboard} se utilizó para la visualización en tiempo real del progreso de entrenamiento, entropía de la política, pérdida multiobjetivo y curvas de convergencia.
     \item \textbf{Reproducibilidad, dependencias y manejo de módulos en Python:} \texttt{uv} para la gestión de entornos virtuales y dependencias, asegurando la portabilidad y reproducibilidad del código (\texttt{uv} permite generar archivos de requisitos específicos y fijar una versión de Python).
 \end{itemize}
 
-\subsubsection{Descripción del conjunto de datos}
+\subsubsection{Descripción del conjunto de datos (borrador)}
 
 \textcolor{red}{TODO: poner una muestra, explicar modificaciones (mascaras añadidas p ej), estadísticas en el anexo (con imagenes...)}
 
 - las estadísticas más importantes ponerlas aqui (ratio draws)
-- explicar importancia de distintas profundidades. DECIDIR DEFINITIVAMENTE si el self play final lo voy a hacer con una mezcla o con uno solo.
-- hacer que jueguen entre ellos distintos modelos a distintas profundidades en caso de que use varias
+- explicar importancia de distintas profundidades. DECIDIR DEFINITIVAMENTE si el aprendizaje supervisado final lo voy a hacer con una mezcla o con uno solo. update: finalmente lo estoy haciendo solo con la versión de depth 4.
+- hacer que jueguen entre ellos distintos modelos a distintas profundidades en caso de que use varias. update: en ppi esto ya no es viable
 - explicar peculiaridades: quiescent positions, filtrado de posiciones repetidas, filtrado de posiciones tácticas puras. explicar lo de las coronaciones que solo son a una dama, y el ratio de victorias por color...
+es importante aclarar que son datos complejos: modelar búsqueda de profundidad 4 y además con el añadido de filtrar posiciones tácticas simples (capturas, movimientos excesivamente forzados, etc) lleva a la red a tener que internalizar o patrones muy complejos o la idea de búsqueda en profundidad. además de tener que hacer esto con las recompensas dispersas y con poca densidad informativa que son la victoria / derrota / empate
 - para esto habrá bastante informacion seguramente en las entradas de blog que escribí
 
 
+\subsubsection{Descripción del conjunto de datos}
 
+\textcolor{red}{TODO explicar como se ve el conjunto de datos, como es una instancia... los datos que importan y los que no... menos slop. }
+
+Para el entrenamiento en la fase de aprendizaje supervisado, se ha optado por utilizar exclusivamente un conjunto de datos sintéticos generado con una profundidad de búsqueda de 4 jugadas \texttt{fairy-stockfish}, descartando por completo el uso de mezclas con evaluaciones de profundidades inferiores (D2 o D3). Este conjunto de datos definitivo cuenta con un volumen total de 60,030,000 posiciones, el cual ha sido procesado mediante una división estricta de un $97\%$ para el conjunto de entrenamiento (58,234,050 posiciones) y un $3\%$ reservado para el conjunto de validación (1,795,950 posiciones).
+
+La elección de entrenar el modelo únicamente con datos analizados a profundidad 4 responde a la necesidad de capturar la complejidad intrínseca del juego posicional y estratégico en el tablero reducido de Gardner $5\times5$. Modelar el comportamiento de un motor clásico a este nivel obliga a la arquitectura a ir más allá de heurísticas simples. El conjunto de datos presenta cierta complejidad debido a dos factores principales:
+
+\begin{itemize}
+    \item \textbf{Aislamiento de posiciones quiescentes (\textit{quiescent positions}):} Se han filtrado y eliminado sistemáticamente las posiciones tácticas puras (tales como capturas inmediatas de material o movimientos bajo jaques excesivamente forzados). Este filtrado es común en redes neuronales para ajedrez que se utilizan en conjunto con algún tipo de algoritmo de búsqueda, ya que garantiza que el Transformer no aprenda respuestas reactivas simples, sino que se vea obligado a internalizar patrones posicionales complejos o a emular conceptualmente la propia idea de búsqueda en profundidad bajo condiciones de recompensas totalmente dispersas y de baja densidad informativa (las señales terminales de victoria, derrota o empate).
+    \item \textbf{Filtrado de posiciones repetidas:} Se ha aplicado un proceso de deduplicación sobre el archivo crudo para eliminar estados idénticos del tablero, previniendo memorización y posible contaminación de los conjuntos de validación o test.
+\end{itemize}
+
+Asimismo, el conjunto de datos cuenta con particularidades estructurales en el espacio de acciones e indicadores de balance del juego:
+\begin{itemize}
+    \item \textbf{Restricción en las coronaciones:} A diferencia del modelo teórico que contempla opciones múltiples de promoción, los movimientos de coronación registrados en este conjunto de datos se encuentran limitados exclusivamente a la dama, debido a una limitación en la librería de generación de datos. En la práctica, esta suele ser la mejor jugada disponible, y no representa un sacrificio de calidad excesivo. La codificación de salida de l ared neuronal sigue permitiendo la sub-coronación, en caso de ser necesaria en la fase de RL. 
+    \item \textbf{Métricas de distribución y balance:} El análisis estadístico del conjunto de posiciones refleja las propiedades simétricas y el margen de ventaja del entorno analizado. Más estadisticas acerca del conjunto de datos pueden encontrarse en el anexo. \textcolor{red}{[PLACEHOLDER: Insertar aquí el ratio exacto de tablas (draws ratio) y la proporción o porcentaje de victorias por color (blancas vs. negras) extraídos de tus scripts de análisis]}.
+\end{itemize}
 
 \subsection{Diseño experimental}
 
-\textcolor{red}{\textbf{TODO!: ESTO ES LO MÁS IMPORTANTE AHORA MISMO! TENGO QUE TENERLO ESCRITO PARA ESTRUCTURAR COMO LO VOY A HACER. FIJAR POCAS VARIACIONES. DECIDIR HIPERPARÁMETROS, MODEL RECIPE, CARACTERÍATICAS DE ENTRENAMIENTO COMO (ATTN BACKEND, BATCH SIZE, TAMAÑO TEST...) FIJOS Y TIRAR CON ELLOS}}
+\subsubsection{Diseño experimental para hipótesis 2}
 
-\begin{itemize}
-    \item Primero, los experimentos supervisados:
-         \begin{itemize}
-            \item PRIMERO asegurar que no haya aleatoriedad en los experimentos! fijar todas las semillas posibles. puede que por cosas de paralelismo y cuda esto sea imposible de todos modos
-            \item tener en cuenta que 3 representaicones distintas para input y output resultan en muchas combinaciones. si hago ablación por separado, son 6. si hago combinaciones, son 9. si reduzco a 2 in y 2 out, son 4 por separado y 4 en combinación (?)
-            \item la ablacion puede que haya que hacerla con varias semillas
-            \item ahora si, el experimento. basicamente, con paramatros fijos, es cambiar los inputs y output como se menciona en cada uno, y luego ejecutar cada uno y comparar resultados: para mismos epochs, minima loss, maxima acc, tiempo de entrenamiento, convergencia alcanzada o no, velocidad de convergencia (pendiente de loss inicial?)... pensar esto un poco mejor de todos modos
-            \item estudio riguroso. es decir, usar significatividad estadística para las medidas! algun test de hipótesis de los que vi en faa o en estadçística  
+Para demostrar el efecto de distintas representaciones del input y de output, se ha llevado a cabo el siguiente experimento:
 
-        \end{itemize}
+\begin{enumerate}
+\item \textbf{Fijar una ``receta" de red neuronal y de entrenamiento:} hiperparámetros de la red como la dimension de embeddings o bloques transformer + hiperparámetros de entrenamiento como LR, batch size, epochs y parametros de AdamW (detalles en el anexo ~\ref{sec:hiperparametros_ablacion} y tabla~\ref{tab:hiperparametros_ablation})
+\item \textbf{Definimos 4 versiones:} 1 representa al modelo base y las 3 restantes, ablaciones sobre este. Las 4 versiones son:
+    \begin{itemize}
+        \item (Baseline) Codificación de input simple. Cabezas simples: política y valor.
+        \item Codificación de input simple. Cabezas factorizadas: política, valor y política factorizada. 
+        \item Codificación de input bidimensional (estilo AlphaZero). Cabezas simples: política y valor.
+        \item Codificación de input bidimensional (estilo AlphaZero). Cabezas factorizadas: política, valor y política factorizada. 
+    \end{itemize}
+\item \textbf{Seleccionar varias semillas fijas (10).}
+\item \textbf{Para cada semilla, repetir los siguientes pasos para eliminar el factor de aleatoriedad:}
+    \begin{itemize}
+        \item Para cada versión de las mencionadas anteriormente:
 
-    \item Luego, PPO:
-        \begin{itemize}
-            \item glup, no tengo ni idea. primero estaria bien diseñar una forma de que 2 redes jueguen, y de que una juegue consigo misma (not the same thing)
-        \end{itemize}
+            \begin{enumerate}
 
-\end{itemize}
+                \item Ejecutar un entrenamiento completo, manteniendo todos los hiperparámetros fijos.
+                \item Registrar y guardar resultados: loss de train y validation para cada cabeza, accuracy en train y validation, checkpoint del mejor modelo, numero de parámetros, FLOPs estimados...
+                \item Luego, ejecutar este checkpoint contra el conjunto de test para obtener los resultados finales para estudiar el efecto de cada versión sobre el modelo
+                
+            \end{enumerate}
+    
+    \end{itemize}
+    
+\item \textbf{Una vez obtenidos los resultados de test para las semillas, utilizar una serie de tests estadísticos para confirmar / desmentir si la hipótesis es estadísticamente significativa.} Se debe comprobar que la hipótesis se cumple teniendo en cuenta la variabilidad de los resultados entre semillas. Para ello se debe decidir entre tests paramétricos o no paramétricos, demostrando la distribución de los datos, y a continuación realizar una prueba estadística para confirmar / desmentir la hipótesis. 
+\textbf{Outputs esperados}: tabla con resultados medios y desviación estándar de cada versión, gráficas que muestren la evolución media y varianza de loss y accuracy (media = línea, varianza = sombreado), y resultados de los tests estadísticos.
 
+\item \textbf{Para testear más allá de la accuracy o loss, hay que enfrentar los modelos entre ellos}: la capacidad de predicción no tiene por qué correlacionarse con la capacidad de juego. Por ello, se llevará a cabo lo siguiente:
+    \begin{enumerate}
+        \item Elegir una sola semilla. Usar esta para todos los modelos.
+        \item A las 4 variantes anteriormente mencionadas, añadir 3 modelos más que servirán de comparativa: un MLP base, un agente heurístico, y un Agente aleatorio.
+        \item Para cada par de modelos, ejecutar un torneo de 100 partidas (50 por cada color).
+        \item Registrar resultados y calcular winrate, ELO estimado, entropía de la política, etc.
+        \item Analizar los resultados. Extraer conclusiones sobre la capacidad de juego entre modelos, y con respecto a los resultados de test obtenidos en el paso anterior.
+        \item Output buscado: una matriz de tamaño NxN (N = número de modelos) con los resultados de winrate entre cada par de modelos, y una tabla con el ELO estimado de cada modelo.
+    \end{enumerate}
+\end{enumerate}
 
 \newpage
 % 5.12. Planificación y seguimiento
@@ -566,22 +610,231 @@ La sigiente planificación es una aproximación orientada a la experimentación 
 
 
 \subsection{Efectos de la representación sobre la eficiencia y calidad del aprendizaje}
-\placeholderfig{Gráfica: Eficiencia según representación de entrada}{Evolución de la pérdida según las distintas codificaciones del tablero estudiadas.}{fig:hip2_grafica}
+
+Para contrastar la \textbf{Hipótesis 2}, que plantea que las representaciones estructuradas del tablero y del espacio de acciones mejoran la eficiencia del aprendizaje en comparación con las representaciones planas, se ha llevado a cabo una evaluación sistemática y un análisis estadístico sobre las 4 variantes de arquitectura bajo 10 semillas aleatorias independientes. Los detalles del modelo utilizado e hiperparámetros fijados pueden consultarse en el anexo ~\ref{sec:hiperparametros_ablacion}. 
+Cabe destacar que este modelo es relativamente pequeño (dimensión de embedding de 64, 3 capas transformer), y por tanto ve su capacidad limitada. Las conclusiones aquí obtenidas se desarrollan sobre este, pero se realizaron pruebas idénticas sobre un modelo ligeramente mayor (dimensión de embedding de 128, 5 capas transformer) y se obtuvieron conclusiones en la misma dirección. Estas pueden consultarse en el anexo ~\ref{sec:anexo_ablation_big_model}.
+
+\subsubsection{Evaluación en el Conjunto de Test Holdout y métricas utilizadas}
+
+Los modelos se evaluaron sobre un conjunto de test holdout que contiene $299.325$ posiciones de Gardner Minichess extraídas de forma independiente de las trayectorias de entrenamiento. Se reportan métricas tanto para la cabeza de política (predicción de movimientos) como para la cabeza de valor (predicción de resultados). 
+
+Para la política, se miden:
+\begin{itemize}
+    \item \textbf{Cabeza de Política (Predicción de Movimientos)}:
+    \begin{itemize}
+        \item \textbf{Precision@1}: porcentaje de acierto del modelo al seleccionar la jugada con mayor probabilidad en comparación con la jugada óptima.
+        \item \textbf{Precision@3} y \textbf{Precision@5}: porcentaje en la que la jugada del conjunto de test se encuentra contenida dentro del conjunto de las 3 o 5 predicciones con mayor probabilidad del modelo.
+    \end{itemize}
+    \item \textbf{Cabeza de Valor (Predicción del Resultado de la Partida)}:
+    \begin{itemize}
+        \item \textbf{Result Accuracy}: Exactitud en la clasificación del resultado esperado de la posición tras redondear la salida continua a la clase discreta más cercana en $\{-1, 0, 1\}$ (derrota, tablas, victoria).
+        \item \textbf{Value MSE}: Error cuadrático medio de la predicción de la cabeza de valor con respecto al resultado final real de la partida.
+    \end{itemize}
+\end{itemize}
+
+La Tabla~\ref{tab:resultados_test_ablation} presenta los resultados de test consolidados promediando el rendimiento final de las 10 semillas independientes para cada variante:
 
 \begin{table}[htbp]
     \centering
-    \begin{tabular}{|c|c|c|}
+    \small
+    \begin{subtable}{\textwidth}
+        \centering
+        \setlength{\tabcolsep}{6pt}
+        \begin{tabular}{|l|c|c|c|}
+        \hline
+        \textbf{Modelo / Representación} & \textbf{Move Acc (P@1)} & \textbf{Precision@3} & \textbf{Precision@5} \\
+        \hline
+        \texttt{simple\_nofact} (Plano, Simple) & $\mathbf{48.63}\% \pm 0.17\%$ & $\mathbf{83.93}\% \pm 0.12\%$ & $\mathbf{95.17}\% \pm 0.05\%$ \\
+        \texttt{simple\_fact} (Plano, Factorizado) & $47.67\% \pm 0.20\%$ & $83.19\% \pm 0.16\%$ & $94.86\% \pm 0.06\%$ \\
+        \texttt{spatial\_nofact} (2D, Simple) & $48.49\% \pm 0.22\%$ & $83.81\% \pm 0.19\%$ & $95.11\% \pm 0.10\%$ \\
+        \texttt{spatial\_fact} (2D, Factorizado) & $48.07\% \pm 0.33\%$ & $83.52\% \pm 0.25\%$ & $95.00\% \pm 0.11\%$ \\
+        \hline
+        \end{tabular}
+        \caption{Métricas de la cabeza de política (movimientos).}
+        \label{subtab:politica}
+    \end{subtable}
+    
+    \vspace{0.4cm}
+    
+    \begin{subtable}{\textwidth}
+        \centering
+        \setlength{\tabcolsep}{6pt}
+        \begin{tabular}{|l|c|c|}
+        \hline
+        \textbf{Modelo / Representación} & \textbf{Result Acc} & \textbf{Value MSE} \\
+        \hline
+        \texttt{simple\_nofact} (Plano, Simple) & $71.88\% \pm 0.13\%$ & $0.2806 \pm 0.0008$ \\
+        \texttt{simple\_fact} (Plano, Factorizado) & $71.68\% \pm 0.18\%$ & $0.2815 \pm 0.0013$ \\
+        \texttt{spatial\_nofact} (2D, Simple) & $\mathbf{80.39}\% \pm 0.06\%$ & $\mathbf{0.1546} \pm 0.0008$ \\
+        \texttt{spatial\_fact} (2D, Factorizado) & $79.83\% \pm 0.24\%$ & $0.1588 \pm 0.0019$ \\
+        \hline
+        \end{tabular}
+        \caption{Métricas de la cabeza de valor (resultado).}
+        \label{subtab:valor}
+    \end{subtable}
+    
+    \caption{Rendimiento medio y desviación estándar de las métricas sobre el conjunto de test (10 semillas $\times$ 4 variantes).}
+    \label{tab:resultados_test_ablation}
+\end{table}
+
+\subsubsection{Test de Significatividad Estadística}
+
+Con el propósito de validar de forma matemáticamente rigurosa que las diferencias observadas entre las arquitecturas de ablación no se deben a fluctuaciones aleatorias provocadas por la semilla de inicialización, se aplicó un análisis estadístico compuesto por un test de Shapiro-Wilk para comprobar la normalidad, un test ANOVA de una vía para evaluar la significatividad de las diferencias globales, y comparaciones por parejas post-hoc utilizando el test de Tukey HSD. El análisis completo, junto con las tablas de resultados numéricos de las pruebas, se expone en detalle en el Anexo~\ref{sec:anexos_significancia}. A continuación se resumen las conclusiones principales derivadas de estos tests:
+
+\begin{itemize}
+    \item \textbf{Predicción de Movimiento (Política)}: El test de Shapiro-Wilk no permite rechazar la hipótesis de normalidad ($p = 0.1272 > 0.05$), lo que valida la aplicación del test paramétrico ANOVA. El ANOVA confirma la existencia de diferencias altamente significativas entre modelos ($p = 6.92 \times 10^{-10}$), por lo que procede realizar un análisis comparativo por parejas. Las comparaciones post-hoc de Tukey HSD muestran que:
+    \begin{itemize}
+        \item No existen diferencias estadísticamente significativas en la exactitud del movimiento entre la representación plana y la espacial (comparación entre \texttt{simple\_nofact} y \texttt{spatial\_nofact}, con diferencia de $-0.14\%$ y $p_{adj} = 0.5926$).
+        \item La factorización del espacio de acciones degrada significativamente el rendimiento de la política, reduciendo la precisión tanto en el modelo plano ($-0.96\%$, $p_{adj} = 0.0$) como en el espacial ($-0.42\%$, $p_{adj} = 0.0036$).
+    \end{itemize}
+    
+    \item \textbf{Predicción de Resultado (Valor)}: El test de Shapiro-Wilk detecta una desviación del comportamiento estrictamente normal ($p < 0.05$), no obstante, el test ANOVA global sigue siendo altamente significativo ($p = 2.11 \times 10^{-50}$). El test post-hoc de Tukey confirma que:
+    \begin{itemize}
+        \item La representación espacial (2D) aporta una mejora muy significativa a la cabeza de valor. Se obtiene un incremento absoluto de la exactitud de resultado de $+8.51\%$ en el modelo simple ($p_{adj} = 0.0$) y de $+8.15\%$ en el factorizado ($p_{adj} = 0.0$), reduciendo el error cuadrático medio (MSE) casi a la mitad (de $0.2806$ a $0.1546$).
+        \item Nuevamente, la factorización empeora significativamente el desempeño, registrando la variante sin factorizar \texttt{spatial\_nofact} un rendimiento superior de $+0.56\%$ con respecto a \texttt{spatial\_fact} ($p_{adj} = 0.0$).
+    \end{itemize}
+\end{itemize}
+
+Los boxplots de la Figura~\ref{fig:boxplots_test} ilustran visualmente la dispersión y consistencia de las métricas en test para las 10 semillas independientes, respaldando las conclusiones de significatividad estadística obtenidas.
+
+\begin{figure}[htbp]
+    \centering
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/h2_results_dk64/test_move_accuracy_boxplot.png}
+        \caption{Exactitud de Movimientos (Política)}
+        \label{fig:box_move}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/h2_results_dk64/test_result_accuracy_boxplot.png}
+        \caption{Exactitud de Resultados (Valor)}
+        \label{fig:box_res}
+    \end{subfigure}
+    \caption{Distribución y variabilidad de las métricas en test sobre las 10 semillas independientes.}
+    \label{fig:boxplots_test}
+\end{figure}
+
+\subsubsection{Evolución y Curvas de Aprendizaje}
+
+Para analizar el comportamiento dinámico durante el entrenamiento de 30 épocas, se promediaron las métricas de validación y entrenamiento a través de las 10 semillas. La Figura~\ref{fig:curvas_aprendizaje} muestra las curvas de evolución media (línea continua) y su desviación estándar (área sombreada). Las paradas tempranas aplicadas durante el entrenamiento se gestionan manteniendo el último estado registrado hasta el final del estudio (carry forward).
+
+\begin{figure}[htbp]
+    \centering
+    \begin{subfigure}[b]{0.6\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/h2_results_dk64/learning_curves_val_move_acc.png}
+        \caption{Move Accuracy (Validation)}
+        \label{fig:curve_val_move}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.6\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/h2_results_dk64/learning_curves_val_res_acc.png}
+        \caption{Result Accuracy (Validation)}
+        \label{fig:curve_val_res}
+    \end{subfigure}
+    \caption{Curvas de aprendizaje promediadas con sombreado de desviación estándar.}
+    \label{fig:curvas_aprendizaje}
+\end{figure}
+
+Observamos que la exactitud del movimiento las curvas de los modelos planos y espaciales sin factorizar son prácticamente paralelas e idénticas en convergencia, mientras que la exactitud de resultados muestra que el modelo espacial converge a una asíntota notablemente superior a la del modelo plano.
+
+\subsubsection{Enfrentamiento en Juego Real: Configuración y Resultados del Torneo}
+
+Aunque la evaluación anterior sobre el conjunto de test permite medir la capacidad predictiva de los modelos en situaciones aisladas, el objetivo final del agente es interactuar con el jugador opuesto y ganar partidas reales de ajedrez, y las métricas no tienen por qué correlacionarse directamente con la capacidad de juego del agente. Con este fin, se diseñó un torneo round-robin enfrentando directamente a todos los agentes entre sí, para mostrar la capacidad de juego real. 
+
+\textbf{Configuración Experimental del Torneo:}
+El torneo se ejecutó fijando una serie de parámetros para garantizar la robustez de las comparaciones. Se disputaron 100 partidas por enfrentamiento, divididas equitativamente entre 50 partidas con blancas y 50 con negras para mitigar sesgos de color, con una única semilla (semilla 1) para todas las partidas. Se fijó un límite de 100 movimientos por partida (50 jugadas completas, en caso de alcanzar el límite se considera tablas) y se estableció una temperatura $\tau = 0.15$ para el muestreo de movimientos, y para evitar una política completamente codiciosa.
+
+Es importante explicar el mecanismo de selección de jugadas de los agentes Transformer. En cada turno, el agente utiliza su cabeza de política para extraer las $k$ mejores jugadas legales con mayor probabilidad, donde $k = \min(6, \text{número de jugadas legales})$. A continuación, genera los FEN correspondientes a los tableros resultantes de dichas jugadas y los introduce en lote (batch) a través de la cabeza de valor. El agente selecciona finalmente el movimiento que minimiza la predicción de valor del rival (equivalente a maximizar su propio valor debido al carácter de suma cero del juego). Esto equivale a una búsqueda de profundidad 1 en el árbol de juego, y es similar al proceso de AlphaZero, en el que la red de política se usa para reducir la anchura de la búsqueda MCT, y la red de valor se usa para reducir la profundidad.
+
+El torneo incluye a los 4 modelos del estudio de ablación (entrenados bajo la Semilla 1), una red MLP de referencia (\texttt{MLP\_Baseline}, con un tamaño oculto de 1024 neuronas, tasa de aprendizaje de 0.002 y entrenada con un tamaño de lote de 512), un agente de movimientos uniformemente aleatorios (\texttt{RandomAgent}), y un agente heurístico codicioso (\texttt{HeuristicAgent}) que prioriza la captura inmediata de piezas enemigas ponderadas por su valor convencional de material (Dama=9, Torre=5, Alfil/Caballo=3, Peón=1).
+
+\textbf{Estimación del Rating Elo:}
+Los resultados del torneo se modelan mediante el sistema de Elo, que estima la habilidad relativa de los agentes basándose en los emparejamientos uno a uno. Específicamente, se ajusta un modelo de Bradley-Terry mediante estimación de máxima verosimilitud (MLE). El modelo Bradley-Terry estima la probabilidad esperada de que el agente $i$ gane al agente $j$ \cite{bradley_terry_model_for_elo_rating_system} como:
+$$P(i > j) = \frac{e^{R_i}}{e^{R_i} + e^{R_j}} = \frac{1}{1 + 10^{(R_j - R_i)/400}}$$
+donde $R_i$ y $R_j$ son los ratings Elo de los agentes. Para calibrar la escala, se ancla el rating del agente \texttt{RandomAgent} a un valor de 1000. Los ratings Elo estimados y la entropía de la política media para cada modelo se presentan en la Tabla~\ref{tab:elo_tournament}.
+
+\begin{table}[htbp]
+    \centering
+    \small
+    \setlength{\tabcolsep}{10pt}
+    \begin{tabular}{|l|c|c|c|}
     \hline
-    \textbf{Representación Input/Output} & \textbf{Iteraciones (PPO)} & \textbf{Winrate VS Heurística} \\
+    \textbf{Agente} & \textbf{Arquitectura} & \textbf{Elo Estimado} & \textbf{Entropía Media} \\
     \hline
-    Plana & & \\
-    Espacial & & \\
-    Aumentada (Heurísticas) & & \\
+    \texttt{spatial\_nofact} & Transformer (2D, Simple) & \textbf{1168.8} & 1.4067 \\
+    \texttt{spatial\_fact} & Transformer (2D, Factored) & 1135.2 & 1.4230 \\
+    \texttt{HeuristicAgent} & Heurística de Captura & 1129.4 & N/A \\
+    \texttt{simple\_fact} & Transformer (Plano, Factored) & 1107.8 & 1.2665 \\
+    \texttt{MLP\_Baseline} & MLP Multicapa Base & 1007.0 & 1.5113 \\
+    \texttt{RandomAgent} & Aleatorio & 1000.0 & N/A \\
+    \texttt{simple\_nofact} & Transformer (Plano, Simple) & 964.7 & 1.3037 \\
     \hline
     \end{tabular}
-    \caption{Resultados de rendimiento final comparando representaciones (Hipótesis 2).}
-    \label{tab:hip2}
+    \caption{Clasificación final y Elo estimado de los agentes tras el torneo round-robin de 100 partidas.}
+    \label{tab:elo_tournament}
 \end{table}
+
+La Figura~\ref{fig:matrices_winrate} muestra las matrices de tasa de victoria resultantes, tanto considerando las tablas (wins + 0.5*draws) como ignorando las tablas (decisive games).
+
+\begin{figure}[htbp]
+    \centering
+    \begin{subfigure}[b]{0.45\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/h2_results_dk64/win_rate_matrix_with_draws_seed_1_extended.png}
+        \caption{Win Rate (con tablas)}
+        \label{fig:win_draws}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.45\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/h2_results_dk64/win_rate_matrix_no_draws_seed_1_extended.png}
+        \caption{Win Rate (solo victorias / derrotas)}
+        \label{fig:win_nodraws}
+    \end{subfigure}
+    \caption{Matrices de winrate cruzado del torneo de 100 partidas.}
+    \label{fig:matrices_winrate}
+\end{figure}
+
+\subsubsection{Discusión de los Resultados}
+
+Analizando los resultados obtenidos, podemos extraer una serie de conclusiones interesantes. Las más relevantes son la \textbf{confirmación de que una mejor representación ayuda al modelo}; el agente \texttt{spatial\_nofact} obtiene la mejor puntuación en el torneo, con 1168.8 de Elo, superando significativamente a la versión plana \texttt{simple\_nofact} (964.7 Elo, una diferencia de $+204$ puntos de Elo). Esta diferencia de rendimiento se alinea con el incremento del $+8.51\%$ observado en la exactitud del valor durante el test supervisado, y con los resultados obtenidos en las tablas de la tabla~\ref{tab:resultados_test_ablation} y la figura~\ref{fig:boxplots_test}, y también señala a que la capacidad para estimar el valor de la posición resulta en mejor capacidad de juego.
+
+Esto demuestra que \textbf{añadir información espacial ayuda al modelo a obtener una mejor representación interna} y por tanto a tomar mejores decisiones. Esto concuerda con los resultados de estudios previos como Czech et al. \cite{czech2024representationmattersmasteringchess} y Monroe et al. \cite{monroe2024masteringchesstransformermodel}, que demuestran, respectivamente, que sigue existiendo cierta importancia en la ingeniería de características (especialmente en dominios específicos como el ajedrez) a pesar del poder de los Transformers, y que los sesgos inductivos (tanto a nivel de input como de codificación posicional) son potentes a la hora de mejorar el rendimiento en dominios específicos.
+Esto también se alinea con la intuición general de que los Transformers son muy sensibles a la representación de entrada y de salida (codificación de input y función de pérdida), como se menciona recientemente en \cite{peng2026efficientpretrainingtokensuperposition}.
+
+Por otro lado, observamos que \textbf{el uso de una cabeza extra de política no mejora el rendimiento del agente e incluso empeora}, tanto para los resultados de valor como de movimiento. Hay varias razones que pueden explicar este fenómeno: 
+\begin{enumerate}
+    \item Por el diseño de la cabeza de política, ya existe un sesgo inductivo muy similar al de esta cabeza factorizada, que viene dado por el uso de la proyección a un vector de origen y destino y la posterior batch matrix multiplication, lo que puede anular su efecto sobre la representación interna.
+    \item La función de pérdida utilizada de valor tiene una magnitud aproximadamente 5 veces menor que la de política. Si a esta función de pérdida añadimos la función de pérdida de la política factorizada, aún reducida al multiplicar por 0.5, es posible que esto resulte en un desbalance de la pérdida, provocando que el modelo reciba más "señal" de la política y menos del valor.
+    \item Finalmente, para explicar el empeoramiento de la política factorizada sobre los movimientos, una posibilidad es que este se deba a la introducción de un sesgo de independencia condicional. Al forzar a la red a predecir mediante tres sub-cabezas independientes (casilla de origen, casilla de destino y tipo de promoción), se introduce un sesgo inductivo de independencia condicional en la probabilidad conjunta de la jugada. 
+    Para el aprendizaje supervisado puro, esto puede ser un lastre: a pesar de resultar más informativo, acertar una jugada de profundidad de búsqueda 4 es más difícil si la red tiene que coordinar el acierto de tres variables discretas por separado en lugar de clasificar limpiamente un único vector unificado de 704 logits.
+\end{enumerate}
+
+
+Observamos también en el torneo, que \textbf{el agente heurístico de capturas} (\texttt{HeuristicAgent}, 1129.4 Elo) \textbf{obtiene puntuaciones más altas de lo inicialmente esperado}. Esto se debe sobre todo a los datos con los que han sido entrenados los modelos: posiciones con capturas y situaciones tácticas han sido filtradas y hacen que los modelos hayan visto pocos jaques, capturas, etc, y por tanto tengan dificultades para responder ante estas, ya que se encuentran fuera de la distribución de entrenamiento. Además, en un tablero reducido de $5\times5$, la proximidad constante de las piezas hace que cualquier despiste táctico de captura sea castigado al instante. 
+A pesar de su simplicidad, el heurístico supera al baseline MLP y al modelo plano simple. Sin embargo, los modelos espaciales \texttt{spatial\_nofact} (1168.8 Elo) y \texttt{spatial\_fact} (1135.2 Elo) logran superar al heurístico. Esto demuestra que los agentes basados en Transformer espacial han aprendido conceptos posicionales más sutiles (estructura de peones, control del centro y seguridad del rey) que les permiten maniobrar y tender trampas incluso sin búsqueda.
+Este efecto se mitiga al utilizar un modelo mayor, como se puede ver en el anexo ~\ref{sec:anexo_ablation_big_model}, y en los resultados de Elo asociados (Tabla~\ref{tab:eloration_ablation_tournament_dk128}).
+
+\textbf{Uno de los resultados más llamativos del torneo} es el rendimiento de \texttt{simple\_nofact}. En la evaluación supervisada estática de test, este modelo obtiene la mayor precisión de movimientos (Move Accuracy P@1 = 48.63\%) y de resultados (Result Accuracy = 71.88\%) de toda la categoría plana. No obstante, en juego real su rendimiento colapsa por completo, cayendo a 964.7 de Elo, situándose incluso por debajo del agente aleatorio (\texttt{RandomAgent}, 1000 Elo) y de la red MLP (\texttt{MLP\_Baseline}, 1007 Elo).
+
+Esto ilustra una cierta desconexión entre las métricas estáticas supervisadas y la capacidad de juego interactiva, explicable por factores como la acumulación de errores gradual, que puede llevar a posiciones \textit{Out-of-Distribution} (OOD), o a la alta tasa de empates.
+
+Un \textbf{detalle estadístico relevante} surge al analizar los enfrentamientos cruzados (Figura~\ref{fig:matrices_winrate}). El campeón \texttt{spatial\_nofact} obtuvo una tasa de victoria del $46.5\%$ contra \texttt{HeuristicAgent} (es decir, el heurístico ganó el enfrentamiento directo por un estrecho margen). Sin embargo, \texttt{spatial\_nofact} obtiene un Elo superior (1168.8) al de \texttt{HeuristicAgent} (1129.4). Esto se debe a la consistencia global: el modelo espacial es dominante contra los Transformers planos y el MLP (logrando por ejemplo un $75\%$ de victorias contra \texttt{simple\_fact} y \texttt{simple\_nofact}), mientras que el heurístico muestra un desempeño más irregular y menos dominante contra el resto de la tabla. 
+
+Cabe destacar, finalmente, que el ajedrez Gardner es un juego con tendencia al empate, dado que al ser un tablero tan pequeño situaciones de ahogado son muy comunes y el juego tiende a posiciones donde ambos jugadores se "traban", evitando dar ventajas al otro. Esto se puede ver claramente tanto en el torneo como en las estadístias del dataset, donde la tasa de empates es significativamente alta. 
+
+\subsubsection{Conclusión sobre la Hipótesis 2}
+
+A partir de los resultados experimentales obtenidos, podemos concluir lo siguiente respecto a la \textbf{Hipótesis 2}:
+\begin{itemize}
+    \item \textbf{Se confirma parcialmente}: La introducción de una representación espacial bidimensional (inductivo bias) mejora de manera estadísticamente significativa el aprendizaje del valor (+8.51\% de exactitud). Sin embargo, esta mejora espacial no se traduce en un incremento significativo en la precisión del movimiento supervisado (resultado de la cabeza de política).
+    \item \textbf{Se refuta respecto al espacio de acciones}: El uso de un espacio de acciones factorizado (casillas origen y destino independientes) no solo no mejora el rendimiento, sino que perjudica significativamente tanto la precisión del movimiento como la del valor, introduciendo una complejidad redundante.
+    \item \textbf{Resultados de Juego}: El mejor modelo obtenido supera en Elo a un modelo con conocimiento previo del valor de las piezas, aunque la tasa de victorias sea ligeramente inferior contra el mismo.
+\end{itemize}
 
 \subsection{Efectos de la inicialización supervisada sobre la convergencia del aprendizaje por refuerzo}
 \placeholderfig{Gráfica: Curva de convergencia Tabula Rasa vs Supervisado}{Tasa de victoria y avance del ELO estimado a lo largo del entrenamiento.}{fig:hip3_grafica}
@@ -615,6 +868,14 @@ La sigiente planificación es una aproximación orientada a la experimentación 
 
 \textcolor{red}{TODO Lo que me quedó en el tintero}
 
+\begin{itemize}
+    \item \textcolor{red}{TODO: posible RoPE??}  \href{https://meta-pytorch.org/torchtune/0.3/generated/torchtune.modules.RotaryPositionalEmbeddings.html}{(referencia pytorch)}
+    \item en vez de factorizar la politica, hacerlo con el valor! usar una cabeza auxiliar que sea categórica en lugar de regresiva
+    \item equilibrar el valor de las pérdidas: dar mas peso a value loss
+    \item dado el alcance, quizás habría sido mejor entrenar con un dataset sin filtrar, que incluya capturas y jaques...
+    \item puede que girar el tablero fuera buena idea
+\end{itemize}
+
 \textcolor{red}{TODO limitaciones del enfoque y posibles mejoras}
 
 % 5.16. Referencias
@@ -636,40 +897,384 @@ Cosas a incluír:
     \item explicaciones más en profundidad de cosas que puedan preguntar en la defensa
 \end{itemize}
 
-\subsection{Hiperparámetros del Entrenamiento}
+\subsection{Hiperparámetros del Entrenamiento y Estudio de Ablación}\label{sec:hiperparametros_ablacion}
 
-\textcolor{red}{TODO: rellenar datos tras hyperparam search}
+En esta sección se detallan los hiperparámetros fijos empleados en las fases de entrenamiento y, en particular, en el estudio de ablación de arquitectura diseñado para responder a la Hipótesis 2. Este estudio sistemático varía la representación del tablero (\textit{simple} vs. \textit{spatial}) y la utilización o no de la cabeza de política factorizada, repitiéndose bajo un conjunto de semillas aleatorias distintas para evaluar la estabilidad del aprendizaje y mitigar efectos del ruido estocástico.
 
+Siguiendo las recomendaciones del \textit{Deep Learning Tuning Playbook} de Google \cite{deeplearningtuningplaybook}, para realizar comparaciones rigurosas sobre las variables científicas del modelo se mantuvieron fijos los hiperparámetros. El uso de un tamaño de lote grande ($B = 16384$) maximiza el paralelismo y la estabilidad del gradiente en la GPU pero requiere un ajuste de los hiperparámetros del optimizador (tasa de aprendizaje y estabilidad numérica) obtenidos mediante un proceso de ajuste de Optuna.
+
+Cabe destacar el tamaño de la dimensión de embedding en 64. Este es un valor relativamente bajo (modelos como GPT-2 tienen una dimensión de embedding de 768), pero es adecuado dadas las limitacones computacionales. Testing informal demostró que aumentar la dimensión de embedding aporta mejoras significativas, junto con el aumento del número de datos de entrenamiento (siguiendo la intuición de las leyes de escalado). El aumento del número de bloques transformer también mejora el rendimiento, pero todo esto a costa de un mayor tiempo de entrenamiento.
+
+La Tabla~\ref{tab:hiperparametros_ablation} detalla la configuración y valores específicos de estos hiperparámetros fijos empleados durante las 30 épocas del estudio de ablación.
+
+\begin{table}[htbp]
+    \centering
+    \begin{tabular}{|p{4.5cm}|p{3cm}|p{8.5cm}|}
+    \hline
+    \textbf{Hiperparámetro (Símbolo)} & \textbf{Valor} & \textbf{Descripción / Contexto Experimental} \\
+    \hline
+    Dataset de entrada & \texttt{d4\_val.txt} & Dataset filtrado obtenido a partir de partidas generadas a profundidad 4. \\ \hline
+    Split train/validation & 97\% / 3\% & División del dataset en conjuntos de entrenamiento y validación. \\ \hline
+    Dimensión de embedding ($d_k$) & 64 & Dimensión de los embeddings de entrada y proyección interna. \\ \hline
+    Número de bloques ($N$) & 3 & Número de bloques encoder del Transformer en el backbone. \\ \hline
+    Épocas de entrenamiento & 30 & Pasadas completas sobre el dataset. \\ \hline
+    Tamaño de lote ($B$) & 16384 & Batch size grande para aprovechamiento de GPU. \\ \hline
+    Backend de atención & \texttt{math} & Kernels de SDPA optimizados para Tensor Cores. \\ \hline
+    Autocast de precisión & \texttt{none} & Sin autocast, entrenamiento en float32. \\ \hline
+    Precisión de matmul & \texttt{high} & Precisión para operaciones de multiplicación matricial con Tensor Cores. \\ \hline
+    Tasa de aprendizaje ($lr$) & 0.002842 & Tasa de aprendizaje optimizada tras la exploración de hiperparámetros con Optuna. \\ \hline
+    Weight decay ($\lambda$) & $2\times 10^{-5}$ & Decaimiento de pesos (penalización L2) para AdamW. \\ \hline
+    AdamW $\beta_1$ & 0.9244 & Coeficiente de promedio móvil del gradiente de primer orden en AdamW. \\ \hline
+    AdamW $\beta_2$ & 0.999 & Coeficiente de promedio móvil del gradiente de segundo orden (por defecto). \\ \hline
+    AdamW $\epsilon$ & $3.6618\times 10^{-9}$ & Parámetro de estabilidad numérica para evitar divisiones por cero. \\ \hline
+    Semillas aleatorias ($Seed$) & 42, 123, 2026, 777, 8765 & Múltiples semillas para evaluar estabilidad estocástica de los resultados. \\
+    \hline
+\end{tabular}
+    \caption{Hiperparámetros fijos empleados en las ejecuciones del estudio de ablación de arquitectura.}
+    \label{tab:hiperparametros_ablation}
+\end{table}
+
+Los hiperparámetros fijos se eligieron también siguiendo las recomendaciones del \textit{tuning playbook} de DeepMind: modelos simples al inicio, learning rate constante para evitar complicaciones, maximizar el batch size para un entrenamiento más rápido, tunear solo los hiperparámertos importantes para el batch (parametros de optimizador, learning rate). \href{https://github.com/google-research/tuning_playbook#choosing-the-optimizer:~:text=Our%20guiding%20principle%20is%20to,%28see%20Shallue%20et%20al%2E%202018%29%2E}{\textit{"Our guiding principle is to always use simplest, lowest resource configuration that yields good results.}}
+
+El cambio de batch size requirió de ajustes varios, por lo mencionado en la guía: \href{https://github.com/google-research/tuning_playbook#choosing-the-optimizer:~:text=The%20hyperparameters%20that%20interact%20most%20strongly%20with%20the%20batch%20size%2C%20and%20therefore%20are%20most%20important%20to%20tune%20separately%20for%20each%20batch%20size%2C%20are%20the%20optimizer%20hyperparameters%20%28e%2Eg%2E%20learning%20rate%2C%20momentum%29%20and%20the%20regularization%20hyperparameters%2E}{\textit{"The hyperparameters that interact most strongly with the batch size, and therefore are most important to tune separately for each batch size, are the optimizer hyperparameters (e.g. learning rate, momentum) and the regularization hyperparameters."}}
+
+Cabe destacar que los resultados obtenidos se obtuvieron para un conjunto fijo de hiperparámetros. Esto no quita que puedan existir otros conjuntos de hiperparámetros que den mejores resultados, pero para el estudio de ablación realizado no se variaron los hiperparámetros más allá de los que se querían estudiar. No se asegura independencia condicional entre distintos conjuntos de hiperparámetros, y esto limita la extrapolación de resultados a otros conjuntos de hiperparámetros. 
 \textit{"Fixed hyperparameters will have their values fixed in the current round of experiments. These are hyperparameters whose values do not need to (or we do not want them to) change when comparing different values of the scientific hyperparameters. By fixing certain hyperparameters for a set of experiments, we must accept that conclusions derived from the experiments might not be valid for other settings of the fixed hyperparameters. In other words, fixed hyperparameters create caveats for any conclusions we draw from the experiments."} 
 Referencia: \href{https://github.com/google-research/tuning_playbook#identifying-scientific-nuisance-and-fixed-hyperparameters}{Deep Learning Tuning Playbook, Google 2023}
+
+\subsection{Resultados adicionales del estudio de ablación sobre un modelo mayor}\label{sec:anexo_ablation_big_model}
+
+Para corroborar la validez general de las conclusiones obtenidas en el estudio de ablación y descartar que los efectos de la representación dependan de una capacidad de red muy limitada, se replicó la metodología de experimentación sobre un modelo Transformer de mayor tamaño y profundidad. 
+
+En concreto, se incrementó la dimensión de los embeddings ($d_k$) a 128 (frente a 64 en el modelo base) y el número de bloques encoder del Transformer a 5 (frente a 3 en la arquitectura de ablación base). Para asegurar la robustez estadística, este modelo mayor se entrenó de forma independiente bajo 8 semillas aleatorias diferentes durante 30 épocas.
+
+En la Tabla~\ref{tab:model_parameters_comparison} se resume la comparativa del número total de parámetros entrenables y tamaño en memoria (en FP32) de las tres arquitecturas principales utilizadas en este trabajo.
+
+\begin{table}[htbp]
+    \centering
+    \small
+    \begin{tabular}{|l|c|c|c|}
+    \hline
+    \textbf{Modelo} & \textbf{Backbone / Configuración} & \textbf{N.º de Parámetros} & \textbf{Tamaño en Memoria} \\
+    \hline
+    \texttt{Transformer dk64\_n3} & $d_k = 64$, $N = 3$ layers & 212,649 & 0.81 MB \\
+    \texttt{Transformer dk128\_n5} & $d_k = 128$, $N = 5$ layers & 1,132,137 & 4.32 MB \\
+    \texttt{MLP\_Baseline} (Big MLP) & 4 capas lineales densas & 5,270,212 & 20.10 MB \\
+    \hline
+    \end{tabular}
+    \caption{Comparación de complejidad, parámetros entrenables y huella de memoria de los modelos evaluados.}
+    \label{tab:model_parameters_comparison}
+\end{table}
+
+A pesar de que el modelo \texttt{Transformer dk128\_n5} incrementa el número de parámetros en un factor de aproximadamente $5.3\times$ respecto al de ablación base, sigue siendo significativamente más compacto que el modelo \texttt{MLP\_Baseline} (el cual posee casi 5.27 millones de parámetros). La arquitectura Transformer demuestra una eficiencia de parámetros muy superior al MLP, ofreciendo mayor capacidad con un consumo de recursos significativamente menor.
+
+\subsubsection{Hiperparámetros de la Red de Mayor Capacidad}
+
+Los hiperparámetros de entrenamiento del modelo de mayor tamaño se optimizaron de forma adaptada a su capacidad, reduciendo ligeramente el tamaño del lote ($B = 12800$) y ajustando la tasa de aprendizaje ($lr = 0.001378$) para un entrenamiento eficiente en GPU. La Tabla~\ref{tab:hiperparametros_ablation_dk128} muestra la receta de hiperparámetros fijos empleada.
+
+\begin{table}[htbp]
+    \centering
+    \small
+    \begin{tabular}{|p{4.5cm}|p{3cm}|p{8.5cm}|}
+    \hline
+    \textbf{Hiperparámetro (Símbolo)} & \textbf{Valor} & \textbf{Descripción / Contexto Experimental} \\
+    \hline
+    Dataset de entrada & \texttt{d4\_val.txt} & Dataset filtrado obtenido a partir de partidas generadas a profundidad 4. \\ \hline
+    Split train/validation & 97\% / 3\% & División del dataset en conjuntos de entrenamiento y validación. \\ \hline
+    Dimensión de embedding ($d_k$) & 128 & Dimensión de los embeddings de entrada y proyección interna. \\ \hline
+    Número de bloques ($N$) & 5 & Número de bloques encoder del Transformer en el backbone. \\ \hline
+    Épocas de entrenamiento & 30 & Pasadas completas sobre el dataset. \\ \hline
+    Tamaño de lote ($B$) & 12800 & Batch size grande adaptado al tamaño de la memoria de la GPU. \\ \hline
+    Backend de atención & \texttt{math} & Kernels de SDPA optimizados para Tensor Cores. \\ \hline
+    Autocast de precisión & \texttt{none} & Sin autocast, entrenamiento en float32. \\ \hline
+    Tasa de aprendizaje ($lr$) & 0.0013783 & Tasa de aprendizaje optimizada para la escala del modelo. \\ \hline
+    Weight decay ($\lambda$) & 0.04996 & Decaimiento de pesos ajustado para regularización del modelo grande. \\ \hline
+    AdamW $\beta_1$ & 0.9053 & Coeficiente de promedio móvil del gradiente de primer orden en AdamW. \\ \hline
+    AdamW $\beta_2$ & 0.999 & Coeficiente de promedio móvil del gradiente de segundo orden (por defecto). \\ \hline
+    AdamW $\epsilon$ & $2.265 \times 10^{-8}$ & Parámetro de estabilidad numérica en AdamW. \\ \hline
+    Semillas aleatorias ($Seed$) & 123, 2026, 32, 42, 5000, 777, 8765, 912 & 8 semillas aleatorias independientes para comprobar consistencia. \\
+    \hline
+    \end{tabular}
+    \caption{Hiperparámetros empleados en el entrenamiento del modelo \texttt{Transformer dk128\_n5}.}
+    \label{tab:hiperparametros_ablation_dk128}
+\end{table}
+
+\subsubsection{Evaluación en Test Holdout}
+
+Los modelos grandes se evaluaron sobre el mismo conjunto de test estático. La Tabla~\ref{tab:resultados_test_ablation_dk128} reporta las medias y desviaciones estándar de las métricas de test consolidadas a lo largo de las 8 semillas independientes:
+
+\begin{table}[htbp]
+    \centering
+    \small
+    \begin{subtable}{\textwidth}
+        \centering
+        \setlength{\tabcolsep}{6pt}
+        \begin{tabular}{|l|c|c|c|}
+        \hline
+        \textbf{Modelo / Representación} & \textbf{Move Acc (P@1)} & \textbf{Precision@3} & \textbf{Precision@5} \\
+        \hline
+        \texttt{simple\_nofact} (Plano, Simple) & $53.33\% \pm 0.06\%$ & $87.21\% \pm 0.05\%$ & $96.51\% \pm 0.02\%$ \\
+        \texttt{simple\_fact} (Plano, Factorizado) & $53.01\% \pm 0.11\%$ & $86.96\% \pm 0.08\%$ & $96.40\% \pm 0.04\%$ \\
+        \texttt{spatial\_nofact} (2D, Simple) & $53.63\% \pm 0.33\%$ & $87.41\% \pm 0.21\%$ & $96.59\% \pm 0.09\%$ \\
+        \texttt{spatial\_fact} (2D, Factorizado) & $\mathbf{53.84}\% \pm 0.26\%$ & $\mathbf{87.48}\% \pm 0.17\%$ & $\mathbf{96.63}\% \pm 0.07\%$ \\
+        \hline
+        \end{tabular}
+        \caption{Métricas de la cabeza de política (movimientos) del modelo grande.}
+        \label{subtab:politica_dk128}
+    \end{subtable}
+    
+    \vspace{0.4cm}
+    
+    \begin{subtable}{\textwidth}
+        \centering
+        \setlength{\tabcolsep}{6pt}
+        \begin{tabular}{|l|c|c|}
+        \hline
+        \textbf{Modelo / Representación} & \textbf{Result Acc} & \textbf{Value MSE} \\
+        \hline
+        \texttt{simple\_nofact} (Plano, Simple) & $74.93\% \pm 0.09\%$ & $0.2548 \pm 0.0007$ \\
+        \texttt{simple\_fact} (Plano, Factorizado) & $75.08\% \pm 0.15\%$ & $0.2522 \pm 0.0012$ \\
+        \texttt{spatial\_nofact} (2D, Simple) & $\mathbf{82.28}\% \pm 0.10\%$ & $\mathbf{0.1396} \pm 0.0004$ \\
+        \texttt{spatial\_fact} (2D, Factorizado) & $81.99\% \pm 0.04\%$ & $0.1415 \pm 0.0004$ \\
+        \hline
+        \end{tabular}
+        \caption{Métricas de la cabeza de valor (resultado) del modelo grande.}
+        \label{subtab:valor_dk128}
+    \end{subtable}
+    
+    \caption{Rendimiento medio y desviación estándar de las métricas en test para el modelo grande \texttt{Transformer dk128\_n5} (8 semillas $\times$ 4 variantes).}
+    \label{tab:resultados_test_ablation_dk128}
+\end{table}
+
+\subsubsection{Análisis Estadístico y Test de Tukey HSD}
+
+Se aplicaron los mismos tests estadísticos a las métricas del modelo grande para contrastar formalmente los resultados:
+\begin{itemize}
+    \item \textbf{Exactitud de Movimiento (Política)}: El test de Shapiro-Wilk sobre la exactitud de movimientos arroja un p-valor de $0.0455$, indicando una desviación menor de la normalidad teórica. El análisis ANOVA de una vía arrojó un p-valor de $6.19 \times 10^{-7}$, ratificando diferencias altamente significativas. El test post-hoc de Tukey HSD revela lo siguiente:
+    \begin{itemize}
+        \item Al dotar al modelo de mayor capacidad ($d_k=128$, $N=5$), las arquitecturas con codificación espacial superan levemente en Move Accuracy a las planas. La diferencia es estadísticamente significativa entre \texttt{spatial\_fact} y \texttt{simple\_nofact} ($+0.51\%$, $p_{adj} = 0.0009$), así como entre \texttt{spatial\_fact} y \texttt{simple\_fact} ($+0.83\%$, $p_{adj} = 0.0$), corroborando el beneficio de la codificación espacial.
+        \item La factorización del espacio de acciones degrada menos el rendimiento que en el modelo pequeño, pero la comparación entre \texttt{simple\_fact} y \texttt{simple\_nofact} sigue mostrando una penalización estadísticamente significativa de $-0.32\%$ ($p_{adj} = 0.0481$).
+    \end{itemize}
+    \item \textbf{Exactitud de Resultado (Valor)}: El test de Shapiro-Wilk confirma una desviación de la normalidad ($p \approx 0.0$) como en la versión de dimensión 64. Aún así, el ANOVA global indica una significatividad enorme ($p = 1.90 \times 10^{-43}$). El test post-hoc de Tukey HSD ratifica:
+    \begin{itemize}
+        \item La codificación espacial 2D del tablero aporta una mejora muy significativa y consistente en la predicción del resultado. \texttt{spatial\_nofact} supera a \texttt{simple\_nofact} en $+7.35\%$ ($p_{adj} = 0.0$), y \texttt{spatial\_fact} supera a \texttt{simple\_fact} en $+6.91\%$ ($p_{adj} = 0.0$). Asimismo, el error MSE se reduce casi a la mitad (de $0.2548$ a $0.1396$).
+        \item La variante espacial simple \texttt{spatial\_nofact} supera a su contraparte factorizada \texttt{spatial\_fact} en $+0.29\%$ ($p_{adj} = 0.0001$).
+    \end{itemize}
+\end{itemize}
+
+Los boxplots de la Figura~\ref{fig:boxplots_test_dk128} ilustran la dispersión en test para las 8 semillas, confirmando la superioridad de los modelos espaciales en la cabeza de valor.
+
+\begin{figure}[htbp]
+    \centering
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/h2_results_dk128/test_move_accuracy_boxplot.png}
+        \caption{Exactitud de Movimientos (Política)}
+        \label{fig:box_move_dk128}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/h2_results_dk128/test_result_accuracy_boxplot.png}
+        \caption{Exactitud de Resultados (Valor)}
+        \label{fig:box_res_dk128}
+    \end{subfigure}
+    \caption{Distribución y variabilidad de las métricas en test para el modelo grande \texttt{Transformer dk128\_n5} sobre las 8 semillas.}
+    \label{fig:boxplots_test_dk128}
+\end{figure}
+
+\subsubsection{Curvas de Aprendizaje del Modelo Grande}
+
+Las curvas de aprendizaje promediadas a lo largo de las 8 semillas independientes se detallan en la Figura~\ref{fig:curvas_aprendizaje_dk128}. De forma similar a los modelos pequeños, las variantes espaciales muestran una convergencia superior y más rápida en la cabeza de valor (Figura~\ref{fig:curve_val_res_dk128}), alcanzando rápidamente el nivel óptimo de exactitud.
+
+\begin{figure}[htbp]
+    \centering
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/h2_results_dk128/learning_curves_val_move_acc.png}
+        \caption{Move Accuracy (Validation)}
+        \label{fig:curve_val_move_dk128}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/h2_results_dk128/learning_curves_val_res_acc.png}
+        \caption{Result Accuracy (Validation)}
+        \label{fig:curve_val_res_dk128}
+    \end{subfigure}
+    \caption{Curvas de aprendizaje promediadas para el modelo \texttt{Transformer dk128\_n5} (con área sombreada de desviación estándar).}
+    \label{fig:curvas_aprendizaje_dk128}
+\end{figure}
+
+\subsubsection{Torneo del modelo grande}
+
+Para complementar la evaluación y medir la habilidad práctica de juego de las variantes grandes, se ejecutó un torneo round-robin análogo al del modelo base. Los enfrentamientos se configuraron bajo las mismas condiciones (100 partidas por emparejamiento con intercambio de colores, límite de 100 movimientos, y temperatura de selección de jugada $\tau = 0.15$ para promover diversidad y mitigar loops repetitivos). Se utilizaron los checkpoints de los agentes entrenados bajo la semilla 42.
+
+La Tabla~\ref{tab:eloration_ablation_tournament_dk128} muestra los resultados de Elo obtenidos.
+
+\begin{table}[htbp]
+    \centering
+    \small
+    \begin{tabular}{|l|l|c|c|}
+    \hline
+    \textbf{Agente} & \textbf{Arquitectura / Tipo} & \textbf{Elo Rating} & \textbf{Entropía Media Política} \\
+    \hline
+    \texttt{spatial\_nofact} & Transformer (2D, Simple) & \textbf{1197.9} & 1.2778 \\
+    \texttt{simple\_nofact} & Transformer (Plano, Simple) & 1173.8 & 1.3460 \\
+    \texttt{spatial\_fact} & Transformer (2D, Factorizado) & 1159.1 & 1.2112 \\
+    \texttt{simple\_fact} & Transformer (Plano, Factorizado) & 1141.3 & 1.2854 \\
+    \texttt{HeuristicAgent} & Heurístico de capturas & 1138.7 & N/A \\
+    \texttt{MLP\_Baseline} & Perceptrón Multicapa & 1001.7 & 1.3063 \\
+    \texttt{RandomAgent} & Selección aleatoria uniforme & 1000.0 & N/A \\
+    \hline
+    \end{tabular}
+    \caption{Clasificación final y Elo de los agentes basados en el modelo grande \texttt{Transformer dk128\_n5} (Semilla 42).}
+    \label{tab:eloration_ablation_tournament_dk128}
+\end{table}
+
+A la vista de la clasificación de Elo, podemos extraer algunas conclusiones sobre el impacto de escalar la capacidad del modelo:
+\begin{itemize}
+    \item A diferencia del modelo pequeño ($d_k=64$), donde \texttt{simple\_nofact} sufría un colapso en el torneo cayendo por debajo del agente aleatorio (964.7 Elo), al incrementar la capacidad del Transformer a $d_k=128$, $N=5$, la variante \texttt{simple\_nofact} se recupera de manera notable, alcanzando el segundo puesto con \textbf{1173.8 Elo}.
+    \item El modelo \texttt{spatial\_nofact} se corona como el campeón del torneo con \textbf{1197.9 Elo}. La ventaja del sesgo inductivo espacial 2D se traduce en una superioridad posicional constante.
+    \item Mientras que en el modelo pequeño el heurístico superaba al baseline plano, aquí las cuatro variantes Transformer superan de forma significativa al agente heurístico (1138.7 Elo), evidenciando que el incremento de capacidad permite al Transformer aprender patrones estratégicos profundos que superan la táctica codiciosa de capturas del heurístico. El elo máximo de estos modelos también supera al del modelo pequeño por +30 puntos.
+\end{itemize}
+
+Las matrices de tasas de victorias (con y sin empates) del torneo del modelo grande se ilustran en la Figura~\ref{fig:matrices_winrate_dk128}.
+
+\begin{figure}[htbp]
+    \centering
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/h2_results_dk128/win_rate_matrix_with_draws_seed_42_extended.png}
+        \caption{Win Rate (con tablas)}
+        \label{fig:win_draws_dk128}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/h2_results_dk128/win_rate_matrix_no_draws_seed_42_extended.png}
+        \caption{Win Rate (solo victorias / derrotas)}
+        \label{fig:win_nodraws_dk128}
+    \end{subfigure}
+    \caption{Matrices cruzadas de tasas de victorias para el torneo del modelo grande \texttt{Transformer dk128\_n5} (Semilla 42).}
+    \label{fig:matrices_winrate_dk128}
+\end{figure}
+
+\subsection{Formulación Matemática de las Funciones de Pérdida}\label{sec:anexo_loss_details}
+
+Las pérdidas individuales que componen la función de optimización global durante la fase de aprendizaje supervisado de los modelos se formulan matemáticamente de la siguiente manera:
+
+\begin{enumerate}
+    \item \textbf{Pérdida de la Cabeza de Política Principal ($\mathcal{L}_p$):} Se calcula mediante entropía cruzada multiclase clásica (\textit{Cross-Entropy Loss}) aplicada sobre el vector de 704 logits de movimientos legales. Dado el movimiento objetivo $y \in \{1, \dots, 704\}$ (representado como un vector \textit{one-hot} $\mathbf{y}$) y los logits predichos por el modelo $\hat{\mathbf{z}} \in \mathbb{R}^{704}$:
+    \begin{equation}
+        \mathcal{L}_p = -\sum_{c=1}^{704} y_c \ln\left( \frac{e^{\hat{z}_c}}{\sum_{k=1}^{704} e^{\hat{z}_k}} \right)
+    \end{equation}
+
+    \item \textbf{Pérdida de la Cabeza de Valor ($\mathcal{L}_v$):} Se evalúa mediante el error cuadrático medio (\textit{Mean Squared Error}, MSE) entre la predicción continua de valor $\hat{v} \in [-1, 1]$ (obtenida tras proyectar linealmente el token \texttt{CLS} y aplicar una activación $\tanh$) y el resultado objetivo de la partida $v \in \{-1, 0, 1\}$ (donde -1 indica derrota de las blancas, 0 indica tablas y 1 indica victoria de las blancas):
+    \begin{equation}
+        \mathcal{L}_v = (v - \hat{v})^2
+    \end{equation}
+
+    \item \textbf{Pérdida Auxiliar de la Política Factorizada ($\mathcal{L}_{\text{aux}}$):} Para los modelos factorizados, esta pérdida se desglosa en la suma de tres entropías cruzadas independientes aplicadas sobre las predicciones de la casilla de origen ($\mathcal{L}_{\text{from}}$), casilla de destino ($\mathcal{L}_{\text{to}}$) y el tipo de pieza de promoción ($\mathcal{L}_{\text{promo}}$):
+    \begin{equation}
+        \mathcal{L}_{\text{aux}} = \mathcal{L}_{\text{from}} + \mathcal{L}_{\text{to}} + \mathcal{L}_{\text{promo}}
+    \end{equation}
+    donde cada término individual se formula empleando entropía cruzada convencional.
+\end{enumerate}
+
+\subsection{Evolución de las Pérdidas por Cabeza durante el Entrenamiento}
+
+Para analizar cómo cada cabeza de salida aprende las características supervisadas en función de su arquitectura, la Figura~\ref{fig:learning_curves_loss_heads} muestra la evolución de cada componente de pérdida en el conjunto de entrenamiento.
+
+\begin{figure}[htbp]
+    \centering
+    \begin{subfigure}[b]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/h2_results_dk64/learning_curves_train_policy_loss.png}
+        \caption{Pérdida de Política ($\mathcal{L}_p$)}
+        \label{fig:loss_policy_head}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/h2_results_dk64/learning_curves_train_value_loss.png}
+        \caption{Pérdida de Valor ($\mathcal{L}_v$)}
+        \label{fig:loss_value_head}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/h2_results_dk64/learning_curves_train_aux_loss.png}
+        \caption{Pérdida Auxiliar ($\mathcal{L}_{\text{aux}}$)}
+        \label{fig:loss_aux_head}
+    \end{subfigure}
+    \caption{Evolución de las pérdidas de entrenamiento desglosadas por cabeza de salida en el estudio de ablación (media de 10 semillas $\pm$ desviación estándar).}
+    \label{fig:learning_curves_loss_heads}
+\end{figure}
+
+Se puede observar claramente que:
+\begin{itemize}
+    \item La pérdida de la cabeza de política ($\mathcal{L}_p$) converge a un valor similar para todos los modelos basados en Transformer, siendo notablemente menor que el baseline MLP. El uso de la cabeza auxiliar factorizada (\texttt{simple\_fact} y \texttt{spatial\_fact}) no altera sustancialmente la convergencia de la política principal.
+    \item La pérdida de la cabeza de valor ($\mathcal{L}_v$) muestra la superioridad de las codificaciones de entrada espaciales (\texttt{spatial\_nofact} y \texttt{spatial\_fact}), las cuales logran minimizar la pérdida a valores cercanos a 0.28, frente al 0.31 de los modelos planos.
+    \item La pérdida auxiliar ($\mathcal{L}_{\text{aux}}$) disminuye progresivamente durante el entrenamiento para las dos arquitecturas factorizadas, indicando que el modelo aprende a correlacionar y estructurar el origen-destino de los movimientos.
+\end{itemize}
+
+\subsection{Resultados Detallados de los Tests de Significatividad Estadística}\label{sec:anexos_significancia}
+
+En esta sección se reportan de manera detallada las tablas y p-valores de los análisis estadísticos realizados sobre el estudio de ablación (Hipótesis 2) para las 10 semillas independientes, para la versión del modelo con 64 dimensiones (dk64). .
+
+\subsubsection{Test de Normalidad (Shapiro-Wilk)}
+Se evalúa la hipótesis nula de que los datos proceden de una distribución normal. Para la exactitud de movimientos (política), se obtiene; $p\text{-valor} = 0.127205$. Al ser $p > 0.05$, no se rechaza la hipótesis nula de normalidad, lo que fundamenta el uso de la prueba ANOVA paramétrica, que requiere que los datos sigan una distribución normal.
+
+Para la exactitud del resultado (valor), el p-valor es prácticamente nulo ($p < 10^{-5}$). Esto indica una desviación de la normalidad teórica, por lo que no se puede usar ANOVA para comparar las medias de los grupos de valor. Aun así, dado el tamaño de la muestra y la magnitud de la direfencia estadística en los resultados que se observa en la figura~\ref{fig:box_res}, y el hecho de que ANOVA es bastante robusto a las violaciones de normalidad bajop ciertas condiciones, y aún sin alcanzar las 30 muestras recomendadas para que el teorema central del límite sea efectivo, el test estadístico puede considerarse adecuado. Por simplicidad se mantiene ANOVA y Turkey para ambos casos, pero pruebas utilizando tests no paramétricos (Kruskal-Wallis y  Mann-Whitney U) para el resultado de la cabeza de valor confirman la misma hipótesis obtenidas. 
+
+\subsubsection{Test de Diferencias Globales (One-Way ANOVA)}
+El valor $p$ devuelto por el test de ANOVA informa sobre la probabilidad de observar los datos observados, o unos más extremos, si la hipótesis nula (que todas las medias son iguales) fuera cierta. Por lo tanto, p-valores pequeños sugieren que es poco probable que las medias de los grupos sean iguales. Se evalúa si existen diferencias significativas entre las medias de los cuatro grupos comparados:
+\begin{itemize}
+    \item \textbf{Exactitud de Movimiento (Política)}: $p\text{-valor} = 6.92036 \times 10^{-10}$. Existe una diferencia altamente significativa entre los grupos de política.
+    \item \textbf{Exactitud de Resultado (Valor)}: $p\text{-valor} = 2.11741 \times 10^{-50}$. Diferencia enormemente significativa entre las representaciones de valor.
+\end{itemize}
+
+\subsubsection{Comparaciones Múltiples por Parejas (Tukey HSD)}
+Se aplica el test de Tukey HSD con una tasa de error global controlada ($\text{FWER} = 0.05$). Las tablas de diferencias de medias (\textit{meandiff}), p-valores ajustados (\textit{p-adj}), intervalos de confianza y la decisión de rechazo se muestran en las Tablas~\ref{tab:tukey_mov} y \ref{tab:tukey_res}. Recordemos que \textit{meandiff} es la diferencia entre la media del primer grupo y la del segundo (grupo 2 - grupo 1), por lo que un valor positivo indica que el segundo grupo es mejor que el primero y viceversa. Por otro lado, $H_0$ sostiene que las medias de los grupos son iguales; si se rechaza quiere decir que existe una diferencia estadísticamente significativa entre las medias de los grupos, cuya "dirección" está indicada por el signo de \textit{meandiff}. El intervalo de confianza informa sobre el rango de valores dentro del cual se encuentra la verdadera diferencia entre las medias de los grupos con un 95\% de confianza. Si el intervalo de confianza incluye el cero, no se puede rechazar la hipótesis nula. Finalmente, $p-adj$ es el p-valor ajustado; indica la probabilidad de rechazar la hipótesis nula.
+
+\begin{table}[htbp]
+    \centering
+    \small
+    \begin{tabular}{|l|l|c|c|c|c|}
+    \hline
+    \textbf{Grupo 1} & \textbf{Grupo 2} & \textbf{Dif. Medias} & \textbf{p-adj} & \textbf{Int. Conf. 95\%} & \textbf{Rechazo $H_0$} \\
+    \hline
+    \texttt{simple\_fact} & \texttt{simple\_nofact} & $+0.0096$ & $0.0000$ & $[+0.0066, +0.0127]$ & \textbf{Sí} \\
+    \texttt{simple\_fact} & \texttt{spatial\_fact} & $+0.0040$ & $0.0055$ & $[+0.0010, +0.0071]$ & \textbf{Sí} \\
+    \texttt{simple\_fact} & \texttt{spatial\_nofact} & $+0.0082$ & $0.0000$ & $[+0.0052, +0.0112]$ & \textbf{Sí} \\
+    \texttt{simple\_nofact} & \texttt{spatial\_fact} & $-0.0056$ & $0.0001$ & $[-0.0086, -0.0026]$ & \textbf{Sí} \\
+    \texttt{simple\_nofact} & \texttt{spatial\_nofact} & $-0.0014$ & $0.5926$ & $[-0.0045, +0.0016]$ & No \\
+    \texttt{spatial\_fact} & \texttt{spatial\_nofact} & $+0.0042$ & $0.0036$ & $[+0.0012, +0.0072]$ & \textbf{Sí} \\
+    \hline
+    \end{tabular}
+    \caption{Comparación por parejas post-hoc de Tukey HSD para la exactitud del movimiento (Política).}
+    \label{tab:tukey_mov}
+\end{table}
 
 
 \begin{table}[htbp]
     \centering
-    \begin{tabular}{|l|c|c|}
+    \small
+    \begin{tabular}{|l|l|c|c|c|c|}
     \hline
-    \textbf{Hiperparámetro (Símbolo)} & \textbf{Valor} & \textbf{Descripción} \\
+    \textbf{Grupo 1} & \textbf{Grupo 2} & \textbf{Dif. Medias} & \textbf{p-adj} & \textbf{Int. Conf. 95\%} & \textbf{Rechazo $H_0$} \\
     \hline
-    \multicolumn{3}{|c|}{\textbf{Arquitectura Transformer}} \\
-    \hline
-    Dimensión oculta ($d_{\text{model}}$) & & \\
-    Número de capas Encoder ($L$) & & \\
-    Cabezas de atención ($h$) & & \\
-    \hline
-    \multicolumn{3}{|c|}{\textbf{Aprendizaje por Refuerzo (PPO)}} \\
-    \hline
-    Tasa de aprendizaje base ($lr$) & & \\
-    Batch size ($B$) & & \\
-    Número de epochs PPO ($K$) & & \\
-    Constante de descuento ($\gamma$) & & \\
-    Parámetro GAE ($\lambda$) & & \\
-    Márgen de Clipping ($\epsilon$) & & \\
-    Coeficiente de Entropía ($c_2$) & & \\
-    Coeficiente de Valor ($c_1$) & & \\
+    \texttt{simple\_fact} & \texttt{simple\_nofact} & $+0.0020$ & $0.0664$ & $[-0.0001, +0.0041]$ & No \\
+    \texttt{simple\_fact} & \texttt{spatial\_fact} & $+0.0815$ & $0.0000$ & $[+0.0794, +0.0836]$ & \textbf{Sí} \\
+    \texttt{simple\_fact} & \texttt{spatial\_nofact} & $+0.0871$ & $0.0000$ & $[+0.0850, +0.0892]$ & \textbf{Sí} \\
+    \texttt{simple\_nofact} & \texttt{spatial\_fact} & $+0.0795$ & $0.0000$ & $[+0.0774, +0.0816]$ & \textbf{Sí} \\
+    \texttt{simple\_nofact} & \texttt{spatial\_nofact} & $+0.0851$ & $0.0000$ & $[+0.0830, +0.0872]$ & \textbf{Sí} \\
+    \texttt{spatial\_fact} & \texttt{spatial\_nofact} & $+0.0056$ & $0.0000$ & $[+0.0035, +0.0077]$ & \textbf{Sí} \\
     \hline
     \end{tabular}
-    \caption{Tabla de hiperparámetros de los modelos y del algoritmo PPO.}
-    \label{tab:hiperparametros}
+    \caption{Comparación por parejas post-hoc de Tukey HSD para la exactitud del resultado (Valor).}
+    \label{tab:tukey_res}
 \end{table}
 
 \end{document}

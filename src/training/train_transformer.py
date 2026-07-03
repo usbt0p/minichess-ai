@@ -33,12 +33,13 @@ def train_model(
     # Setup run directory and TensorBoard writer
     run_dir = None
     if config.run_name:
-        run_dir = f"{config.save_dir}/{config.run_name}"
+        run_dir = os.path.join(config.save_dir, config.run_name) if config.save_dir else config.run_name
         save_run_metadata(run_dir, config, encoder_config, config.profile_desc or f"Experiment run: {config.run_name}")
     elif config.profile_name is not None:
-        run_dir = f"./log/{config.profile_name}"
+        run_dir = f"./profiles/{config.profile_name}"
         save_run_metadata(run_dir, config, encoder_config, config.profile_desc)
 
+    # only log if a run name has been set or
     tb_logger = TensorBoardLogger(run_dir if config.run_name else None)
 
     profile_training = config.profile_name is not None
@@ -52,7 +53,10 @@ def train_model(
         model, 
         weight_decay=config.weight_decay, 
         learning_rate=config.lr, 
-        device_type=config.device
+        device_type=config.device,
+        beta1=config.beta1,
+        beta2=config.beta2,
+        eps=config.eps
     )
     print(f"Using device: {config.device}")
 
@@ -369,20 +373,25 @@ def test_model_holdout(model, train_config):
 
 if __name__ == '__main__':
     args = parse_args()
-    set_seed(42)
-    d_k = args.embed_dim
+
+    # global configs that affect whole training
+    set_seed(args.seed) # defaults to 42
+    torch.set_float32_matmul_precision(args.precision)
 
     # Initialize train configurations
     train_config = TrainingConfig(
         data_path=args.data_path,
-        use_cache=True,
+        use_cache=args.use_cache,
         batch_size=args.batch_size,
-        train_ratio=0.97,
-        num_workers=12,
+        train_ratio=args.train_ratio,
+        num_workers=args.num_workers,
         num_epochs=args.epochs,
-        patience=4,
+        patience=args.patience,
         lr=args.lr,
-        weight_decay=2e-5,
+        weight_decay=args.weight_decay, # fuck, i was running ablations with this hardcoded
+        beta1=args.beta1,
+        beta2=args.beta2,
+        eps=args.eps,
         custom_init=args.custom_init,
         run_name=args.run_name,
         save_dir=args.save_dir,
@@ -398,11 +407,11 @@ if __name__ == '__main__':
 
     # Initialize model config
     encoder_config = EncoderConfig(
-        embed_dim=d_k, 
-        num_heads=8,
+        embed_dim=args.embed_dim, 
+        num_heads=args.num_heads,
         num_blocks=args.num_blocks,
         batch_size=train_config.batch_size,
-        policy_size=704,
+        policy_size=704, # this stays fixed. rare would be the case in which size is different
         mlp_expand_factor=args.mlp_expand,
         custom_init=train_config.custom_init,
         
@@ -412,8 +421,6 @@ if __name__ == '__main__':
         representation=train_config.representation,
         use_factorized_policy=train_config.use_factorized_policy,
     )
-    # TODO donde poner esto
-    torch.set_float32_matmul_precision('highest')
     
     print(encoder_config)
 
@@ -458,4 +465,4 @@ if __name__ == '__main__':
     #     validation_test(model, val_loader, device=train_config.device)
     #     test_model_holdout(model, train_config)
 
-    print("\n"*3, "/\\"*40, "\n"*3) # this is just for the experiments
+    print("\n"*3, "/\\"*40, "\n"*3) # this is just for pretty printing

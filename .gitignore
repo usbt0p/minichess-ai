@@ -10,12 +10,14 @@ __pycache__
 *.pyi
 
 # project-specific
+benchmarks/
 variant-nnue-tools/
 data/
 data.back/
 blog/
 papers/
 experiments/
+results/
 *.wiki
 
 # tex and documentation

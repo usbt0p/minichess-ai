@@ -16,20 +16,23 @@ from src.models.dataloaders import MinichessTransformerDataset
 optuna.logging.set_verbosity(optuna.logging.INFO)
 
 # Global configurations
-DATASET_PATH = "data/gardner_depth3_incomplete/gen_gardner_d3.txt"
-SUBSAMPLE_RATIO = 0.8
-EPOCHS = 10
-BATCH_SIZE = 4096
+DATASET_PATH = "data/d4/d4_val.txt"
+SUBSAMPLE_RATIO = 0.8 # leave 20% of data out for speed
+EPOCHS = 15
+BATCH_SIZE = 8192
 NUM_WORKERS = 12
-TRIALS_PER_CONFIG = 20  # 15 Good balance for Bayesian (TPE) optimization to converge
+TRIALS_PER_CONFIG = 35
 TUNING_DIR = "logs/tuning"
+
+# depends on what speed we want vs precision...
+torch.set_float32_matmul_precision('high')
 
 # Configurations to optimize
 CONFIGS_TO_TUNE = [
-    {"d_k": 64, "depth": 4},
-    {"d_k": 64, "depth": 8},
-    {"d_k": 256, "depth": 4},
-    {"d_k": 256, "depth": 8}, 
+    {"d_k": 64, "depth": 3},
+    {"d_k": 128, "depth": 5},
+    # {"d_k": 256, "depth": 4},
+    # {"d_k": 256, "depth": 8}, 
 ]
 
 class TuningObjective:
@@ -48,21 +51,29 @@ class TuningObjective:
         d_k = self.config_dict["d_k"]
         depth = self.config_dict["depth"]
 
-        lr = trial.suggest_float("lr", 1e-5, 1e-2, log=True)
+        # IMPORTANT!!
+        lr = trial.suggest_float("lr", 4e-5, 1e-2, log=True)
+        beta1 = trial.suggest_float("beta1", 0.85, 0.95)
+        weight_decay = trial.suggest_float("weight_decay", 1e-4, 0.1)
+        eps = trial.suggest_float("eps", 1e-9, 1e-7)
             
         # log folder for TensorBoard tracing
-        run_name = f"tuning/{self.study_name}_trial{trial.number}_lr{lr:.6f}"
+        run_name = f"tuning/{self.study_name}_trial{trial.number}_lr{lr:.6f}_beta1{beta1:.4f}_wd{weight_decay:.2e}"
         
         train_config = TrainingConfig(
             data_path=DATASET_PATH,
             use_cache=True,
             batch_size=BATCH_SIZE,
-            train_ratio=0.98,
+            train_ratio=0.97,
             num_workers=NUM_WORKERS,
             num_epochs=EPOCHS,
             patience=4,
+
+            weight_decay=weight_decay,
             lr=lr,
-            weight_decay=2e-5,
+            beta1=beta1,
+            eps=eps,
+            
             custom_init=False,  # Enable custom init for training stability at batch size 4096
             run_name=run_name,
             subsample_ratio=SUBSAMPLE_RATIO
@@ -75,13 +86,15 @@ class TuningObjective:
             batch_size=BATCH_SIZE,
             policy_size=704,
             mlp_expand_factor=4,
-            custom_init=True
+            custom_init=True,
+            attn_backend="math",
+            autocast_mode="none",
         )
         
         model = MiniChessTransformerEncoder(encoder_config)
         model = torch.compile(model)
-
-        print(f"\n  --> Trial {trial.number}: Testing LR = {lr:.6e}")
+ 
+        print(f"\n  --> Trial {trial.number}: Testing LR = {lr:.6e}, Beta1 = {beta1:.4f}, Weight Decay = {weight_decay:.2e}")
         start_time = time.time()
         
         try:
@@ -104,14 +117,6 @@ class TuningObjective:
             print(traceback.format_exc())
             print(f"  ⚠️[TRIAL FAILED]")
             return 0.0 # Return 0.0 on failure to penalize the hyperparameter choice
-
-def summary_table(summary_results):
-    print("\n" + "=" * 70)
-    print("ALL OPTUNA STUDIES COMPLETE. SUMMARY:")
-    print("=" * 70)
-    for res in summary_results:
-        print(f"  {res['study']:<30} | Best Acc: {res['best_acc']:.4f} | Best LR: {res['best_lr']:.6e}")
-    print("=" * 70)
 
 def main():
     os.makedirs(TUNING_DIR, exist_ok=True)
@@ -164,9 +169,11 @@ def main():
         
         best_trial = study.best_trial
         print(f"\n=== STUDY {study_name} COMPLETE ===")
-        print(f"  Best Val Move Accuracy: {best_trial.value:.4f}")
-        print(f"  Best Learning Rate: {best_trial.params['lr']:.6e}")
-        
+        print(f"  Best Val Move Accuracy: {best_trial.value:.5f}")
+        print(f"  Best Learning Rate: {best_trial.params['lr']:.5e}")
+        print(f"  Best Beta1: {best_trial.params['beta1']:.5f}")
+        print(f"  Best Weight Decay: {best_trial.params['weight_decay']:.5e}")
+        print(f"  Best Eps: {best_trial.params['eps']:.5e}")
         # Save a summary file for this specific configuration study
         summary_path = os.path.join(TUNING_DIR, f"{study_name}_summary.json")
         with open(summary_path, "w") as f:
@@ -175,15 +182,20 @@ def main():
                 "depth": depth,
                 "best_move_accuracy": best_trial.value,
                 "best_lr": best_trial.params["lr"],
+                "best_beta1": best_trial.params["beta1"],
+                "best_weight_decay": best_trial.params["weight_decay"],
+                "best_eps": best_trial.params["eps"],
                 "best_trial_number": best_trial.number
             }, f, indent=4)
             
         summary_results.append({
             "study": study_name,
             "best_acc": best_trial.value,
-            "best_lr": best_trial.params["lr"]
+            "best_lr": best_trial.params["lr"],
+            "best_beta1": best_trial.params["beta1"],
+            "best_weight_decay": best_trial.params["weight_decay"],
+            "best_eps": best_trial.params["eps"]
         })
-    summary_table(summary_results)
 
 if __name__ == "__main__":
     main()

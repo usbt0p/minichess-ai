@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minichess Tournament Visualizer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --card-bg: #151c2c;
+            --accent-color: #3b82f6;
+            --text-color: #f3f4f6;
+            --text-muted: #9ca3af;
+            --white-piece: #ffffff;
+            --black-piece: #3b82f6;
+            --draw-color: #10b981;
+            --danger-color: #ef4444;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        header {
+            background-color: var(--card-bg);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #1e293b;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.25rem;
+            font-weight: 600;
+            letter-spacing: -0.025em;
+        }
+
+        .tournament-summary {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 280px;
+            background-color: #0e1320;
+            border-right: 1px solid #1e293b;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .sidebar-title {
+            padding: 1rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            border-bottom: 1px solid #1e293b;
+        }
+
+        .game-item {
+            padding: 1rem;
+            border-bottom: 1px solid #1e293b;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .game-item:hover {
+            background-color: #151c2c;
+        }
+
+        .game-item.active {
+            background-color: var(--accent-color);
+            color: #ffffff;
+        }
+
+        .game-item.active .game-meta {
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .game-title {
+            font-weight: 600;
+            font-size: 0.875rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .game-meta {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .content-area {
+            flex: 1;
+            display: flex;
+            padding: 2rem;
+            gap: 2rem;
+            overflow-y: auto;
+        }
+
+        .board-card {
+            flex: 1.2;
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #1e293b;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .board-container {
+            width: 100%;
+            max-width: 400px;
+            aspect-ratio: 1;
+            margin-bottom: 1.5rem;
+        }
+
+        .board-container svg {
+            width: 100%;
+            height: 100%;
+            border-radius: 6px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .btn {
+            background-color: #1f2937;
+            border: 1px solid #374151;
+            color: var(--text-color);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s, border-color 0.2s;
+            font-weight: 500;
+            font-size: 0.875rem;
+            flex: 1;
+        }
+
+        .btn:hover {
+            background-color: #374151;
+            border-color: #4b5563;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .ply-slider {
+            flex: 3;
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #374151;
+            outline: none;
+        }
+
+        .ply-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--accent-color);
+            cursor: pointer;
+        }
+
+        .info-card {
+            flex: 1;
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #1e293b;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            gap: 1.5rem;
+            max-height: 100%;
+            overflow-y: auto;
+        }
+
+        .section-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin: 0 0 0.75rem 0;
+        }
+
+        .metadata-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .metadata-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .metadata-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 0.25rem;
+        }
+
+        .metadata-value {
+            font-weight: 600;
+            font-size: 0.9375rem;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-win-white { background-color: #3b82f6; color: #ffffff; }
+        .badge-win-black { background-color: #1e3a8a; color: #ffffff; }
+        .badge-draw { background-color: #10b981; color: #ffffff; }
+
+        .histogram {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .hist-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 0.875rem;
+        }
+
+        .hist-move {
+            width: 48px;
+            font-weight: 600;
+            font-family: monospace;
+        }
+
+        .hist-bar-container {
+            flex: 1;
+            height: 20px;
+            background-color: #1f2937;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .hist-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        .hist-val {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .empty-prediction {
+            text-align: center;
+            color: var(--text-muted);
+            font-style: italic;
+            font-size: 0.875rem;
+            padding: 1.5rem;
+            border: 1px dashed #374151;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div>
+            <h1>Minichess Tournament Visualizer</h1>
+            <div class="tournament-summary" id="tournament-summary">Loading tournament info...</div>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <div class="sidebar">
+            <div class="sidebar-title">Games List</div>
+            <div id="games-list-container"></div>
+        </div>
+
+        <div class="content-area">
+            <div class="board-card">
+                <div class="board-container" id="board-container">
+                    <!-- SVG board injected here -->
+                </div>
+                <div class="controls">
+                    <button class="btn" id="prev-btn" onclick="prevPly()">&larr; Prev</button>
+                    <input type="range" class="ply-slider" id="ply-slider" min="0" max="100" value="0" oninput="onSliderChange(this.value)">
+                    <button class="btn" id="next-btn" onclick="nextPly()">Next &rarr;</button>
+                </div>
+                <div style="margin-top: 1rem; font-size: 0.875rem; color: var(--text-muted);" id="ply-display">
+                    Ply: 0 / 0
+                </div>
+            </div>
+
+            <div class="info-card">
+                <div>
+                    <h3 class="section-title">Game Information</h3>
+                    <div class="metadata-grid">
+                        <div class="metadata-item">
+                            <span class="metadata-label">White Player</span>
+                            <span class="metadata-value" id="info-white">-</span>
+                        </div>
+                        <div class="metadata-item">
+                            <span class="metadata-label">Black Player</span>
+                            <span class="metadata-value" id="info-black">-</span>
+                        </div>
+                        <div class="metadata-item">
+                            <span class="metadata-label">Result</span>
+                            <span id="info-result">-</span>
+                        </div>
+                        <div class="metadata-item">
+                            <span class="metadata-label">Termination Reason</span>
+                            <span class="metadata-value" id="info-reason">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="section-title">Current Move Info</h3>
+                    <div class="metadata-grid">
+                        <div class="metadata-item">
+                            <span class="metadata-label">Played Move</span>
+                            <span class="metadata-value" style="font-family: monospace;" id="info-played-move">-</span>
+                        </div>
+                        <div class="metadata-item">
+                            <span class="metadata-label">Played By</span>
+                            <span class="metadata-value" id="info-played-by">-</span>
+                        </div>
+                        <div class="metadata-item">
+                            <span class="metadata-label">Active Player</span>
+                            <span class="metadata-value" id="info-active-player">-</span>
+                        </div>
+                        <div class="metadata-item">
+                            <span class="metadata-label">Entropy</span>
+                            <span class="metadata-value" id="info-entropy">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="section-title">Model Predictions (Top-6)</h3>
+                    <div id="predictions-container">
+                        <!-- Histogram or empty notice -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentGameIdx = 1;
+        let currentPly = 0;
+        let gamesData = [];
+        let maxPlies = 0;
+
+        // Fetch games list on load
+        async function fetchGames() {
+            try {
+                const res = await fetch('/api/games');
+                const data = await res.json();
+                gamesData = data.games;
+                
+                // Display tournament summary
+                const sum = data.summary;
+                document.getElementById('tournament-summary').innerText = 
+                    `${data.agent1.name} vs ${data.agent2.name} | Total Games: ${sum.total_games} | ` +
+                    `Wins: ${sum.agent1_wins} - ${sum.agent2_wins} (Draws: ${sum.draws})`;
+                
+                // Render Sidebar Games List
+                const container = document.getElementById('games-list-container');
+                container.innerHTML = '';
+                gamesData.forEach(g => {
+                    const div = document.createElement('div');
+                    div.className = `game-item ${g.game_idx === currentGameIdx ? 'active' : ''}`;
+                    div.id = `game-item-${g.game_idx}`;
+                    div.onclick = () => selectGame(g.game_idx);
+                    
+                    let resultBadge = '';
+                    if (g.winner === 'draw') resultBadge = 'Draw';
+                    else if (g.winner === 'white') resultBadge = 'White Won';
+                    else resultBadge = 'Black Won';
+                    
+                    div.innerHTML = `
+                        <div class="game-title">Game ${g.game_idx}</div>
+                        <div class="game-meta">White: ${g.white}</div>
+                        <div class="game-meta">Black: ${g.black}</div>
+                        <div class="game-meta" style="margin-top: 0.25rem; font-weight: 500;">
+                            Result: ${resultBadge} (${g.reason})
+                        </div>
+                    `;
+                    container.appendChild(div);
+                });
+
+                selectGame(1);
+            } catch (err) {
+                console.error("Error fetching games list:", err);
+            }
+        }
+
+        async function selectGame(idx) {
+            // Update active sidebar item
+            const oldActive = document.querySelector('.game-item.active');
+            if (oldActive) oldActive.classList.remove('active');
+            
+            const newActive = document.getElementById(`game-item-${idx}`);
+            if (newActive) newActive.classList.add('active');
+            
+            currentGameIdx = idx;
+            currentPly = 0;
+            
+            const game = gamesData.find(g => g.game_idx === idx);
+            if (!game) return;
+            
+            maxPlies = game.num_moves;
+            
+            // Setup info card static values
+            document.getElementById('info-white').innerText = game.white;
+            document.getElementById('info-black').innerText = game.black;
+            
+            const resultEl = document.getElementById('info-result');
+            if (game.winner === 'draw') {
+                resultEl.className = 'badge badge-draw';
+                resultEl.innerText = 'Draw';
+            } else if (game.winner === 'white') {
+                resultEl.className = 'badge badge-win-white';
+                resultEl.innerText = 'White Won';
+            } else {
+                resultEl.className = 'badge badge-win-black';
+                resultEl.innerText = 'Black Won';
+            }
+            document.getElementById('info-reason').innerText = game.reason;
+            
+            // Reset slider
+            const slider = document.getElementById('ply-slider');
+            slider.max = maxPlies;
+            slider.value = 0;
+            
+            await updateState();
+        }
+
+        async function updateState() {
+            try {
+                const res = await fetch(`/api/game/${currentGameIdx}/move/${currentPly}`);
+                const data = await res.json();
+                
+                // Inject board SVG
+                document.getElementById('board-container').innerHTML = data.board_svg;
+                
+                // Update slider and display
+                document.getElementById('ply-slider').value = currentPly;
+                document.getElementById('ply-display').innerText = `Ply: ${currentPly} / ${maxPlies}`;
+                
+                // Disable/enable buttons
+                document.getElementById('prev-btn').disabled = currentPly === 0;
+                document.getElementById('next-btn').disabled = currentPly === maxPlies;
+                
+                // Update current move metadata
+                document.getElementById('info-played-move').innerText = data.played_move || 'Initial Position';
+                document.getElementById('info-played-by').innerText = data.played_by ? (data.played_by.toUpperCase()) : '-';
+                document.getElementById('info-active-player').innerText = data.active_player ? (data.active_player.toUpperCase()) : '-';
+                document.getElementById('info-entropy').innerText = data.played_move ? (data.entropy ? data.entropy.toFixed(4) : '0.0000') : '-';
+                
+                // Update histogram
+                const histContainer = document.getElementById('predictions-container');
+                histContainer.innerHTML = '';
+                
+                if (data.top_6 && data.top_6.length > 0) {
+                    const histDiv = document.createElement('div');
+                    histDiv.className = 'histogram';
+                    
+                    data.top_6.forEach(pred => {
+                        const probPct = (pred.prob * 100).toFixed(1);
+                        const row = document.createElement('div');
+                        row.className = 'hist-row';
+                        row.innerHTML = `
+                            <span class="hist-move">${pred.move}</span>
+                            <div class="hist-bar-container">
+                                <div class="hist-bar" style="width: ${probPct}%"></div>
+                                <span class="hist-val">${probPct}%</span>
+                            </div>
+                        `;
+                        histDiv.appendChild(row);
+                    });
+                    
+                    histContainer.appendChild(histDiv);
+                } else {
+                    const notice = document.createElement('div');
+                    notice.className = 'empty-prediction';
+                    notice.innerText = 'No predictions available (Random Agent or Game End)';
+                    histContainer.appendChild(notice);
+                }
+            } catch (err) {
+                console.error("Error updating state:", err);
+            }
+        }
+
+        function prevPly() {
+            if (currentPly > 0) {
+                currentPly--;
+                updateState();
+            }
+        }
+
+        function nextPly() {
+            if (currentPly < maxPlies) {
+                currentPly++;
+                updateState();
+            }
+        }
+
+        function onSliderChange(val) {
+            currentPly = parseInt(val);
+            updateState();
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') {
+                prevPly();
+            } else if (e.key === 'ArrowRight') {
+                nextPly();
+            }
+        });
+
+        // Initialize
+        window.onload = fetchGames;
+    </script>
+</body>
+</html>

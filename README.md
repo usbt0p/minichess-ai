@@ -263,3 +263,28 @@ O utilizar la extensión de `LaTeX Workshop` en VSCode (menos recomendado, funci
     "latex-workshop.latex.outDir": "${workspaceFolder}/doc"
 }
 ```
+
+### Ejecutar profilers te PyTorch
+Útil para maximizar el aprovechamiento de GPU antes de lanzar runs grandes. Permite optimizar backends de atención, comprobar los kernels en uso con torch.compile(), ver tiempor por kernel, y verificar el uso de tensor cores para las TPUs.
+```bash
+python3 src/training/train.py <your_data_path> <embed_dim> --profile <run_name> --profile_steps <n_steps> --profile_desc "<description>"
+```
+Para ver los resultados con la interfaz, es igual que en cualquier otro run de tensorboard:
+```bash
+tensorboard --logdir=./profiles
+```
+Deberías ver algo así:
+
+<img src="./doc/imgs/profiler.png" alt="tensorboard profiles" width="450">
+
+### Ejecutar Optuna Hyperparameter Optimization y visualizar resultados
+No tiene argumentos. Especifica los hiperparámetros a optimizar y el número de trials, etc. en el propio script.
+Principalmente útil para ajustar learning rate + parámetros de AdamW frente a distintos batch sizes y anchuras / profundidades de modelo. [Maximal Update Parameterization](https://howtoscalenn.github.io/) a veces funciona y se puede asumir escalar LR con batch size de forma proporcional, o de forma inversa en el caso de anchura del modelo. Pero el LR es [complicado](https://wandb.ai/dalle-mini/dalle-mini/reports/DALL-E-Mega-Training-Journal--VmlldzoxODMxMDI2) e importante, si se puede hacer búsqueda en tiempo razonable, mejor.
+```bash
+python3 src/experiment_scripts/run_optuna_tuning.py
+```
+Para ver los resultados, puedes usar `optuna-dashboard` (require instalación):
+```bash
+optuna-dashboard sqlite:///logs/tuning/tuning_dk64_depth8.db
+```
+
