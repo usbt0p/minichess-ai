@@ -1,14 +1,12 @@
 
 # ORDEN DEL DIA
 
-- check how i might handle the repetition and the "current player to move" for simple representation...
-- see if elo estimation can be done while the PPO is running
+- is it fine to have non-terminal states have a reward of 0 and also draw states? isnt sharing that signal a problem...?
+- the collecting loop you provided is assuming i have a "MinichessEnvironment()". But i don't. What is essential about it? Could it be substituted with something else? If the env is needed, give me the requirements to create it. I'll provide you with the "chess board api" that i've put up surrounding pyffish + the test for what it can do.
 
 - luego hacer diseño experimental de la fase de PPO. decidir que gráficas y tablas quiero, que quiero observar exactamente.
 
-- updates in the docs:
-  - add info about the dataset. annex holds figures with stats (escribir en la docu sobre el dataset. dar un sample. estadisticas en el anexo. explicar profundidades)
-  - explain the test holdout strategy and why it's important to separate games using plies.  
+- updates in the docs:  
   - update the transformer architecture
   - explain separately the backbone of the transformer and the head(s). 
   - explain the encoding of the inputs for each model (mlp and transformer w/ and w/out inductive bias)
@@ -194,3 +192,11 @@ while they train:
 
 # 3/07
 - eliminar benchmarks antiguos de mlp
+- check how i might handle the repetition and the "current player to move" for simple representation...
+    - see if for threefold rep, i can get the number of reps or just a boolean of whether it has happened or not
+    - for the colour: again, i have to check if the -1/0/+1 is absoulte (-1 is black, 1 is white) or relative to the current player (so 1 is the current player to move won, -1 is the current player to move lost). but since there's no fliping the board, it's most likely absolute.
+
+# 4/07
+- add repetition count to arena and agents
+- add info about the dataset. annex holds figures with stats (escribir en la docu sobre el dataset. dar un sample. estadisticas en el anexo. explicar profundidades)
+  - explain the test holdout strategy and why it's important to separate games using plies.

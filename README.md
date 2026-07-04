@@ -4,12 +4,12 @@ Trabajo de Fin de Grado sobre aplicación y estudio del Aprendizaje por Refuerzo
 
 Esto imita en cierto modo el proceso de entrenamiento de un LLM, donde se preentrena al modelo inicialmente con una tarea (auto)supervisada (predicción del siguiente token/jugada) para luego afinarlo con RL mediante PPO (Policy Gradient). Encontrarás información mas detallada en [la memoria del proyecto](doc/docs.pdf).
 
-> *Objetivo actual:* Estudios de ablación para demostrar la efectividad de cabezas auxiliares y de distintas representaciones de estado inicial en el aprendizaje supervisado (hipótesis 2).
+> *Objetivo actual:* Desarrollar scripts para self-play, y demostrar si el preentrenamiento con supervisión es beneficioso para el aprendizaje por refuerzo (hipótesis 3).
 
 <img src="minichess.svg" width="300">
 
 > [!CAUTION]
-> El proyecto está en desarrollo! Todo está sujeto a cambios. Los resultados de los experimentos no se publican aquí, pero al finalizar se publicarán en la memoria. Puede haber ramas adelantadas con respecto a esta versión.
+> El proyecto está en desarrollo! Todo está sujeto a cambios. Los resultados de los experimentos se van publicando en la documentación. Puede haber ramas adelantadas con respecto a esta versión.
 
 ## Arquitectura del transformer encoder
 El modelo utilizado es un transformer encoder con cabezas específicas de política y valor, adaptadas al ajedrez. Si te interesa la arquitectura, tienes el código en [src/models/transformerEncoder.py](src/models/transformerEncoder.py).

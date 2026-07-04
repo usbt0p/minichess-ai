@@ -471,36 +471,41 @@ El desarrollo práctico e investigativo del proyecto se implementará utilizando
     \item \textbf{Reproducibilidad, dependencias y manejo de módulos en Python:} \texttt{uv} para la gestión de entornos virtuales y dependencias, asegurando la portabilidad y reproducibilidad del código (\texttt{uv} permite generar archivos de requisitos específicos y fijar una versión de Python).
 \end{itemize}
 
-\subsubsection{Descripción del conjunto de datos (borrador)}
-
-\textcolor{red}{TODO: poner una muestra, explicar modificaciones (mascaras añadidas p ej), estadísticas en el anexo (con imagenes...)}
-
-- las estadísticas más importantes ponerlas aqui (ratio draws)
-- explicar importancia de distintas profundidades. DECIDIR DEFINITIVAMENTE si el aprendizaje supervisado final lo voy a hacer con una mezcla o con uno solo. update: finalmente lo estoy haciendo solo con la versión de depth 4.
-- hacer que jueguen entre ellos distintos modelos a distintas profundidades en caso de que use varias. update: en ppi esto ya no es viable
-- explicar peculiaridades: quiescent positions, filtrado de posiciones repetidas, filtrado de posiciones tácticas puras. explicar lo de las coronaciones que solo son a una dama, y el ratio de victorias por color...
-es importante aclarar que son datos complejos: modelar búsqueda de profundidad 4 y además con el añadido de filtrar posiciones tácticas simples (capturas, movimientos excesivamente forzados, etc) lleva a la red a tener que internalizar o patrones muy complejos o la idea de búsqueda en profundidad. además de tener que hacer esto con las recompensas dispersas y con poca densidad informativa que son la victoria / derrota / empate
-- para esto habrá bastante informacion seguramente en las entradas de blog que escribí
-
-
 \subsubsection{Descripción del conjunto de datos}
 
-\textcolor{red}{TODO explicar como se ve el conjunto de datos, como es una instancia... los datos que importan y los que no... menos slop. }
+Para el entrenamiento en la fase de aprendizaje supervisado, se ha optado por utilizar exclusivamente un conjunto de datos sintéticos generado con una profundidad de búsqueda de 4 jugadas por \texttt{fairy-stockfish}, descartando por completo el uso de mezclas con evaluaciones de profundidades inferiores ($D2$ o $D3$). Este conjunto de datos definitivo cuenta con un volumen total de 60,030,000 posiciones, el cual ha sido procesado mediante una división estricta de un $97\%$ para el conjunto de entrenamiento (58,234,050 posiciones) y un $3\%$ reservado para el conjunto de validación (1,795,950 posiciones).
 
-Para el entrenamiento en la fase de aprendizaje supervisado, se ha optado por utilizar exclusivamente un conjunto de datos sintéticos generado con una profundidad de búsqueda de 4 jugadas \texttt{fairy-stockfish}, descartando por completo el uso de mezclas con evaluaciones de profundidades inferiores (D2 o D3). Este conjunto de datos definitivo cuenta con un volumen total de 60,030,000 posiciones, el cual ha sido procesado mediante una división estricta de un $97\%$ para el conjunto de entrenamiento (58,234,050 posiciones) y un $3\%$ reservado para el conjunto de validación (1,795,950 posiciones).
-
-La elección de entrenar el modelo únicamente con datos analizados a profundidad 4 responde a la necesidad de capturar la complejidad intrínseca del juego posicional y estratégico en el tablero reducido de Gardner $5\times5$. Modelar el comportamiento de un motor clásico a este nivel obliga a la arquitectura a ir más allá de heurísticas simples. El conjunto de datos presenta cierta complejidad debido a dos factores principales:
+La elección de entrenar el modelo únicamente con datos analizados a profundidad 4 responde a la necesidad de capturar la complejidad, sin utilizar algoritmos de búsqueda o planificación como MCTS en la fase de RL. El agente debe aprender a modelar la búsqueda como una función. Modelar el comportamiento de un motor clásico a este nivel obliga a la arquitectura a ir más allá de heurísticas simples. El conjunto de datos presenta cierta complejidad debido a dos factores principales:
 
 \begin{itemize}
-    \item \textbf{Aislamiento de posiciones quiescentes (\textit{quiescent positions}):} Se han filtrado y eliminado sistemáticamente las posiciones tácticas puras (tales como capturas inmediatas de material o movimientos bajo jaques excesivamente forzados). Este filtrado es común en redes neuronales para ajedrez que se utilizan en conjunto con algún tipo de algoritmo de búsqueda, ya que garantiza que el Transformer no aprenda respuestas reactivas simples, sino que se vea obligado a internalizar patrones posicionales complejos o a emular conceptualmente la propia idea de búsqueda en profundidad bajo condiciones de recompensas totalmente dispersas y de baja densidad informativa (las señales terminales de victoria, derrota o empate).
-    \item \textbf{Filtrado de posiciones repetidas:} Se ha aplicado un proceso de deduplicación sobre el archivo crudo para eliminar estados idénticos del tablero, previniendo memorización y posible contaminación de los conjuntos de validación o test.
+    \item \textbf{Aislamiento de posiciones quiescentes (\textit{quiescent positions}):} Se han filtrado y eliminado sistemáticamente las posiciones tácticas puras (tales como capturas inmediatas de material o movimientos bajo jaques forzados). Este filtrado garantiza que el Transformer no aprenda respuestas reactivas simples, sino que se vea obligado a internalizar patrones posicionales complejos o a emular conceptualmente la propia idea de búsqueda en profundidad bajo condiciones de recompensas dispersas (las señales terminales de victoria, derrota o empate).
+    \item \textbf{Filtrado de posiciones repetidas:} Se ha aplicado un proceso de deduplicación sobre el archivo crudo para eliminar estados idénticos del tablero, previniendo memorización y contaminación de los conjuntos de validación o test.
 \end{itemize}
 
-Asimismo, el conjunto de datos cuenta con particularidades estructurales en el espacio de acciones e indicadores de balance del juego:
+Asimismo, el conjunto de datos cuenta con particularidades estructurales importantes:
 \begin{itemize}
-    \item \textbf{Restricción en las coronaciones:} A diferencia del modelo teórico que contempla opciones múltiples de promoción, los movimientos de coronación registrados en este conjunto de datos se encuentran limitados exclusivamente a la dama, debido a una limitación en la librería de generación de datos. En la práctica, esta suele ser la mejor jugada disponible, y no representa un sacrificio de calidad excesivo. La codificación de salida de l ared neuronal sigue permitiendo la sub-coronación, en caso de ser necesaria en la fase de RL. 
-    \item \textbf{Métricas de distribución y balance:} El análisis estadístico del conjunto de posiciones refleja las propiedades simétricas y el margen de ventaja del entorno analizado. Más estadisticas acerca del conjunto de datos pueden encontrarse en el anexo. \textcolor{red}{[PLACEHOLDER: Insertar aquí el ratio exacto de tablas (draws ratio) y la proporción o porcentaje de victorias por color (blancas vs. negras) extraídos de tus scripts de análisis]}.
+    \item \textbf{Restricción en las coronaciones:} A diferencia del modelo teórico que contempla múltiples opciones de promoción, las coronaciones registradas se limitan a la dama por una restricción de la librería de generación de datos. Prácticamente, esta suele ser la jugada óptima y la red sigue permitiendo la subcoronación en la posterior fase de RL.
+    \item \textbf{Falta de información de repetición en FEN:} El formato FEN representa de manera estática el estado físico del tablero, el jugador activo, los derechos de enroque y la regla de los 50 movimientos. Sin embargo, carece del historial de posiciones pasadas de la partida, haciendo imposible determinar a partir de un solo FEN si se ha producido una repetición de la posición (regla de la triple repetición).
+    \item \textbf{Peculiaridad de la señal de resultado:} El campo \texttt{result} de las muestras de entrenamiento está expresado desde la perspectiva del jugador al que le toca mover (\textit{side to move}). De este modo, un valor de \texttt{1} indica la victoria para el jugador activo, un valor de \texttt{-1} indica su derrota, y un \texttt{0} indica tablas, a diferencia de una codificación absoluta donde el signo se asocia fijamente a un color.
+    \item \textbf{Métricas de distribución y balance:} Sobre una muestra aleatoria representativa de 10,005,000 posiciones analizadas en detalle, se registra una clara predominancia de tablas con un ratio del $54.31\%$ (5,433,596 posiciones). El resto del conjunto refleja una ligera ventaja para las blancas, obteniendo un $23.53\%$ de victorias (2,354,634 posiciones) frente al $22.16\%$ de las negras (2,216,770 posiciones). Un desglose completo de estas estadísticas se incluye en el Anexo~\ref{sec:anexo_stats_dataset}.
 \end{itemize}
+
+A continuación se muestra un fragmento extraído del conjunto de entrenamiento que ilustra la estructura textual de los datos sintéticos de entrada, compuestos por el FEN de la posición, el movimiento seleccionado por el motor, la puntuación de evaluación heurística, los plies y el resultado relativo:
+
+\begin{verbatim}
+fen rnb1k/1p1qp/pPp2/P1PP1/RNBQK w - - 0 4
+move d1e2
+score 272
+ply 6
+result 0
+e
+fen rnb1k/1p1qp/pP3/P1PNQ/R1B1K b - - 0 5
+move b5c3
+score 31
+ply 9
+result 0
+[...]
+\end{verbatim}
 
 \subsection{Diseño experimental}
 
@@ -722,14 +727,14 @@ Para analizar el comportamiento dinámico durante el entrenamiento de 30 épocas
 
 \begin{figure}[htbp]
     \centering
-    \begin{subfigure}[b]{0.6\textwidth}
+    \begin{subfigure}[b]{0.45\textwidth}
         \centering
         \includegraphics[width=\textwidth]{figures/h2_results_dk64/learning_curves_val_move_acc.png}
         \caption{Move Accuracy (Validation)}
         \label{fig:curve_val_move}
     \end{subfigure}
     \hfill
-    \begin{subfigure}[b]{0.6\textwidth}
+    \begin{subfigure}[b]{0.45\textwidth}
         \centering
         \includegraphics[width=\textwidth]{figures/h2_results_dk64/learning_curves_val_res_acc.png}
         \caption{Result Accuracy (Validation)}
@@ -941,6 +946,125 @@ El cambio de batch size requirió de ajustes varios, por lo mencionado en la gu�
 Cabe destacar que los resultados obtenidos se obtuvieron para un conjunto fijo de hiperparámetros. Esto no quita que puedan existir otros conjuntos de hiperparámetros que den mejores resultados, pero para el estudio de ablación realizado no se variaron los hiperparámetros más allá de los que se querían estudiar. No se asegura independencia condicional entre distintos conjuntos de hiperparámetros, y esto limita la extrapolación de resultados a otros conjuntos de hiperparámetros. 
 \textit{"Fixed hyperparameters will have their values fixed in the current round of experiments. These are hyperparameters whose values do not need to (or we do not want them to) change when comparing different values of the scientific hyperparameters. By fixing certain hyperparameters for a set of experiments, we must accept that conclusions derived from the experiments might not be valid for other settings of the fixed hyperparameters. In other words, fixed hyperparameters create caveats for any conclusions we draw from the experiments."} 
 Referencia: \href{https://github.com/google-research/tuning_playbook#identifying-scientific-nuisance-and-fixed-hyperparameters}{Deep Learning Tuning Playbook, Google 2023}
+
+\subsection{Estadísticas y Análisis del Conjunto de Datos}\label{sec:anexo_stats_dataset}
+
+Para comprender mejor la composición del conjunto de datos de entrenamiento, se ha generado un reporte estadístico detallado sobre una muestra de 10,005,000 posiciones analizadas por \texttt{fairy-stockfish}. A continuación se muestran las distribuciones clave a través de varias gráficas representativas.
+
+La Figura~\ref{fig:dist_resultados} muestra la distribución de resultados de las partidas de donde proceden las posiciones del conjunto de datos. Como se observa, el ratio de tablas es mayoritario, y parece que existe una ligera ventaja del blanco en el Gardner Minichess.
+
+La Figura~\ref{fig:dist_imbalances_piezas} ilustra la distribución de la diferencia de material evaluado por Fairy-Stockfish y la distribución del número de piezas totales en el tablero.
+
+La Figura~\ref{fig:dist_casillas_reyes} muestra la distribución espacial de la frecuencia de aparición de los reyes blanco y negro sobre las casillas del tablero de $5\times5$.
+
+La Figura~\ref{fig:dist_casillas_origen} muestra la distribución de la casilla de origen de los movimientos del jugador blanco y negro, y la figura~\ref{fig:dist_casillas_destino} muestra lo mismo para la casilla de destino.
+
+\begin{figure}[htbp]
+    \centering
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/data_stats/plot_8.png}
+        \caption{Distribución de resultados.}
+        \label{fig:plot_results}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/data_stats/plot_6.png}
+        \caption{Movimientos por tipo.}
+        \label{fig:plot_moves_type}
+    \end{subfigure}
+    \hfill
+    \begin{center}
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/data_stats/plot_7.png}
+        \caption{Movimientos por piezas.}
+        \label{fig:plot_moves_pieces}
+    \end{subfigure}
+    \end{center}
+    \caption{Distribución de resultados globales y tipo de movimientos.}
+    \label{fig:dist_resultados}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/data_stats/plot_9.png}
+        \caption{Evaluaciones de desequilibrio (imbalances).}
+        \label{fig:plot_imbalances}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/data_stats/plot_10.png}
+        \caption{Posiciones por número de piezas.}
+        \label{fig:plot_piece_count}
+    \end{subfigure}
+    \caption{Distribución de balances materiales y densidad de piezas.}
+    \label{fig:dist_imbalances_piezas}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/data_stats/plot_0.png}
+        \caption{Casillas del rey blanco.}
+        \label{fig:plot_king_w}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/data_stats/plot_1.png}
+        \caption{Casillas del rey negro.}
+        \label{fig:plot_king_b}
+    \end{subfigure}
+    \caption{Distribución espacial de las posiciones de los reyes en el tablero.}
+    \label{fig:dist_casillas_reyes}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/data_stats/plot_2.png}
+        \caption{Distribución de movimientos del jugador blanco: casilla de origen}
+        \label{fig:plot_king_w}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/data_stats/plot_3.png}
+        \caption{Distribución de movimientos del jugador negro: casilla de origen}
+        \label{fig:plot_king_b}
+    \end{subfigure}
+    \caption{Distribución de movimientos del jugador blanco y negro: casilla de origen.}
+    \label{fig:dist_casillas_origen}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/data_stats/plot_4.png}
+        \caption{Distribución de movimientos del jugador blanco: casilla de destino}
+        \label{fig:plot_king_w}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/data_stats/plot_5.png}
+        \caption{Distribución de movimientos del jugador negro: casilla de destino}
+        \label{fig:plot_king_b}
+    \end{subfigure}
+    \caption{Distribución de movimientos del jugador blanco y negro: casilla de destino.}
+    \label{fig:dist_casillas_destino}
+\end{figure}
+
+%add newline so that the next section starts on a new page
+\newpage
 
 \subsection{Resultados adicionales del estudio de ablación sobre un modelo mayor}\label{sec:anexo_ablation_big_model}
 
