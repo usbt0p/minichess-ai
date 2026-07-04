@@ -48,7 +48,7 @@ class ChessAgent(ABC):
         self.name = name
 
     @abstractmethod
-    def select_move(self, fen: str, legal_moves: list, temperature: float = 1.0):
+    def select_move(self, fen: str, legal_moves: list, temperature: float = 1.0, repetition: int = 0):
         """Selects a move from the legal moves.
         Returns:
             tuple: (selected_move, entropy, top_6_moves_probs)

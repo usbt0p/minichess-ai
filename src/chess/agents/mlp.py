@@ -29,7 +29,7 @@ class MLPAgent(ChessAgent):
         self.model.to(device)
         self.model.eval()
 
-    def select_move(self, fen: str, legal_moves: list, temperature: float = 1.0):
+    def select_move(self, fen: str, legal_moves: list, temperature: float = 1.0, repetition: int = 0):
         if not legal_moves:
             return None, 0.0, []
             

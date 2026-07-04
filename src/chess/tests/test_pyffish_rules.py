@@ -7,7 +7,7 @@ import sys
 import os
 import pytest
 import pyffish
-from src.chess.agentVSagent import get_game_status
+from src.chess.arena import get_game_status_with_reason
 
 # Add project root to python path to import pyffish correctly
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
@@ -25,41 +25,47 @@ def start_fen():
 
 def test_checkmate1():
     fen = "5/5/1k3/r1b2/Kr3 w - 0 1"
-    ended, result = get_game_status(fen, [])
+    ended, result, reason = get_game_status_with_reason(fen, [])
     assert ended is True
     assert result == "black"
+    assert reason == "checkmate"
 
 def test_checkmate2():
     fen = "2Q1k/p2pp/1p3/PP2P/RN2K b - - 0 7"
-    ended, result = get_game_status(fen, [])
+    ended, result, reason = get_game_status_with_reason(fen, [])
     assert ended is True
     assert result == "white"
+    assert reason == "checkmate"
 
 def test_stalemate_rook():
     fen = "5/5/2k2/1r3/K4 w - 0 1"
-    ended, result = get_game_status(fen, [])
+    ended, result, reason = get_game_status_with_reason(fen, [])
     assert ended is True
     assert result == "draw"
+    assert reason == "stalemate"
 
 def test_stalemate_knights():
     fen = "4k/1N3/2K2/3N1/5 b - - 10 5"
-    ended, result = get_game_status(fen, [])
+    ended, result, reason = get_game_status_with_reason(fen, [])
     assert ended is True
     assert result == "draw"
+    assert reason == "stalemate"
 
 def test_insufficient_material1():
     # King vs King: insufficient material.
     fen = "k4/5/5/5/4K w - 0 1"
-    ended, result = get_game_status(fen, [])
+    ended, result, reason = get_game_status_with_reason(fen, [])
     assert ended is True
     assert result == "draw"
+    assert reason == "insufficient_material"
 
 def test_insufficient_material2():
     # King vs King and Knight: insufficient material.
     fen = "k4/5/2n2/5/4K w - 0 1"
-    ended, result = get_game_status(fen, [])
+    ended, result, reason = get_game_status_with_reason(fen, [])
     assert ended is True
     assert result == "draw"
+    assert reason == "insufficient_material"
 
 def test_sufficient_material_black():
     # King vs King &Rook: sufficient material.
@@ -98,21 +104,24 @@ def test_50_move_rule():
 def test_50_move_rule_with_status():
 
     fen_98 = "rnbqk/ppppp/5/PPPPP/RNBQK w - - 98 49"
-    ended, result = get_game_status(fen_98, [])
+    ended, result, reason = get_game_status_with_reason(fen_98, [])
     assert result == "ongoing"
     assert ended is False
+    assert reason == "none"
 
     # advance one move
     fen_99 = "rnbqk/ppppp/5/PPPPP/RNBQK w - - 99 49"
-    ended, result = get_game_status(fen_99, [])
+    ended, result, reason = get_game_status_with_reason(fen_99, [])
     assert result == "ongoing"
     assert ended is False
+    assert reason == "none"
 
     # Clock 100 is 50 full moves (100 half-moves) since last pawn move or capture
     fen_100 = "rnbqk/ppppp/5/PPPPP/RNBQK w - - 100 50"
-    ended, result = get_game_status(fen_100, [])
+    ended, result, reason = get_game_status_with_reason(fen_100, [])
     assert result == "draw"
     assert ended is True
+    assert reason == "50_move_rule"
 
 # this is good to understand the internals of pyffish repetition and state
 def test_repetition_rule_without_status(start_fen):
@@ -161,11 +170,13 @@ def test_repetition_rule_with_status(start_fen):
     for cycle in range(1, 3):
         for move in moves:
             movelist.append(move)
-            ended, result = get_game_status(start_fen, movelist)
+            ended, result, reason = get_game_status_with_reason(start_fen, movelist)
             if len(movelist) < 8:
                 assert ended is False, f"Ended prematurely at move {len(movelist)}"
                 assert result == "ongoing"
+                assert reason == "none"
             else:
                 assert ended is True, f"Should have ended by 3-fold repetition at move {len(movelist)}"
                 assert result == "draw"
+                assert reason == "3_repetition_rule"
                 break

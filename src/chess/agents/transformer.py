@@ -42,7 +42,7 @@ class TransformerAgent(ChessAgent):
         state_dict = torch.load(model_path, map_location=device)
         clean_state_dict = {}
         for k, v in state_dict.items():
-            if k.startswith("_orig_mod."):
+            if k.startswith("_orig_mod."): # in case the model was saved with torch.compile
                 clean_state_dict[k[10:]] = v
             else:
                 clean_state_dict[k] = v
@@ -50,20 +50,19 @@ class TransformerAgent(ChessAgent):
         self.model.to(device)
         self.model.eval()
 
-    def select_move(self, fen: str, legal_moves: list, temperature: float = 1.0):
+    def select_move(self, fen: str, legal_moves: list, temperature: float = 1.0, repetition: int = 0):
         if not legal_moves:
             return None, 0.0, []
             
         # Parse FEN
         fen_parts = FenParts(fen)
         board_features = np.full(25, 12, dtype=np.uint8)
-        parse_fen_to_features(fen_parts.fen, PIECE_MAP, board_features)
+        parse_fen_to_features(fen_parts.fen_board, PIECE_MAP, board_features)
         
         board_tensor = torch.from_numpy(board_features).long().to(self.device)
         halfmove = int(fen_parts.halfmove)
         halfmove_tensor = torch.tensor([halfmove], dtype=torch.long, device=self.device)
-        # this is the number of 3-fold repetitions, which we do not yet know
-        repetition_tensor = torch.tensor([0], dtype=torch.long, device=self.device)
+        repetition_tensor = torch.tensor([repetition], dtype=torch.long, device=self.device)
         
         # Build features
         if self.representation == "spatial":

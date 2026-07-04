@@ -10,15 +10,51 @@ import numpy as np
 import json
 from src.chess.agents.base import ChessAgent
 
-def get_game_status_with_reason(start_fen: str, movelist: list) -> tuple:
+def get_repetition_count(fen_history: list[str]) -> int:
+    """
+    Computes the repetition count of the last FEN in the history.
+    A state is defined by the board layout and the active player.
+    Repetitions reset when a pawn move or capture occurs (halfmove clock == 0).
+    """
+    if not fen_history:
+        return 0
+        
+    state_history = []
+    for fen in fen_history:
+        parts = fen.split(" ")
+        board = parts[0]
+        player = parts[1]
+        halfmove = int(parts[4]) if len(parts) > 4 else 0
+        
+        # If a pawn move or capture occurs, previous positions can no longer be repeated
+        if halfmove == 0:
+            state_history = []
+            
+        state_history.append((board, player))
+        
+    current_state = state_history[-1]
+    occurrences = state_history.count(current_state)
+    return max(0, occurrences - 1)
+
+def get_game_status_with_reason(start_fen: str, movelist: list, current_fen: str = None, current_repetition: int = None) -> tuple:
     """
     Determines if the game has ended and returns (ended, result, reason).
     result: "white", "black", "draw", or "ongoing"
     reason: "checkmate", "stalemate", "insufficient_material", "50_move_rule",
             "3_repetition_rule", "none"
     """
-    current_fen = pyffish.get_fen("gardner", start_fen, movelist)
-    
+    if current_fen is None:
+        # Backward compatibility mode
+        current_fen = pyffish.get_fen("gardner", start_fen, movelist)
+        
+        # Reconstruct FEN history to calculate repetition count
+        fen_history = [start_fen]
+        temp_fen = start_fen
+        for m in movelist:
+            temp_fen = pyffish.get_fen("gardner", temp_fen, [m])
+            fen_history.append(temp_fen)
+        current_repetition = get_repetition_count(fen_history)
+        
     # check legal moves
     legal = pyffish.legal_moves("gardner", current_fen, [])
     if not legal:
@@ -32,7 +68,7 @@ def get_game_status_with_reason(start_fen: str, movelist: list) -> tuple:
             return True, "draw", "stalemate"
             
     # check insufficient material
-    insufficient = pyffish.has_insufficient_material("gardner", start_fen, movelist)
+    insufficient = pyffish.has_insufficient_material("gardner", current_fen, [])
     if insufficient == (True, True): # if neither player has enough material to win
         return True, "draw", "insufficient_material"
         
@@ -40,12 +76,10 @@ def get_game_status_with_reason(start_fen: str, movelist: list) -> tuple:
     parts = current_fen.split(" ")
     halfmove_clock = int(parts[4]) if len(parts) > 4 else 0
     
-    opt_ended, _ = pyffish.is_optional_game_end("gardner", start_fen, movelist)
-    if opt_ended:
-        if halfmove_clock >= 100:
-            return True, "draw", "50_move_rule"
-        else:
-            return True, "draw", "3_repetition_rule"
+    if halfmove_clock >= 100:
+        return True, "draw", "50_move_rule"
+    elif current_repetition is not None and current_repetition >= 2:
+        return True, "draw", "3_repetition_rule"
         
     return False, "ongoing", "none"
 
@@ -63,9 +97,20 @@ def play_game(agent_white: ChessAgent, agent_black: ChessAgent, max_moves=100, t
     entropies_white = []
     entropies_black = []
     
+    current_fen = start_fen
+    fen_history = [current_fen]
+    
+    parts = current_fen.split(" ")
+    state_history = [(parts[0], parts[1])]
+    
     while True:
-        # Check current game status using full move history for repetition & 50-move rules
-        ended, result, reason = get_game_status_with_reason(start_fen, movelist)
+        # Calculate current repetition count (occurrences in state_history minus 1)
+        current_repetition = max(0, state_history.count(state_history[-1]) - 1)
+        
+        # Check current game status using optimized signature
+        ended, result, reason = get_game_status_with_reason(
+            start_fen, movelist, current_fen=current_fen, current_repetition=current_repetition
+        )
         if ended:
             return result, reason, len(movelist), move_history, entropies_white, entropies_black
             
@@ -73,7 +118,6 @@ def play_game(agent_white: ChessAgent, agent_black: ChessAgent, max_moves=100, t
         if len(movelist) >= max_moves:
             return "draw", "max_moves", len(movelist), move_history, entropies_white, entropies_black
             
-        current_fen = pyffish.get_fen("gardner", start_fen, movelist)
         legal = pyffish.legal_moves("gardner", current_fen, [])
         
         # Select active agent
@@ -81,15 +125,28 @@ def play_game(agent_white: ChessAgent, agent_black: ChessAgent, max_moves=100, t
         active_player = parts[1]
         
         if active_player == 'w':
-            move, ent, top_6 = agent_white.select_move(current_fen, legal, temperature)
+            move, ent, top_6 = agent_white.select_move(current_fen, legal, temperature, repetition=current_repetition)
             entropies_white.append(ent)
             move_history.append({"move": move, "player": "white", "entropy": ent, "top_6": top_6})
         else:
-            move, ent, top_6 = agent_black.select_move(current_fen, legal, temperature)
+            move, ent, top_6 = agent_black.select_move(current_fen, legal, temperature, repetition=current_repetition)
             entropies_black.append(ent)
             move_history.append({"move": move, "player": "black", "entropy": ent, "top_6": top_6})
             
         movelist.append(move)
+        
+        # Update FEN and repetition state incrementally
+        current_fen = pyffish.get_fen("gardner", current_fen, [move])
+        fen_history.append(current_fen)
+        
+        parts = current_fen.split(" ")
+        board = parts[0]
+        player = parts[1]
+        halfmove = int(parts[4]) if len(parts) > 4 else 0
+        
+        if halfmove == 0:
+            state_history = []
+        state_history.append((board, player))
 
 def play_matchup(agent1: ChessAgent, agent2: ChessAgent, num_games=20, max_moves=100, temperature=0.1, save_log=None):
     print(f"\n=== Matchup: {agent1.name} vs {agent2.name} ({num_games} games) ===")
