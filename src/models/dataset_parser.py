@@ -2,14 +2,17 @@ import torch
 import numpy as np
 import time
 import os
+from itertools import product
 import multiprocessing as mp
 from functools import partial, lru_cache
-import pyffish  # pyrefly: ignore [missing-import]
-from src.utils.utils import time_this, pretty_time # pyrefly: ignore [missing-import]
+import pyffish 
+from src.utils.utils import time_this, pretty_time 
 
-@lru_cache(maxsize=1024)
-def uci_to_index(move_str: str, promotions: bool) -> int:
-    """Helper to decode a UCI string into our custom indexing system."""
+# Precomputed O(1) dictionary lookups for move indexing
+UCI_TO_INDEX = {}
+INDEX_TO_UCI = {}
+
+def _original_uci_to_index(move_str: str) -> int:
     file_from = ord(move_str[0]) - ord("a")
     rank_from = int(move_str[1]) - 1
     file_to = ord(move_str[2]) - ord("a")
@@ -32,8 +35,7 @@ def uci_to_index(move_str: str, promotions: bool) -> int:
     # Policy size is 600 (5^2 * (5^2 - 1)). We adjust the to_sq index.
     to_sq_idx = to_sq - 1 if to_sq > from_sq else to_sq
     
-    if promotions and len(move_str) > 4:
-        # promotions need to be handled separately
+    if len(move_str) > 4: # handle promotions (the remaining 104 moves)
         promo_char = move_str[4].lower()
         promo_types = {'q': 0, 'r': 1, 'b': 2, 'n': 3}
         p_idx = promo_types[promo_char]
@@ -44,10 +46,46 @@ def uci_to_index(move_str: str, promotions: bool) -> int:
         traversal_idx = base_idx + offset
         if is_black:
             traversal_idx += 13
-            
         return 600 + p_idx * 26 + traversal_idx
     else:
         return from_sq * 24 + to_sq_idx
+
+# Populate lookup tables using product loop from outputs_pgn.py logic
+_letters = ['a', 'b', 'c', 'd', 'e']
+_nums = list(range(1, 6))
+_crowns = ('q', 'r', 'b', 'n')
+
+# get all moves with cartesian product, and filter the ones that that go to the same square
+_p = list(product(_letters, _nums))
+_prod = [t for t in product(_p, _p) if t[0] != t[1]]
+
+_promotions_prod = []
+for t in _prod:
+    if (t[0][1] == 4 and t[1][1] == 5) and (abs(ord(t[0][0]) - ord(t[1][0])) < 2):
+        for c in _crowns:
+            _promotions_prod.append((t[0], (t[1][0], [t[1][1], c])))
+    elif (t[0][1] == 2 and t[1][1] == 1) and (abs(ord(t[0][0]) - ord(t[1][0])) < 2):
+        for c in _crowns:
+            _promotions_prod.append((t[0], (t[1][0], [t[1][1], c])))
+
+_all_moves = []
+for t in _prod:
+    _all_moves.append(t[0][0] + str(t[0][1]) + t[1][0] + str(t[1][1]))
+for t in _promotions_prod:
+    _all_moves.append(t[0][0] + str(t[0][1]) + t[1][0] + str(t[1][1][0]) + t[1][1][1])
+
+for _move in _all_moves:
+    _idx = _original_uci_to_index(_move)
+    UCI_TO_INDEX[_move] = _idx
+    INDEX_TO_UCI[_idx] = _move
+
+def uci_to_index(move_str: str) -> int:
+    """Helper to decode a UCI string into the custom indexing system in O(1) time."""
+    return UCI_TO_INDEX.get(move_str, 0)
+
+def index_to_uci(index: int) -> str:
+    """Helper to encode a custom index (0-703) into a UCI string in O(1) time."""
+    return INDEX_TO_UCI.get(index, "")
 
 def parse_fen_to_features(fen_str: str, piece_map: dict, features_out: np.ndarray):
     """Parses a Gardner FEN string and populates the features_out array in place."""
