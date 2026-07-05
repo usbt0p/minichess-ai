@@ -202,3 +202,22 @@ def export_svg(fen: str, filename: str = "tablero.svg"):
     with open(filename, "w") as f:
         f.write("\n".join(svg))
     print(f"[*] Imagen SVG guardada en: {filename}")
+
+class Tee:
+    """Writes to both the terminal and a file."""
+    def __init__(self, filepath):
+        self.terminal = sys.stdout
+        os.makedirs(os.path.dirname(os.path.abspath(filepath)), exist_ok=True)
+        self.log = open(filepath, "w", encoding="utf-8")
+
+    def write(self, message):
+        self.terminal.write(message)
+        self.log.write(message)
+        self.log.flush()
+
+    def flush(self):
+        self.terminal.flush()
+        self.log.flush()
+
+    def isatty(self):
+        return self.terminal.isatty()
