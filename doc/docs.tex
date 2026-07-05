@@ -178,8 +178,7 @@ En 2013, Mehdi y Prost resolvieron débilmente el ajedrez Gardner, esto es, obtu
 
 \subsection{Marco teórico}\label{sec:marco_teorico}
 
-
-\subsubsection{Diseño Experimental e Hipótesis}
+\subsubsection{Diseño de Hipótesis}
 
 Para dar respuesta a los objetivos planteados, el desarrollo práctico se articula en torno a la demostración de las siguientes hipótesis experimentales, las cuales estructuran el diseño experimental del trabajo:
 
@@ -405,7 +404,7 @@ La figura ~\ref{fig:encoder_arch} ilustra la arquitectura propuesta, mostrando e
 
 \newpage
 
-\subsubsection{Algoritmo de Aprendizaje por Refuerzo: Proximal Policy Optimization (PPO)}
+\subsubsection{Algoritmo de RL: Proximal Policy Optimization (PPO)}
 
 Cabe preguntarse: ¿por qué este algoritmo en lugar del MCTS usado en enfoques como AlphaGO o AlphaZero? Clásicamente, metodologías como MCTS y \textit{Expert Iteration} actúan más como como planificadores a futuro que como RL propiamente dicho: descubren futuros hipotéticos mediante búsqueda por fuerza bruta al contar con un modelo perfecto del entorno. En ellos, la red neuronal actúa como una memoria supervisada que aproxima las probabilidades de visita ya descubiertas por la búsqueda. 
 Estos sistemas no están aprendiendo \textit{per se} (algo que se obtiene de la experiencia, y por tanto del pasado), sino que están planificando (algo que se obtiene de la previsión del futuro, y por tanto de la simulación, el futuro). 
@@ -460,17 +459,6 @@ En este pseudocódigo, se deben denotar varios aspectos:
     
 \end{itemize}
 
-\subsubsection{Herramientas y tecnologías empleadas}
-
-El desarrollo práctico e investigativo del proyecto se implementará utilizando las siguientes herramientas de desarrollo de software libre:
-\begin{itemize}
-    \item \textbf{Lenguaje de programación:} \texttt{Python} 3.12+ por su extenso soporte y bibliotecas nativas de Deep Learning. 
-    \item \textbf{Framework de Deep Learning:} \texttt{PyTorch} para el diseño de redes neuronales, cálculo automático de gradientes y aceleración en GPU.
-    \item \textbf{Motor de Ajedrez:} Se emplea \texttt{Fairy-Stockfish}, una versión de Stockfish para variantes personalizadas, a través de la API \texttt{pyffish} de Python y a través de su CLI propia para generación de datos para la fase de aprendizaje supervisado. Este motor proporciona: (a) validación robusta y rápida de la legalidad de movimientos y reglas de la variante Gardner $5\times5$, y (b) evaluaciones heurísticas adecuadas para inicializar la red mediante aprendizaje supervisado.
-    \item \textbf{Seguimiento de experimentos:} \texttt{tensorboard} se utilizó para la visualización en tiempo real del progreso de entrenamiento, entropía de la política, pérdida multiobjetivo y curvas de convergencia.
-    \item \textbf{Reproducibilidad, dependencias y manejo de módulos en Python:} \texttt{uv} para la gestión de entornos virtuales y dependencias, asegurando la portabilidad y reproducibilidad del código (\texttt{uv} permite generar archivos de requisitos específicos y fijar una versión de Python).
-\end{itemize}
-
 \subsubsection{Descripción del conjunto de datos}
 
 Para el entrenamiento en la fase de aprendizaje supervisado, se ha optado por utilizar exclusivamente un conjunto de datos sintéticos generado con una profundidad de búsqueda de 4 jugadas por \texttt{fairy-stockfish}, descartando por completo el uso de mezclas con evaluaciones de profundidades inferiores ($D2$ o $D3$). Este conjunto de datos definitivo cuenta con un volumen total de 60,030,000 posiciones, el cual ha sido procesado mediante una división estricta de un $97\%$ para el conjunto de entrenamiento (58,234,050 posiciones) y un $3\%$ reservado para el conjunto de validación (1,795,950 posiciones).
@@ -506,6 +494,20 @@ ply 9
 result 0
 [...]
 \end{verbatim}
+
+\subsubsection{Herramientas y tecnologías empleadas}
+
+El desarrollo práctico e investigativo del proyecto se implementará utilizando las siguientes herramientas de desarrollo de software:
+\begin{itemize}
+    \item \textbf{Lenguaje de programación:} \texttt{Python} 3.12+ por su extenso soporte y bibliotecas nativas de Deep Learning. 
+    \item \textbf{Framework de Deep Learning:} \texttt{PyTorch} para el diseño de redes neuronales, cálculo automático de gradientes y aceleración en GPU.
+    \item \textbf{Motor de Ajedrez:} Se emplea \texttt{Fairy-Stockfish}, una versión de Stockfish para variantes personalizadas, a través de la API \texttt{pyffish} de Python y a través de su CLI propia para generación de datos para la fase de aprendizaje supervisado. Este motor proporciona: (a) validación robusta y rápida de la legalidad de movimientos y reglas de la variante Gardner $5\times5$, y (b) evaluaciones heurísticas adecuadas para inicializar la red mediante aprendizaje supervisado.
+    \item \textbf{Seguimiento de experimentos:} \texttt{tensorboard} se utilizó para la visualización en tiempo real del progreso de entrenamiento, y métricas como la pérdida multiobjetivo, entropía, normas de gradientes, etc.
+    \item \textbf{Reproducibilidad, dependencias y manejo de módulos en Python:} \texttt{uv} para la gestión de entornos virtuales y dependencias, asegurando la portabilidad y reproducibilidad del código (\texttt{uv} permite generar archivos de requisitos específicos y fijar una versión de Python).
+    \item \textbf{Ajuste de hiperparámetros:} \texttt{Optuna} se utilizó para la optimización de hiperparámetros fundamentales como el learning rate o prámetros del optimizador. 
+    \item \textbf{Testing:} Aunque el objetivo central de este trabajo no es el desarrollo de software, si no la obtención de conclusiones acerca de las hipótesis planteadas, se uso \texttt{pytest} como framework de testing para desarrollar tests de componentes como los bindings de pyffish en python, el entorno de RL, o el funcionamiento de la implementación de PPO.
+    \item \textbf{Tests estadísticos:} Se utilizaron \texttt{scipy} y \texttt{statsmodels} para realizar tests estadísticos sobre los resultados obtenidos en los experimentos.
+\end{itemize}
 
 \subsection{Diseño experimental}
 
@@ -549,6 +551,38 @@ Para demostrar el efecto de distintas representaciones del input y de output, se
         \item Analizar los resultados. Extraer conclusiones sobre la capacidad de juego entre modelos, y con respecto a los resultados de test obtenidos en el paso anterior.
         \item Output buscado: una matriz de tamaño NxN (N = número de modelos) con los resultados de winrate entre cada par de modelos, y una tabla con el ELO estimado de cada modelo.
     \end{enumerate}
+\end{enumerate}
+
+\subsubsection{Diseño experimental para la hipótesis 3}
+
+Para demostrar el efecto de la inicialización supervisada sobre la convergencia y la fuerza de juego final en el bucle de Aprendizaje por Refuerzo, se ha diseñado e instrumentado el siguiente experimento:
+
+\begin{enumerate}
+\item \textbf{Fijar una ``receta" de red neuronal y de algoritmo de optimización:} Se seleccionará la arquitectura de red ganadora surgida del estudio de ablación de la Hipótesis 2 (la configuración \texttt{spatial\_nofact}). Asimismo, se congelarán los hiperparámetros de PPO y del buffer de recolección, incluyendo la tasa de aprendizaje ($lr$), \textbf{batch} size, el horizonte temporal de \textit{rollouts} ($T$), entre otros (detalles específicos en la sección~\ref{sec:hiperparam_ppo}).
+\item \textbf{Definimos las 2 variantes a comparar:} El experimento contrasta directamente el impacto del punto de partida ponderado de los parámetros:
+    \begin{itemize}
+        \item \textbf{Agente Tabula Rasa:} El modelo se inicializa con pesos aleatorios siguiendo la convención estándar, obligando al bucle de RL a explorar el espacio de estados sin conocimiento previo.
+        \item \textbf{Agente Pre-entrenado:} Los pesos del backbone de atención y de las cabezas duales se inicializan cargando el checkpoint óptimo derivado de la fase de Aprendizaje Supervisado.
+    \end{itemize}
+\item \textbf{Seleccionar varias semillas fijas (5):} Para mitigar la alta varianza inherente al muestreo estocástico en entornos de recompensa dispersa, y para asegurar la reproducibilidad científica, se fijan 5 semillas independientes de inicialización de los entornos y del generador de números aleatorios.
+\item \textbf{Para cada semilla, ejecutar el bucle adversarial completo:}
+    \begin{itemize}
+        \item Para cada una de las 2 variantes (Tabula Rasa y Pre-entrenado):
+            \begin{enumerate}
+                \item Desplegar una suite de $N$ entornos de Minichess vectorizados en paralelo.
+                \item Ejecutar el entrenamiento de PPO durante un horizonte fijo de iteraciones / episodios.
+                \item \textbf{Estrategia de Pool de Oponentes (\textit{Opponent Pooling}):} Siguiendo el método de optimización continua de AlphaZero, los juegos de \textit{self-play} se generan utilizando directamente los parámetros de la red en su estado más reciente \cite{silver2018general}, omitiendo pasos de evaluación explícitos o filtros de corte de rendimiento estilo AlphaGo Zero. No obstante, para prevenir el olvido catastrófico y el sobreajuste a la política inmediata anterior, se implementa un buffer mixto de emparejamiento con un ratio de 80/20:
+                    \begin{itemize}
+                        \item El \textbf{80\%} de los entornos vectorizados jugarán contra la versión de la red continuamente actualizada (\textit{Self-Play} puro en tiempo real).
+                        \item El \textbf{20\%} restante de los entornos se emparejará contra un checkpoint aleatorio extraído del histórico acumulado del propio agente, el cual almacena una copia en disco de la red de forma periódica cada $K$ iteraciones de PPO.
+                    \end{itemize}
+                \item Durante la recolección, las acciones se seleccionarán mediante muestreo estocástico directo a partir de las probabilidades obtenidas por la cabeza de política una vez aplicada la máscara de movimientos ilegales.
+                \item Registrar y guardar los datos internos del bucle: pérdida de la política (\textit{Policy Loss}), pérdida del crítico (\textit{Value Loss}), entropía de la acción y recompensa media del buffer.
+            \end{enumerate}
+    \end{itemize}
+\item \textbf{Métrica de Anclaje Externo (\textit{Anchor Arena}):} Dado que la recompensa interna del buffer es una métrica móvil relativa al nivel del pool de oponentes, la verdadera fuerza de juego se monitorizará mediante evaluaciones externas estáticas. Cada 5 iteraciones de PPO, se pausará el entrenamiento de forma síncrona y el modelo congelado disputará un torneo cerrado con un número significativo de partidas (TODO por definir) contra una serie de agentes concretos (TODO por definir, ideas: random, simple, heuristic baseline, etc). A partir de los resultados de este torneo, se calculará la tasa de victoria (\textit{winrate}) y el ELO estimado del agente.
+\item \textbf{Validación Estadística de la Convergencia:} Una vez finalizadas las ejecuciones de las 5 semillas, se extraerán los valores finales de ELO y las tasas de victoria del torneo. Se aplicarán tests estadísticos con el fin de rechazar matemáticamente la hipótesis nula de igualdad de medias y certificar que la aceleración del \textit{warm-start} es estadísticamente significativa ($\alpha = 0.05$).
+\textbf{Outputs esperados}: Gráfico de líneas temporal con la evolución del ELO estimado frente al oponente heurístico (donde la línea sólida representa la media paramétrica de las semillas y la región sombreada su desviación estándar $\pm\sigma$), y una tabla comparativa que contraste el ELO máximo e iteración de estabilización entre ambas variantes. Gráficas de recompensa media, con marcadores que indican los puntos en los que acaba un episodio (y por tanto puede haber un cambio de oponentes, y una fluctuation en la recompensa media).
 \end{enumerate}
 
 \newpage
@@ -1399,6 +1433,31 @@ Se aplica el test de Tukey HSD con una tasa de error global controlada ($\text{F
     \end{tabular}
     \caption{Comparación por parejas post-hoc de Tukey HSD para la exactitud del resultado (Valor).}
     \label{tab:tukey_res}
+\end{table}
+
+\subsection{Hiperparámetros PPO}\label{sec:hiperparam_ppo}
+
+% for now empty hiperparams, just names
+\begin{table}[htbp]
+    \centering
+    \small
+    \begin{tabular}{|l|l|}
+    \hline
+    \textbf{Parámetro} & \textbf{Valor} \\
+    \hline
+    Epochs & 0 \\
+    Batch Size & 0 \\
+    Learning Rate & 0 \\
+    Gamma & 0 \\
+    Entropy Coeficient & 0 \\
+    clip-$\epsilon$ & 0 \\
+    Value Loss Coeficient & 0 \\
+    $\lambda$ & 0 \\
+    Number of Episodes & 0 \\
+    \hline
+    \end{tabular}
+    \caption{Hiperparámetros PPO.}
+    \label{tab:hiperparam_ppo}
 \end{table}
 
 \end{document}
