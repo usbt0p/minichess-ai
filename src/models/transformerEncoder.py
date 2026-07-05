@@ -26,6 +26,7 @@ class EncoderConfig:
     mlp_dropout: float = 0.1
     mha_dropout: float = 0.1
     embed_dropout: float = 0.1
+    value_head_dropout : float = 0.1
     mlp_expand_factor: int = 4
 
     policy_head_hidden_dim : int = 64 # TODO important to tune this to not compress too much
@@ -344,7 +345,7 @@ class ValueHead(nn.Module):
                 config.embed_dim, config.mlp_expand_factor * config.embed_dim
             ),
             nn.GELU(),
-            nn.Dropout(config.mlp_dropout), # TODO CAREFUL WITH THIS DURING PPO, SET TO model.eval() !!!!
+            nn.Dropout(config.value_head_dropout),
             nn.Linear(
                 config.mlp_expand_factor * config.embed_dim, config.value_size
             ),

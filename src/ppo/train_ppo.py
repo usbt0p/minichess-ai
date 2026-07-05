@@ -4,7 +4,8 @@ import torch.optim as optim
 import argparse
 import os
 import sys
-from src.chess.env import MinichessEnv, batch_parse_fens
+from statistics import stdev, mean
+from src.chess.env import MinichessEnv, ParallelVectorEnv, batch_parse_fens
 from src.chess.agents.random import RandomAgent
 from src.models.transformerEncoder import MiniChessTransformerEncoder, EncoderConfig
 from src.ppo.ppo import PPOTrainer, PPOConfig
@@ -37,12 +38,13 @@ def train_ppo():
 
     ppo_config = PPOConfig(
         num_envs=128,
+        num_workers=12,
         rollout_steps=128,
         epochs=6,
-        batch_size=256,
+        batch_size=1024,
         lr=2e-4,
         gamma=0.99,
-        gae_lambda=0.95,
+        gae_lambda=0.99,
         clip_eps=0.2,
         c1_value=0.5,
         c2_entropy=0.01,
@@ -61,7 +63,11 @@ def train_ppo():
         representation="spatial",
         use_factorized_policy=False,
         attn_backend="math",
-        autocast_mode="none"
+        autocast_mode="none",
+        mlp_dropout=0.1,
+        mha_dropout=0.1,
+        embed_dropout=0.1,
+        value_head_dropout=0.1
     )
     
     model = MiniChessTransformerEncoder(encoder_config).to(device)
@@ -83,11 +89,18 @@ def train_ppo():
     trainer = PPOTrainer(model, optimizer, ppo_config)
 
     # 3. Initialize wrapped environments
-    # Each environment is wrapped with a RandomAgent opponent
-    opponent = RandomAgent()
-    envs = [MinichessEnv(opponent=opponent) for _ in range(ppo_config.num_envs)]
+    if (nw := ppo_config.num_workers) > 0:
+        envs = ParallelVectorEnv(
+            num_envs=ppo_config.num_envs, 
+            opponent_fn=RandomAgent, 
+            num_workers=nw
+        )
+    else:
+        envs = MinichessEnv(
+            opponent_fn=RandomAgent
+        )
     
-    current_fens = [env.reset() for env in envs]
+    current_fens = envs.reset()
     current_repetitions = [0] * ppo_config.num_envs
     episode_rewards = [0.0] * ppo_config.num_envs
     completed_episode_rewards = []
@@ -102,54 +115,59 @@ def train_ppo():
     best_reward = None
     total_start_time = time.time()
 
-    for iteration in range(1, num_iterations + 1):
-        start_time = time.time()
+    try:
+        for iteration in range(1, num_iterations + 1):
+            start_time = time.time()
 
-        # Collect trajectory rollouts
-        batch = trainer.collect_rollouts(
-            envs, current_fens, current_repetitions, episode_rewards, completed_episode_rewards, time=True
-        )
+            # Collect trajectory rollouts
+            batch = trainer.collect_rollouts(
+                envs, current_fens, current_repetitions, episode_rewards, completed_episode_rewards, time=True
+            )
 
-        # Get final state observations and dones to bootstrap values
-        final_obs = batch_parse_fens(current_fens, repetitions=current_repetitions, device=device)
-        final_dones = torch.tensor([0.0] * ppo_config.num_envs)
+            # Get final state observations and dones to bootstrap values
+            final_obs = batch_parse_fens(current_fens, repetitions=current_repetitions, device=device)
+            final_dones = torch.tensor([0.0] * ppo_config.num_envs)
 
-        # Perform PPO optimization update
-        metrics = trainer.train_step(batch, final_obs, final_dones, time=True)
+            # Perform PPO optimization update
+            metrics = trainer.train_step(batch, final_obs, final_dones, time=True)
 
-        elapsed = time.time() - start_time
-        
-        # Calculate reward metrics
-        avg_reward = 0.0
-        has_episodes = len(completed_episode_rewards) > 0
-        if has_episodes:
-            avg_reward = sum(completed_episode_rewards) / len(completed_episode_rewards)
-            # Limit the rewards window to the most recent 100 episodes
-            completed_episode_rewards = completed_episode_rewards[-100:]
+            elapsed = time.time() - start_time
+            
+            # Calculate reward metrics
+            avg_reward = 0.0
+            has_episodes = len(completed_episode_rewards) > 0
+            if has_episodes:
+                avg_reward = mean(completed_episode_rewards)
+                std_reward = stdev(completed_episode_rewards) # TODO integrate this
+                # Limit the rewards window to the most recent 100 episodes
+                completed_episode_rewards = completed_episode_rewards[-100:]
 
-        print(f"Iteration {iteration:03d}/{num_iterations:03d} [{elapsed:.2f}s]")
-        print(f"  Avg Episode Reward (recent 100): {avg_reward:+.3f}")
-        print(f"  Policy Loss: {metrics['policy_loss']:.4f} | Value Loss: {metrics['value_loss']:.4f} | Entropy: {metrics['entropy']:.4f}")
-        print(f"  Total Loss:  {metrics['total_loss']:.4f}")
+            print(f"Iteration {iteration:03d}/{num_iterations:03d} [{elapsed:.2f}s]")
+            print(f"  Avg Episode Reward (recent 100): {avg_reward:+.3f}")
+            print(f"  Policy Loss: {metrics['policy_loss']:.4f} | Value Loss: {metrics['value_loss']:.4f} | Entropy: {metrics['entropy']:.4f}")
+            print(f"  Total Loss:  {metrics['total_loss']:.4f}")
 
-        # Save model with the best reward
-        if args.save_dir and has_episodes:
-            if best_reward is None or avg_reward > best_reward:
-                best_reward = avg_reward
-                best_model_path = os.path.join(args.save_dir, "best_model.pth")
-                torch.save(model.state_dict(), best_model_path)
-                print(f"  [SAVE] New best model saved to {best_model_path} with reward: {best_reward:+.3f}")
+            # Save model with the best reward
+            if args.save_dir and has_episodes:
+                if best_reward is None or avg_reward > best_reward:
+                    best_reward = avg_reward
+                    best_model_path = os.path.join(args.save_dir, "best_model.pth")
+                    torch.save(model.state_dict(), best_model_path)
+                    print(f"  [SAVE] New best model saved to {best_model_path} with reward: {best_reward:+.3f}")
 
-        print("---------------------------------------------------------")
+            print("---------------------------------------------------------")
 
-    total_elapsed = time.time() - total_start_time
-    print(f"\n=== PPO Training Finished ===")
-    print(f"Total training time: {total_elapsed / 60:.2f} minutes ({total_elapsed:.2f} seconds)")
+        total_elapsed = time.time() - total_start_time
+        print(f"\n=== PPO Training Finished ===")
+        print(f"Total training time: {total_elapsed / 60:.2f} minutes ({total_elapsed:.2f} seconds)")
 
-    if args.save_dir:
-        last_model_path = os.path.join(args.save_dir, "last_model.pth")
-        torch.save(model.state_dict(), last_model_path)
-        print(f"[SAVE] Last model saved to {last_model_path}")
+        if args.save_dir:
+            last_model_path = os.path.join(args.save_dir, "last_model.pth")
+            torch.save(model.state_dict(), last_model_path)
+            print(f"[SAVE] Last model saved to {last_model_path}")
+    finally:
+        print("[INFO] Closing environments...")
+        envs.close()
 
 if __name__ == "__main__":
     train_ppo()

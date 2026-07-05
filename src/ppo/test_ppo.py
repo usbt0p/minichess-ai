@@ -2,7 +2,7 @@ import pytest
 import torch
 import torch.optim as optim
 import pyffish
-from src.chess.env import MinichessEnv, batch_parse_fens
+from src.chess.env import MinichessEnv, ParallelVectorEnv, batch_parse_fens
 from src.chess.agents.random import RandomAgent
 from src.models.dataset_parser import uci_to_index, index_to_uci
 from src.models.transformerEncoder import MiniChessTransformerEncoder, EncoderConfig
@@ -75,30 +75,65 @@ def test_ppo_trainer_rollout_and_training():
     optimizer = optim.AdamW(model.parameters(), lr=ppo_config.lr)
     trainer = PPOTrainer(model, optimizer, ppo_config)
     
-    opponent = RandomAgent()
-    envs = [MinichessEnv(opponent=opponent) for _ in range(ppo_config.num_envs)]
     
-    current_fens = [env.reset() for env in envs]
+    envs = ParallelVectorEnv(num_envs=ppo_config.num_envs, opponent_fn=RandomAgent, num_workers=2)
+    
+    current_fens = envs.reset()
     current_repetitions = [0] * ppo_config.num_envs
     episode_rewards = [0.0] * ppo_config.num_envs
     completed_rewards = []
     
-    # 1. Collect trajectories
-    batch = trainer.collect_rollouts(
-        envs, current_fens, current_repetitions, episode_rewards, completed_rewards
-    )
-    
-    assert batch.observations.shape == (4, 2, 28)
-    assert batch.actions.shape == (4, 2)
-    assert batch.rewards.shape == (4, 2)
-    
-    # 2. Train update
-    final_obs = batch_parse_fens(current_fens, repetitions=current_repetitions, device=device)
-    final_dones = torch.tensor([0.0] * ppo_config.num_envs)
-    
-    metrics = trainer.train_step(batch, final_obs, final_dones)
-    
-    assert "policy_loss" in metrics
-    assert "value_loss" in metrics
-    assert "total_loss" in metrics
-    assert metrics["total_loss"] is not None
+    try:
+        # 1. Collect trajectories
+        batch = trainer.collect_rollouts(
+            envs, current_fens, current_repetitions, episode_rewards, completed_rewards
+        )
+        
+        assert batch.observations.shape == (4, 2, 28)
+        assert batch.actions.shape == (4, 2)
+        assert batch.rewards.shape == (4, 2)
+        
+        # 2. Train update
+        final_obs = batch_parse_fens(current_fens, repetitions=current_repetitions, device=device)
+        final_dones = torch.tensor([0.0] * ppo_config.num_envs)
+        
+        metrics = trainer.train_step(batch, final_obs, final_dones)
+        
+        assert "policy_loss" in metrics
+        assert "value_loss" in metrics
+        assert "total_loss" in metrics
+        assert metrics["total_loss"] is not None
+    finally:
+        envs.close()
+
+
+def test_parallel_vector_env():
+    """Verify that ParallelVectorEnv resets, fetches legal moves, and steps correctly."""
+    from src.chess.env import ParallelVectorEnv
+    num_envs = 4
+    envs = ParallelVectorEnv(num_envs=num_envs, opponent_fn=RandomAgent, num_workers=2)
+    try:
+        # 1. Reset
+        fens = envs.reset()
+        assert len(fens) == num_envs
+        for fen in fens:
+            assert isinstance(fen, str)
+            assert len(fen) > 0
+
+        # 2. Get legal moves
+        legal_moves = envs.get_legal_moves()
+        assert len(legal_moves) == num_envs
+        for moves in legal_moves:
+            assert len(moves) > 0
+
+        # 3. Step
+        actions = [moves[0] for moves in legal_moves]
+        results = envs.step(actions)
+        assert len(results) == num_envs
+        for i, (next_fen, reward, ended, rep) in enumerate(results):
+            assert isinstance(next_fen, str)
+            assert isinstance(reward, float)
+            assert isinstance(ended, bool)
+            assert isinstance(rep, int)
+    finally:
+        envs.close()

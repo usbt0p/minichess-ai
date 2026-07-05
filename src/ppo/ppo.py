@@ -21,6 +21,7 @@ class RolloutBuffer:
 @dataclass
 class PPOConfig:
     num_envs: int = 16
+    num_workers: int = 12
     rollout_steps: int = 128
     epochs: int = 4
     batch_size: int = 256
@@ -93,16 +94,7 @@ class PPOTrainer:
 
             # 3. Batch action selection across all environments
             t1 = time.time()
-            legal_moves_batch = []
-            for i, env in enumerate(envs):
-                legal_moves = env.get_legal_moves()
-                # if an env terminates, reset it and start a new episode
-                if not legal_moves:
-                    current_fens[i] = env.reset()
-                    current_repetitions[i] = 0
-                    episode_rewards[i] = 0.0
-                    legal_moves = env.get_legal_moves()
-                legal_moves_batch.append(legal_moves)
+            legal_moves_batch = envs.get_legal_moves()
 
             # Construct batched mask on CPU first
             batched_mask = torch.zeros((N, 704), dtype=torch.bool)
@@ -126,24 +118,21 @@ class PPOTrainer:
             action_probs = probs.gather(1, action_indices.unsqueeze(-1)).squeeze(-1)
             logprob_buf[step] = torch.log(action_probs + 1e-9).cpu()
 
-            # 4. Step each environment sequentially
-            for i, env in enumerate(envs):
-                action_idx = action_indices[i].item()
-                move_uci = index_to_uci(action_idx)
-                next_fen, reward, ended = env.step(move_uci)
+            # 4. Step all environments in parallel
+            action_ucis = [index_to_uci(action_indices[i].item()) for i in range(N)]
+            step_results = envs.step(action_ucis)
 
+            for i, (next_fen, reward, ended, rep) in enumerate(step_results):
                 reward_buf[step, i] = reward
                 done_buf[step, i] = float(ended)
                 episode_rewards[i] += reward
 
                 if ended:
                     completed_episode_rewards.append(episode_rewards[i])
-                    current_fens[i] = env.reset()
-                    current_repetitions[i] = 0
                     episode_rewards[i] = 0.0
-                else:
-                    current_fens[i] = next_fen
-                    current_repetitions[i] = env._get_repetition_count()
+
+                current_fens[i] = next_fen
+                current_repetitions[i] = rep
             t_cpu += time.time() - t1
 
         if print_breakdown:

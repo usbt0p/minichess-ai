@@ -4,6 +4,7 @@ import pyffish
 from src.chess.arena import get_game_status_with_reason
 from src.chess.agents.base import FenParts, PIECE_MAP
 from src.models.dataset_parser import parse_fen_to_features
+import multiprocessing as mp
 
 class MinichessEnv:
     """Stateful wrapper around pyffish for 5x5 Gardner Minichess RL loops."""
@@ -152,3 +153,106 @@ def batch_parse_fens(fens: list[str], repetitions: list[int] = None, device: str
         features[i, 27] = active_player
             
     return features
+
+
+def _worker(conn, count, opponent_fn):
+    pyffish.set_option("UCI_Variant", "gardner")
+    envs = [MinichessEnv(opponent=opponent_fn()) for _ in range(count)]
+    try:
+        while True:
+            cmd, data = conn.recv()
+            if cmd == "step":
+                results = []
+                for env, action in zip(envs, data):
+                    next_fen, reward, ended = env.step(action)
+                    rep = env._get_repetition_count()
+                    if ended:
+                        next_fen = env.reset()
+                        rep = 0
+                    results.append((next_fen, reward, ended, rep))
+                conn.send(results)
+            elif cmd == "reset":
+                fens = [env.reset() for env in envs]
+                conn.send(fens)
+            elif cmd == "get_legal_moves":
+                moves = [env.get_legal_moves() for env in envs]
+                conn.send(moves)
+            elif cmd == "close":
+                break
+            else:
+                raise NotImplementedError(f"Unknown command: {cmd}")
+    except KeyboardInterrupt:
+        pass
+    except Exception as e:
+        import sys
+        print(f"[ERROR] Worker error: {e}", file=sys.stderr)
+    finally:
+        conn.close()
+
+
+class ParallelVectorEnv:
+    """Vectorized environment wrapping multiple MinichessEnv instances across processes."""
+
+    def __init__(self, num_envs, opponent_fn, num_workers=8):
+        self.num_envs = num_envs
+        self.num_workers = min(num_workers, num_envs)
+
+        envs_per_worker = num_envs // self.num_workers
+        rem = num_envs % self.num_workers
+
+        self.parent_conns = []
+        self.processes = []
+        self.worker_sizes = []
+
+        ctx = mp.get_context("spawn")
+
+        for w_idx in range(self.num_workers):
+            count = envs_per_worker + (1 if w_idx < rem else 0)
+            self.worker_sizes.append(count)
+
+            parent_conn, child_conn = ctx.Pipe()
+            p = ctx.Process(target=_worker, args=(child_conn, count, opponent_fn))
+            p.daemon = True
+            p.start()
+
+            self.parent_conns.append(parent_conn)
+            self.processes.append(p)
+
+    def reset(self):
+        for conn in self.parent_conns:
+            conn.send(("reset", None))
+        
+        fens = []
+        for conn in self.parent_conns:
+            fens.extend(conn.recv())
+        return fens
+
+    def get_legal_moves(self):
+        for conn in self.parent_conns:
+            conn.send(("get_legal_moves", None))
+        
+        moves = []
+        for conn in self.parent_conns:
+            moves.extend(conn.recv())
+        return moves
+
+    def step(self, actions):
+        idx = 0
+        for conn, size in zip(self.parent_conns, self.worker_sizes):
+            conn.send(("step", actions[idx : idx + size]))
+            idx += size
+
+        results = []
+        for conn in self.parent_conns:
+            results.extend(conn.recv())
+        return results
+
+    def close(self):
+        for conn in self.parent_conns:
+            try:
+                conn.send(("close", None))
+            except IOError:
+                pass
+        for p in self.processes:
+            p.join(timeout=1.0)
+
