@@ -1,15 +1,17 @@
 
 # ORDEN DEL DIA
 
-- is it fine to have non-terminal states have a reward of 0 and also draw states? isnt sharing that signal a problem...?
-- the collecting loop you provided is assuming i have a "MinichessEnvironment()". But i don't. What is essential about it? Could it be substituted with something else? If the env is needed, give me the requirements to create it. I'll provide you with the "chess board api" that i've put up surrounding pyffish + the test for what it can do.
 
-- luego hacer diseño experimental de la fase de PPO. decidir que gráficas y tablas quiero, que quiero observar exactamente.
+- not to prematurely optimize, but try to parallelize environments...
+- figure out how to play with the ppo hyperparams wihtout need to tune them. for example higher lambda for approaching TD error, lower clip_eps for more stability (or higher if its stagnating)? also : c1 and c2 weights, and figure out regularization if i remove dropouts...
+
+- hacer diseño experimental de la fase de PPO. decidir que gráficas y tablas quiero, que quiero observar exactamente.
 
 - updates in the docs:  
   - update the transformer architecture
   - explain separately the backbone of the transformer and the head(s). 
   - explain the encoding of the inputs for each model (mlp and transformer w/ and w/out inductive bias)
+  - explain the ppo rollout collection and the training
 
 # (BRAINDUMP): ideas no tan urgentes 
 
@@ -200,3 +202,13 @@ while they train:
 - add repetition count to arena and agents
 - add info about the dataset. annex holds figures with stats (escribir en la docu sobre el dataset. dar un sample. estadisticas en el anexo. explicar profundidades)
   - explain the test holdout strategy and why it's important to separate games using plies.
+- implement RL env from arena functions
+- mod transformer to use policy and reeturn log prob in ppo
+- test env and troughput
+- make a simple ppo loop with a dummy model. small (16dk and 1 depth), and pit it against a random agent
+- change uci_to_idx and idx_to_uci for a literal enumeration in a dictionary. O(1) access
+- run tests with checkpointed model and without against random openent. expect average reward improvement quickly
+
+# 5/07
+- check if dropouts or norms are affecting rl
+- save the model with the best reward, and also the last one
