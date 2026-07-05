@@ -7,7 +7,7 @@ import pyffish
 
 from src.chess.agents.base import ChessAgent, PIECE_MAP, IllegalMoveError, FenParts
 from src.models.transformerEncoder import MiniChessTransformerEncoder, EncoderConfig
-from src.models.dataset_parser import uci_to_index, parse_fen_to_features
+from src.models.dataset_parser import uci_to_index, index_to_uci, parse_fen_to_features
 
 class TransformerAgent(ChessAgent):
     def __init__(self, model_path: str, config_args: dict, device: str = "cpu", name: str = None):
@@ -51,6 +51,19 @@ class TransformerAgent(ChessAgent):
         self.model.eval()
 
     def select_move(self, fen: str, legal_moves: list, temperature: float = 1.0, repetition: int = 0):
+        """
+        Select a move using the Transformer agent. Uses both policy head to select top 6 moves and
+        value head to select the best move among them, so equivalent to a 1-ply search.
+
+        Args:
+            fen: The current FEN string.
+            legal_moves: A list of legal moves.
+            temperature: The temperature for sampling.
+            repetition: The number of repetitions.
+
+        Returns:
+            The selected move.
+        """
         if not legal_moves:
             return None, 0.0, []
             
@@ -102,18 +115,17 @@ class TransformerAgent(ChessAgent):
         batch_features = []
         for move in top_k_moves:
             child_fen_str = pyffish.get_fen("gardner", fen, [move])
-            child_fen = FenParts(child_fen_str)
+            child_board, child_player, child_halfmove, _ = FenParts(child_fen_str)
             
             child_board_features = np.full(25, 12, dtype=np.uint8)
-            parse_fen_to_features(child_fen.fen_board, PIECE_MAP, child_board_features)
+            parse_fen_to_features(child_board, PIECE_MAP, child_board_features)
+            
             child_board_tensor = torch.from_numpy(child_board_features).long().to(self.device)
-            
-            child_halfmove_tensor = torch.tensor([child_fen.halfmove], dtype=torch.long, device=self.device)
-            
-            child_repetition_tensor = torch.tensor([0], dtype=torch.long, device=self.device)
+            child_halfmove_tensor = torch.tensor([child_halfmove], dtype=torch.long, device=self.device)
+            child_repetition_tensor = torch.tensor([repetition], dtype=torch.long, device=self.device)
             
             if self.representation == "spatial":
-                child_active_player = 1 if child_fen.active_player == 'w' else 0
+                child_active_player = 1 if child_player == 'w' else 0
                 child_active_player_tensor = torch.tensor([child_active_player], dtype=torch.long, device=self.device)
                 child_features = torch.cat([child_board_tensor, child_repetition_tensor, child_halfmove_tensor, child_active_player_tensor], dim=0)
             else:
@@ -144,3 +156,67 @@ class TransformerAgent(ChessAgent):
             raise IllegalMoveError(best_move, legal_moves)
             
         return best_move, entropy, top_6
+
+    def select_move_ppo(self, fen: str, legal_moves: list, temperature: float = 1.0, repetition: int = 0):
+        """
+        PPO Rollout action selection. Only works with spatial representation.
+        Completely bypasses lookahead. Samples from policy head and returns
+        move_uci, move_index, log_prob, value_pred.
+
+        This is needed since PPO needs to generate trajectories using the policy and value separately as actor and critic.
+        If the agent selects using search, the loss is non differentiable w.r.t the weights.
+        """
+        if not legal_moves:
+            return None, -1, 0.0, 0.0
+            
+        # Parse FEN
+        fen_parts = FenParts(fen)
+        board_features = np.full(25, 12, dtype=np.uint8)
+        parse_fen_to_features(fen_parts.fen_board, PIECE_MAP, board_features)
+        
+        board_tensor = torch.from_numpy(board_features).long().to(self.device)
+        halfmove = int(fen_parts.halfmove)
+        halfmove_tensor = torch.tensor([halfmove], dtype=torch.long, device=self.device)
+        repetition_tensor = torch.tensor([repetition], dtype=torch.long, device=self.device)
+        
+        # Build features (PPO assumes spatial representation)
+        active_player = 1 if fen_parts.active_player == 'w' else 0
+        active_player_tensor = torch.tensor([active_player], dtype=torch.long, device=self.device)
+        features = torch.cat([board_tensor, repetition_tensor, halfmove_tensor, active_player_tensor], dim=0).unsqueeze(0)
+        
+        with torch.no_grad():
+            outputs = self.model(features)
+            if len(outputs) == 5:
+                policy_logits, value_pred, _, _, _ = outputs
+            else:
+                policy_logits, value_pred = outputs
+            policy_logits = policy_logits.squeeze(0)
+            value_val = value_pred.squeeze(-1).squeeze(0).item()
+            
+        # Mask out illegal moves
+        legal_indices = [uci_to_index(m, promotions=True) for m in legal_moves]
+        
+        # Softmax over legal moves
+        legal_logits = policy_logits[legal_indices]
+        if temperature > 0.0:
+            probs = F.softmax(legal_logits / temperature, dim=-1)
+            # Sample using torch.multinomial
+            sampled_idx = torch.multinomial(probs, 1).item()
+        else:
+            probs = F.softmax(legal_logits, dim=-1)
+            sampled_idx = torch.argmax(probs).item()
+            
+        best_move = legal_moves[sampled_idx]
+        best_move_idx = legal_indices[sampled_idx]
+        
+        mask = torch.full((704,), -1e9, device=self.device)
+        mask[legal_indices] = policy_logits[legal_indices]
+        if temperature > 0.0:
+            probs_all = F.softmax(mask / temperature, dim=-1)
+        else:
+            probs_all = torch.zeros(704, device=self.device)
+            probs_all[best_move_idx] = 1.0
+            
+        log_prob = torch.log(probs_all[best_move_idx] + 1e-9).item()
+        
+        return best_move, best_move_idx, log_prob, value_val
