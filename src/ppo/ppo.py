@@ -41,7 +41,17 @@ class PPOTrainer:
         self.config = config
 
     @time_this
-    def collect_rollouts(self, envs, current_fens, current_repetitions, episode_rewards, completed_episode_rewards, print_breakdown=True):
+    def collect_rollouts(
+        self,
+        envs,
+        current_fens,
+        current_repetitions,
+        episode_rewards,
+        completed_episode_rewards,
+        episode_lengths=None,
+        completed_episode_lengths=None,
+        print_breakdown=True,
+    ):
         """
         Collect trajectories by running the vectorized environment loop for T steps.
         Updates in-place: current_fens, current_repetitions, episode_rewards, completed_episode_rewards.
@@ -101,7 +111,7 @@ class PPOTrainer:
             for i, legal_moves in enumerate(legal_moves_batch):
                 legal_indices = [uci_to_index(m) for m in legal_moves]
                 batched_mask[i, legal_indices] = True
-            
+
             mask_buf[step] = batched_mask
 
             # Move mask to device and perform batched logits masking
@@ -126,10 +136,15 @@ class PPOTrainer:
                 reward_buf[step, i] = reward
                 done_buf[step, i] = float(ended)
                 episode_rewards[i] += reward
+                if episode_lengths is not None:
+                    episode_lengths[i] += 1
 
                 if ended:
                     completed_episode_rewards.append(episode_rewards[i])
                     episode_rewards[i] = 0.0
+                    if episode_lengths is not None and completed_episode_lengths is not None:
+                        completed_episode_lengths.append(episode_lengths[i])
+                        episode_lengths[i] = 0
 
                 current_fens[i] = next_fen
                 current_repetitions[i] = rep
@@ -234,9 +249,9 @@ class PPOTrainer:
                 # Mask logits to calculate log probability of actions
                 masked_logits = torch.full_like(policy_logits, -1e9)
                 masked_logits = torch.where(mb_masks, policy_logits, masked_logits)
-                
+
                 probs = torch.softmax(masked_logits, dim=-1)
-                
+
                 # New log probability of chosen actions
                 action_probs = probs.gather(1, mb_actions.unsqueeze(-1)).squeeze(-1)
                 new_logprobs = torch.log(action_probs + 1e-9)
