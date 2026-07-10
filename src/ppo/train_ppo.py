@@ -206,6 +206,12 @@ class PPOTrainingRunner:
         else:
             self.model = MiniChessTransformerEncoder(self.encoder_config).to(self.device)
 
+        # Save initial model to the pool if we are in pool mode before starting envs
+        if self.args.pool_dir and self.args.opponent_mode == "self_play_pool":
+            initial_pool_path = os.path.join(self.args.pool_dir, "checkpoint_0000.pth")
+            torch.save(self.model.state_dict(), initial_pool_path)
+            logger.info(f"[POOL] Saved initial model to pool: {initial_pool_path}")
+
         optimizer = optim.AdamW(self.model.parameters(), lr=ppo_config.lr)
         self.trainer = PPOTrainer(self.model, optimizer, ppo_config)
 
@@ -226,12 +232,6 @@ class PPOTrainingRunner:
         self.current_repetitions = [0] * ppo_config.num_envs
         self.episode_rewards = [0.0] * ppo_config.num_envs
         self.episode_lengths = [0] * ppo_config.num_envs
-
-        # Save initial model to the pool if we are in pool mode
-        if self.args.pool_dir and self.args.opponent_mode == "self_play_pool":
-            initial_pool_path = os.path.join(self.args.pool_dir, "checkpoint_0000.pth")
-            torch.save(self.model.state_dict(), initial_pool_path)
-            logger.info(f"[POOL] Saved initial model to pool: {initial_pool_path}")
 
     def run_evaluations(self, iteration: int):
         """

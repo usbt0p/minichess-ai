@@ -1,18 +1,19 @@
 
 # ORDEN DEL DIA
 
-- right now the n_envs param is repeated in the config. also, it would be nice to have one "single env" entry, that get you sequential if num_workers=1 and parallel otherwise
-- see if the average reward calculation is right, or if it can be better
-- currently agent plays against random oponent. figure out how to make it play against itself, setting up an opponent pool to prevent stagnation and reward hacking. do something like 80/20 for current model / previous pools
-- figure out how to play with the ppo hyperparams wihtout need to tune them. for example higher lambda for approaching TD error, lower clip_eps for more stability (or higher if its stagnating)? also : c1 and c2 weights, and figure out regularization if i remove dropouts...
+- see if a slight negative reward for draws pushes the model to win more
+- get a stacked area graph of: the termination reasons over steps for (all sum to the number of games played), and for the final tournaments
+- check how randomness (temperature) and entropy behave together
 
-- hacer diseño experimental de la fase de PPO. decidir que gráficas y tablas quiero, que quiero observar exactamente.
+- see if the average reward calculation is right, or if it can be better
+- figure out how to play with the ppo hyperparams wihtout need to tune them. for example higher lambda for approaching TD error, lower clip_eps for more stability (or higher if its stagnating)? also : c1 and c2 weights, and figure out regularization if i remove dropouts...
 
 - updates in the docs:  
   - update the transformer architecture
   - explain separately the backbone of the transformer and the head(s). 
   - explain the encoding of the inputs for each model (mlp and transformer w/ and w/out inductive bias)
-  - explain the ppo rollout collection and the training. use an image, something like this: https://images.ctfassets.net/kftzwdyauwt9/b9a42f6d-61d2-41e5-5944d3219032/6d7917466ddaffdaf7e8cda48a77aeba/rapid-architecture2x--1-.png?w=1920&q=90&fm=webp
+  - explain the ppo rollout collection and the training. use an image, something like this: https://images.ctfassets.net/kftzwdyauwt9/b9a42f6d-61d2-41e5-5944d3219032/6d7917466ddaffdaf7e8cda48a77aeba/rapid-architecture2x--1-.png?w=1920&q=90&fm=webp 
+  also explain the environment parallelization
 
 # (BRAINDUMP): ideas no tan urgentes 
 
@@ -214,3 +215,14 @@ while they train:
 - check if dropouts or norms are affecting rl
 - save the model with the best reward, and also the last one
 - not to prematurely optimize, but try to parallelize environments...
+
+# 6/07
+- currently agent plays against random oponent. figure out how to make it play against itself, setting up an opponent pool to prevent stagnation and reward hacking. do something like 80/20 for current model / previous pools
+- hacer diseño experimental de la fase de PPO. decidir que gráficas y tablas quiero, que quiero observar exactamente.
+
+# 9-10/07
+- ruin experiments with the oponent pool. rewards stay stable since the policy changes when updating the weights in self play, but the elo and checkmate/draw ratio goes up signaling good learning
+
+# 11/07
+- refactor all the trash AI code into something usable.
+- understand why lower gae lambda of 0.8 works better than 0.95, and why 0.95 > 1.0. Isn't a lambda of 1.0 supposed to give the same importance to all the steps regardless of how far they are from the end of the game, and a lower one to discount more distant steps (so essentially the opening of the game)? (update: that is gamma not lambda. lambda is bias-variance trade-off. lambda = 1 is Monte Carlo estimate (trust the reward from the trajectory more). lambda = 0 is TD (trust the critic in its estimation))
