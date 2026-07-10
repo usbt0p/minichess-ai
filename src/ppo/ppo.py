@@ -50,13 +50,11 @@ class PPOTrainer:
         completed_episode_rewards,
         episode_lengths=None,
         completed_episode_lengths=None,
-        print_breakdown=True,
     ):
         """
         Collect trajectories by running the vectorized environment loop for T steps.
         Updates in-place: current_fens, current_repetitions, episode_rewards, completed_episode_rewards.
         """
-        import time
         self.model.eval()
         T = self.config.rollout_steps
         N = self.config.num_envs
@@ -71,21 +69,11 @@ class PPOTrainer:
         value_buf = torch.zeros((T, N))
         mask_buf = torch.zeros((T, N, 704), dtype=torch.bool)
 
-        # we'll be doing some timing to optimize bottlenecks
-        # sadly, this means we have to do cuda.synchronize() at multiple points
-        t_gpu = 0.0
-        t_cpu = 0.0
-
         for step in range(T):
             # 1. Batched feature extraction from current FENs
-            t0 = time.time()
             features = batch_parse_fens(current_fens, repetitions=current_repetitions, device=device)
-            if device == "cuda":
-                torch.cuda.synchronize()
-            t_gpu += time.time() - t0
 
             # 2. Batched model inference to select the next actions
-            t0 = time.time()
             obs_buf[step] = features.cpu()
             with torch.no_grad():
                 outputs = self.model(features)
@@ -98,12 +86,9 @@ class PPOTrainer:
                 value_pred = value_pred.squeeze(-1).to(device)
 
             value_buf[step] = value_pred.cpu()
-            if device == "cuda":
-                torch.cuda.synchronize()
-            t_gpu += time.time() - t0
+            
 
             # 3. Batch action selection across all environments
-            t1 = time.time()
             legal_moves_batch = envs.get_legal_moves()
 
             # Construct batched mask on CPU first
@@ -148,10 +133,6 @@ class PPOTrainer:
 
                 current_fens[i] = next_fen
                 current_repetitions[i] = rep
-            t_cpu += time.time() - t1
-
-        if print_breakdown:
-            print(f"\t   [collect_rollouts] GPU/Parsing/Inference: {t_gpu:.3f}s | CPU Env stepping/sampling: {t_cpu:.3f}s")
 
         return RolloutBuffer(
             observations=obs_buf,
@@ -168,14 +149,12 @@ class PPOTrainer:
         """
         Perform PPO training epoch steps.
         """
-        import time
         self.model.train()
         T = self.config.rollout_steps
         N = self.config.num_envs
         device = self.config.device
 
         # 1. Compute bootstrap value for the final step
-        t0 = time.time()
         with torch.no_grad():
             outputs = self.model(next_obs.to(device))
             if len(outputs) == 5:
@@ -183,12 +162,8 @@ class PPOTrainer:
             else:
                 _, next_values = outputs
             next_values = next_values.squeeze(-1).cpu()  # (N,)
-        if device == "cuda":
-            torch.cuda.synchronize()
-        t_gpu_bootstrap = time.time() - t0
 
         # 2. Generalized Advantage Estimation (GAE)
-        t1 = time.time()
         advantages = torch.zeros((T, N))
         lastgaelam = 0
         for t in reversed(range(T)):
@@ -214,10 +189,8 @@ class PPOTrainer:
 
         # Standardize advantages
         b_advantages = (b_advantages - b_advantages.mean()) / (b_advantages.std() + 1e-8)
-        t_cpu_gae = time.time() - t1
 
         # 3. PPO Optimization Epochs
-        t2 = time.time()
         total_policy_loss = 0.0
         total_value_loss = 0.0
         total_entropy_loss = 0.0
@@ -291,12 +264,6 @@ class PPOTrainer:
                 total_entropy_loss += entropy.item()
                 total_loss += loss.item()
                 updates_count += 1
-        if device == "cuda":
-            torch.cuda.synchronize()
-        t_gpu_opt = time.time() - t2
-
-        if print_breakdown:
-            print(f"\t   [train_step] GPU bootstrap: {t_gpu_bootstrap:.3f}s | CPU GAE: {t_cpu_gae:.3f}s | GPU Optimization: {t_gpu_opt:.3f}s")
 
         avg_policy_loss = total_policy_loss / updates_count
         avg_value_loss = total_value_loss / updates_count

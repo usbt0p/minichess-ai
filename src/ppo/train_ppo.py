@@ -295,7 +295,7 @@ class PPOTrainingRunner:
                 batch = self.trainer.collect_rollouts(
                     self.envs, self.current_fens, self.current_repetitions, self.episode_rewards, self.completed_episode_rewards,
                     episode_lengths=self.episode_lengths, completed_episode_lengths=self.completed_episode_lengths,
-                    print_breakdown=True
+                    time=True,
                 )
 
                 # Get final state observations and dones to bootstrap values
