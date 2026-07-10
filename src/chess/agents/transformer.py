@@ -45,20 +45,9 @@ class TransformerAgent(ChessAgent):
             raise TypeError("config_args must be a dict or EncoderConfig instance")
 
         self.representation = encoder_config.representation
-        self.model = MiniChessTransformerEncoder(encoder_config)
-
-        print(f"[INFO] Loading Transformer checkpoint '{model_path}' onto {device}...")
-        state_dict = torch.load(model_path, map_location=device)
-        clean_state_dict = {}
-        for k, v in state_dict.items():
-            if k.startswith(
-                "_orig_mod."
-            ):  # in case the model was saved with torch.compile
-                clean_state_dict[k[10:]] = v
-            else:
-                clean_state_dict[k] = v
-        self.model.load_state_dict(clean_state_dict)
-        self.model.to(device)
+        self.model = MiniChessTransformerEncoder.from_pretrained(
+            model_path, config=encoder_config, device=device
+        )
         self.model.eval()
 
     def select_move(
