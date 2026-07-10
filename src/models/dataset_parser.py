@@ -1,11 +1,13 @@
+import time
+from itertools import product
+from functools import partial
+import multiprocessing as mp
+
 import torch
 import numpy as np
-import time
-import os
-from itertools import product
-import multiprocessing as mp
-from functools import partial, lru_cache
 import pyffish 
+
+from src.chess.agents.base import FenParts, PIECE_MAP
 from src.utils.utils import time_this, pretty_time 
 
 # Precomputed O(1) dictionary lookups for move indexing
@@ -230,3 +232,44 @@ def parse_minichess_text_file(file_path, promotions=False, return_active_player=
         return features_arr, halfmoves_arr, active_players_arr, moves_arr, masks_arr, results_arr, scores_arr
     else:
         return features_arr, halfmoves_arr, moves_arr, masks_arr, results_arr, scores_arr
+
+
+def parse_fens_to_tensor(fens: list[str], repetitions: list[int], representation: str, device: str = "cpu") -> torch.Tensor:
+    """
+    Parses a list of FEN strings and their corresponding repetition counts
+    into a batched tensor, supporting both 'spatial' and 'simple' representations.
+    
+    Args:
+        fens (list[str]): List of FEN strings.
+        repetitions (list[int]): List of repetition counts.
+        representation (str): "spatial" or "simple".
+        device (str): Destination device.
+        
+    Returns:
+        torch.Tensor: Batched features tensor.
+
+        Each feature row contains:
+        [0..24] - board pieces representation
+        [25]    - repetition count
+        [26]    - halfmove clock
+        [27]    - active player (1 for white, 0 for black)
+    """
+    N = len(fens)
+    dim = 28 if representation == "spatial" else 27
+    features = torch.zeros((N, dim), dtype=torch.long, device=device)
+    
+    for i, fen in enumerate(fens):
+        fen_parts = FenParts(fen)
+        board_features = np.full(25, 12, dtype=np.uint8)
+        parse_fen_to_features(fen_parts.fen_board, PIECE_MAP, board_features)
+        
+        features[i, :25] = torch.from_numpy(board_features).long().to(device)
+        features[i, 25] = repetitions[i]
+        features[i, 26] = int(fen_parts.halfmove)
+        
+        # spatial representation uses active player as a feature
+        if representation == "spatial":
+            active_player = 1 if fen_parts.active_player == 'w' else 0
+            features[i, 27] = active_player
+            
+    return features
