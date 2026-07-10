@@ -23,8 +23,9 @@ from src.utils.utils import Tee
 # Set up logging to output to stdout so that it is captured by the Tee redirector
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[logging.StreamHandler(sys.stdout)]
+    format="%(asctime)s.%(msecs)03d [%(levelname)s] %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
+    datefmt="%H:%M:%S"
 )
 logger = logging.getLogger("train_ppo")
 
