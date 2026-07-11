@@ -54,6 +54,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--batch_size", type=int, default=1024, help="Minibatch size for optimization updates")
     parser.add_argument("--epochs", type=int, default=8, help="Number of optimization epochs per iteration")
     parser.add_argument("--eval_games", type=int, default=40, help="Number of games per evaluation tournament")
+    parser.add_argument("--embed_dim", type=int, default=64, help="Embedding dimension of the Transformer model")
+    parser.add_argument("--num_blocks", type=int, default=3, help="Number of Transformer blocks (depth)")
+    parser.add_argument("--num_heads", type=int, default=8, help="Number of attention heads")
+    parser.add_argument("--representation", type=str, default="spatial", choices=["spatial", "simple"], help="Tabler representation mode")
     return parser.parse_args()
 
 
@@ -180,15 +184,15 @@ class PPOTrainingRunner:
             device=self.device
         )
 
-        # 2. Model Config (64dk, 3 blocks/depth, 8 heads)
+        # 2. Model Config (configured from arguments)
         self.encoder_config = EncoderConfig(
-            embed_dim=64,
-            num_heads=8,
-            num_blocks=3,
+            embed_dim=self.args.embed_dim,
+            num_heads=self.args.num_heads,
+            num_blocks=self.args.num_blocks,
             batch_size=1,
             policy_size=704,
             mlp_expand_factor=4,
-            representation="spatial",
+            representation=self.args.representation,
             use_factorized_policy=False,
             attn_backend="math",
             autocast_mode="none",
@@ -341,6 +345,7 @@ class PPOTrainingRunner:
                         self.writer.add_scalar("PPO/avg_game_length", avg_len, iteration)
 
                 # Save model with the best reward
+                # TODO this might not be a good indicator of an actually best model in the case of self play
                 if self.args.save_dir and has_episodes:
                     if self.best_reward is None or avg_reward > self.best_reward:
                         self.best_reward = avg_reward
