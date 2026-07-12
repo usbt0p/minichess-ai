@@ -73,4 +73,12 @@ TODO write...
 TODO write...
 
 ## 0307
-Using `git info/exclude` lets you exclude files locally without using a `.gitignore` , in case you want some local stuff to stay in your repo untracked, but not commit them
+Using `git info/exclude` lets you exclude files locally without using a `.gitignore`, in case you want some local stuff to stay in your repo untracked, but not commit them
+
+## 1207
+
+just learned about shell brace expansion... this is so useful!
+```bash
+scp -r lucas@1.2.3.4:~/tfg/minichess-ai/results/hypothesis3/tabula_rasa_seed_{1,32,999} results/hypothesis3/
+```
+also, wildcard works there too!

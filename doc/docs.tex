@@ -89,9 +89,11 @@ If you have a good opponent you have bad luck, and if you have a bad opponent yo
 
 \vspace{30pt}
 
-Este Trabajo de Fin de Grado consiste en la aplicación y estudio del Aprendizaje por Refuerzo (RL) sobre una variante de ajedrez simplificada, el ajedrez $5\times5$ (ajedrez de Gardner o Minichess). El objetivo central es validar el uso de arquitecturas Transformer en tareas de RL, estudiando el efecto de las representaciones del tablero y comprobando si el preentrenamiento supervisado mejora la convergencia del agente.
+Este Trabajo de Fin de Grado consiste en la aplicación y estudio del Aprendizaje por Refuerzo (RL) sobre una variante de ajedrez simplificada, el ajedrez $5\times5$ (tambien llamado ajedrez de Gardner o Minichess). El objetivo central es validar el uso de arquitecturas Transformer en tareas de RL, estudiando el efecto de las representaciones del tablero y comprobando si el preentrenamiento supervisado mejora la convergencia del agente, y mostrando como, aún siendo un problema reducido, esta versión del ajedrez presenta desafíos y complejidades suficientes para la investigación de técnicas de RL.
 
-Dado que el ajedrez $8\times8$ demanda una capacidad computacional y un tiempo de ejecución que excede con creces los recursos disponibles en el marco del trabajo, se ha optado por utilizar el ajedrez $5\times5$. Este entorno reducido mantiene las dinámicas esenciales del aprendizaje por refuerzo adversarial, como las acciones legales, las recompensas diferidas y la planificación estratégica, pero se mantiene computacionalmente manejable para la experimentación ágil.
+Dado que el ajedrez $8\times8$ requiere una capacidad computacional y un tiempo de ejecución que excede con creces los recursos disponibles en el marco del trabajo, se ha optado por utilizar el ajedrez $5\times5$. Este entorno reducido mantiene las dinámicas esenciales del aprendizaje por refuerzo adversarial, como las acciones legales, las recompensas diferidas y la planificación estratégica, pero se mantiene computacionalmente manejable para la experimentación ágil con hardware de consumo.
+
+A nivel personal este trabajo busca, además de lo anteriormente mencionado, proporcionar una oportunidad para entender mejor el proceso de investigación y desarrollo de un proyecto de IA, desde la formulación de las hipótesis hasta la evaluación de los resultados. También busca servir para aprender acerca del diseño y programación de redes neuronales avanzadas con el uso de mecanismos de atención, y servir como un "simulacro" de los procesos de preentrenamiento seguidos de aprendizaje por refuerzo, los cuales son muy comunes a día de hoy en aplicaciones como los modelos de lenguaje, modelos multimodales, o ciertos sistemas de recomendación, e incluso procesos como el \textit{imitation learning} en juegos de acción continua o entornos de robótica.
 
 El resto de este documento se estructura de la siguiente manera: en la Sección~\ref{sec:objetivos} se detallan los objetivos generales y específicos junto con el alcance del trabajo; en la Sección~\ref{sec:antecedentes} se describe el estado del arte en transformers, aprendizaje por refuerzo y ajedrez y los antecedentes del problema; en la Sección~\ref{sec:resumen} se introduce y resume la solución metodológica planteada. 
 
@@ -113,8 +115,9 @@ Diseñar, entrenar y evaluar un agente de Inteligencia Artificial basado en arqu
 \begin{enumerate}
     \item Implementar un algoritmo de RL para ajedrez $5\times5$, junto a la lógica necesaria para self-play.
     \item Desarrollar y adaptar una arquitectura Transformer para procesar estados del tablero y predecir distribuciones de probabilidad sobre el espacio de acciones.
+    \item Preentrenar de forma eficiente un modelo transformer mediante aprendizaje supervisado.
     \item Evaluar empíricamente el impacto de distintas representaciones del tablero y del espacio de acciones en la velocidad de aprendizaje y rendimiento del modelo.
-    \item Comparar el rendimiento y la eficiencia de convergencia entre un agente entrenado mediante RL \textit{tabula rasa} frente a un agente con inicialización mediante aprendizaje supervisado.
+    \item Comparar el rendimiento y la eficiencia de convergencia entre un agente entrenado mediante RL desde una inicialización aleatoria (\textit{tabula rasa}) frente a un agente con inicialización mediante aprendizaje supervisado.
 \end{enumerate}
 
 \subsection{Alcance y limitaciones}
@@ -123,7 +126,7 @@ El alcance de este trabajo se ha enmarcado en los siguientes límites prácticos
 \begin{itemize}
     \item \textbf{Entorno de juego:} Se limita estrictamente a la variante Gardner de ajedrez $5\times5$. No se explorarán otras variantes del miniajedrez ni el ajedrez estándar $8\times8$.
     \item \textbf{Recursos computacionales:} El entrenamiento de los modelos se realizará utilizando hardware de consumo accesible (una GPU de gama media/alta) con un límite temporal de entrenamiento acotado a un número de horas que permita la experimentación iterativa ágil.
-    \item \textbf{Algoritmos de aprendizaje:} Se prioriza el uso de métodos de optimización basados en gradiente de política (PPO), evaluando el \textit{Model-Free RL}. No se hará uso de algoritmos basados en planificación o búsqueda explícita (\textit{Lookahead Search} como MCTS), con el fin de optimizar el tiempo de ejecución en hardware de consumo.
+    \item \textbf{Algoritmos de aprendizaje:} Se prioriza el uso de métodos de optimización basados en gradiente de política (PPO), evaluando el \textit{Model-Free RL}. No se hará uso de algoritmos basados en planificación o búsqueda explícita como MCTS (Monte Carlo Tree Search), con el fin de optimizar el tiempo de ejecución en hardware de consumo.
 \end{itemize}
 
 \newpage
@@ -138,7 +141,7 @@ Ambos procesos, búsqueda y aprendizaje, son altamente exigentes en términos de
 \noindent\rule{\textwidth}{0.2pt}
 \subsection{Deep Reinforcement Learning en Ajedrez}
 
-Desde la irrupción del aprendizaje profundo y el aprendizaje por refuerzo en los juegos de tablero, se han explorado diversas arquitecturas neuronales. El hito inicial lo marcó AlphaGo \cite{silver2016mastering}, que combinó redes convolucionales (CNNs) con búsqueda de árbol Monte Carlo (MCTS) para vencer al campeón mundial de Go. Posteriormente, esta metodología se generalizó con AlphaZero \cite{silver2018general}, un algoritmo de RL capaz de dominar el ajedrez, el shogi y el Go partiendo desde cero (\textit{tabula rasa}) y utilizando una única red neuronal para evaluar posiciones y priorizar jugadas. El impacto de estos métodos fué más allá, al demostrar el poder del \textit{deep reinforcement learning} en otros dominios científicos complejos, como la predicción de estructuras de proteínas mediante AlphaFold \cite{jumper2021highly}.
+Desde la irrupción del aprendizaje profundo y el aprendizaje por refuerzo en los juegos de tablero, se han explorado diversas arquitecturas neuronales. El hito inicial lo marcó AlphaGo \cite{silver2016mastering}, que combinó redes convolucionales (CNNs) con búsqueda de árbol Monte Carlo (MCTS) para vencer al campeón mundial de Go. Posteriormente, esta metodología se generalizó con AlphaZero \cite{silver2018general}, un algoritmo de RL capaz de dominar el ajedrez, el shogi y el Go partiendo desde cero y utilizando una única red neuronal para evaluar posiciones y priorizar jugadas. El impacto de estos métodos fué más allá, al demostrar el poder del \textit{deep reinforcement learning} en otros dominios científicos complejos, como la predicción de estructuras de proteínas mediante AlphaFold \cite{jumper2021highly}.
 
 Paralelamente, en el ámbito de los motores de ajedrez tradicionales, enfoques como NNUE (\textit{Efficiently Updatable Neural Networks}) \cite{nasu2018efficiently} tomaron un camino alternativo: en lugar de grandes redes convolucionales, emplean arquitecturas \textit{feed-forward} muy ligeras con sesgos inductivos específicos del ajedrez, optimizadas para ejecutarse en CPU y priorizar la velocidad de evaluación y la profundidad de búsqueda táctica. 
 
@@ -150,7 +153,7 @@ En estos motores de juego, las redes neuronales actúan como la parte \textit{es
 Entre los enfoques anteriores, ninguno hacía uso de mecanismos de atención ni de arquitecturas basadas en Transformers, lo que nos lleva a explorar el potencial de estos últimos.
 Más recientemente, tras el éxito de esta arquitectura en los modelos de lenguaje (LLMs), han surgido aproximaciones que buscan aplicarla a tareas de RL y ajedrez. En este trabajo, se busca demostrar que la arquitectura Transformer es altamente competitiva para la tarea de RL, utilizando un entorno $5\times5$ para facilitar la simulación y el muestreo iterativo.
 
-En este ámbito, Ruoss et al. \cite{ruoss2024amortizedplanninglargescaletransformers} demostraron la viabilidad de realizar planificación amortizada utilizando Transformers a gran escala aplicados al ajedrez. Por otro lado, Monroe y Chalmers \cite{monroe2024masteringchesstransformermodel} desarrollaron un modelo basado en Transformers para dominar el ajedrez, sentando las bases para Chessformer, una arquitectura unificada propuesta posteriormente por Monroe et al. \cite{monroe2026chessformerunifiedarchitecturechess}. Además, Jenner et al. \cite{jenner2024evidencelearnedlookaheadchessplaying} aportaron evidencia sobre la existencia de capacidades de anticipación y planificación (\textit{look-ahead}) aprendidas de forma implícita por este tipo de redes, mientras que el proyecto open source Leela Chess Zero también ha incorporado y evaluado estas arquitecturas en su motor de juego \cite{lczero2024transformerprogress}.
+En este ámbito, Ruoss et al. \cite{ruoss2024amortizedplanninglargescaletransformers} demostraron la viabilidad de realizar planificación amortizada utilizando Transformers a gran escala aplicados al ajedrez. Por otro lado, Monroe y Chalmers \cite{monroe2024masteringchesstransformermodel} desarrollaron un modelo basado en Transformers para dominar el ajedrez, sentando las bases para Chessformer, una arquitectura unificada propuesta posteriormente por Monroe et al. \cite{monroe2026chessformerunifiedarchitecturechess}. Además, Jenner et al. \cite{jenner2024evidencelearnedlookaheadchessplaying} aportaron evidencia sobre la existencia de capacidades de anticipación y planificación aprendidas de forma implícita por este tipo de redes, mientras que el proyecto open source Leela Chess Zero también ha incorporado y evaluado estas arquitecturas en su motor de juego \cite{lczero2024transformerprogress}.
 
 Por su parte, el estudio del miniajedrez o ajedrez en tableros reducidos tiene una larga trayectoria. Existen miles de variantes del ajedrez; la variante de Gardner fue propuesta originalmente por Martin Gardner en 1969\cite{beasley2007encyclopedia}. Este tipo de entornos se ha empleado tradicionalmente para analizar la complejidad matemática del juego y estudiar algoritmos de búsqueda heurística, al reducir drásticamente el espacio de estados sin perder la naturaleza del ajedrez convencional; necesidad de táctica y estrategia, y emergencia de dinámicas interesantes al contar con distintos tipos de pieza (lo que aumenta el número de combinaciones posibles). El ajedrez $5\times5$ es particularmente interesante ya que permite mantener todos los tipos de pieza (torre, alfil, caballo, dama y rey) y una disposición inicial similar a la del ajedrez estándar. 
 
@@ -192,13 +195,14 @@ Para dar respuesta a los objetivos planteados, el desarrollo práctico se articu
 
 \subsubsection{Entorno: Reglas del ajedrez 5x5}
 
-El ajedrez $5\times5$ en su variante de Gardner es una reducción matemática del ajedrez estándar. Las reglas básicas de movimiento y captura para cada pieza individual son idénticas a las del ajedrez estándar $8\times8$, con las siguientes modificaciones estructurales:
+El ajedrez $5\times5$ en su variante de Gardner es una reducción del ajedrez estándar. Para alguien familiar con el ajedrez, la variante de Gardner es idéntica, excepto que se recorta el tablero a un tamaño inferior, y se mantiene la distribución de las piezas de la columna a hasta la e, eliminando el enroque y el avance doble de peón. 
+En caso de no conocer las reglas del ajedrez, a continuación se detallan las de esta variante:
 \begin{itemize}
     \item \textbf{Tablero:} tamaño de $5\times5$ casillas (columnas $a$ a $e$, filas $1$ a $5$).
-    \item \textbf{Disposición inicial:} La misma que el ajedrez estándar, pero con las piezas del lado de rey eliminadas, y una sola fila de separación entre peones. Cada jugador cuenta con 10 piezas. En la fila 1 (blancas) y fila 5 (negras) se colocan las piezas mayores en el orden: Torre ($R$), Caballo ($N$), Alfil ($B$), Dama ($Q$) y Rey ($K$). Los peones correspondientes se colocan en la fila 2 (blancas) y fila 4 (negras).
+    \item \textbf{Disposición inicial:} La misma que el ajedrez estándar, pero con las piezas del lado de rey eliminadas, y una sola fila de separación entre peones. Cada jugador cuenta con 10 piezas. En la fila 1 (blancas) y fila 5 (negras) se colocan las piezas mayores en el orden: Torre ($R$), Caballo ($N$), Alfil ($B$), Dama ($Q$) y Rey ($K$). Los peones correspondientes se colocan en la fila 2 (blancas) y fila 4 (negras). La disposición de tablero se puede representar mediante una notación que veremos a continuación.
     \item \textbf{Omisión de reglas especiales:} No existe el enroque ni el avance doble de peón. Como consecuencia directa, tampoco existe la captura al paso (\textit{en passant}).
-    \item \textbf{Promoción de peones:} Cuando un peón alcanza la fila límite opuesta (fila 5 para blancas, fila 1 para negras), es obligatorio promocionarlo a una de las siguientes cuatro piezas: Dama, Torre, Alfil o Caballo.
-    \item \textbf{Condiciones de fin de partida:} La partida finaliza por (A) jaque mate (el rey está amenazado y no puede retirarse a una casilla a salvo, cubrirse, o capturar a la pieza que lo amenaza), (B) rey ahogado (\textit{stalemate}, el rey no está en jaque pero el jugador no tiene ningún movimiento legal), (C) insuficiencia de material para dar jaque mate (posición muerta), (D) si pasan 75 movimientos sin capturas ni avances de peón, o (E) tablas por quíntuple repetición (cinco posiciones iguales a lo largo de toda la partida (no necesariamente consecutivas)).
+    \item \textbf{Coronación de peones:} Cuando un peón alcanza la fila límite opuesta (fila 5 para blancas, fila 1 para negras), es obligatorio coronarlo a una de las siguientes cuatro piezas: Dama, Torre, Alfil o Caballo.
+    \item \textbf{Condiciones de fin de partida:} La partida finaliza por (A) jaque mate (el rey está amenazado y no puede retirarse a una casilla a salvo, cubrirse, o capturar a la pieza que lo amenaza), (B) rey ahogado (el rey no está en jaque pero el jugador no tiene ningún movimiento legal), (C) insuficiencia de material para dar jaque mate (posición muerta), (D) si pasan 75 movimientos sin capturas ni avances de peón, o (E) tablas por quíntuple repetición (cinco posiciones iguales a lo largo de toda la partida (no necesariamente consecutivas)).
     \item \textbf{Condiciones "reclamables":} la regla de las 5 repeticiones y de los 75 movimientos tiene sus contrapartes \textit{``reclamables''}: la regla de las 3 repeticiones y la de los 50 movimientos requieren que uno de los jugadores reclame tablas para activarse.
 \end{itemize}
 
@@ -206,7 +210,7 @@ Esta variante mantiene la naturaleza estratégica y la profundidad del ajedrez, 
 
 \textbf{Representación de estados mediante notación FEN}
 
-Para interactuar con el entorno de ajedrez y alimentar los modelos de aprendizaje, se utiliza la notación FEN (\textit{Forsyth-Edwards Notation}). Esta notación describe una posición particular del tablero mediante una cadena de texto que codifica la ubicación de las piezas, el jugador al que le toca mover y las disponibilidades de reglas especiales. En el contexto del ajedrez 5x5, el FEN se simplifica ya que cierta información no es aplicable a la variante de Gardner (como los enroques o las capturas \textit{en passant}).
+Para interactuar con el entorno de ajedrez y alimentar los modelos de aprendizaje, se utiliza la notación FEN (\textit{Forsyth-Edwards Notation}). Esta notación describe una posición particular del tablero mediante una cadena de texto que codifica la ubicación de las piezas, el jugador al que le toca mover y las disponibilidades de reglas especiales. En el contexto del ajedrez 5x5, el FEN se simplifica ya que cierta información no es aplicable a la variante de Gardner (como los enroques o las capturas al paso).
 
 El FEN inicial de la variante Gardner se representa como:
 \begin{verbatim}
@@ -230,7 +234,7 @@ Dado el factor de ramificación estimado del ajedrez estándar (media de 35 hijo
 
 Para estimar la complejidad de la variante Gardner $5\times5$, siguiendo un razonamiento similar al de Shannon, se pueden calcular las siguientes métricas:
 \begin{itemize}
-    \item \textbf{Espacio de estados $\mathcal{S}$:} Mehdi y Prost estimaron que el número total de posiciones legales en el ajedrez $5\times5$ es aproximadamente $9\times 10^{18}$ \cite{DBLP:journals/corr/MhallaP13}, descontando posiciones ilegales (reyes en jaque simultáneo, peones en las filas de inicio/promoción, etc...). 
+    \item \textbf{Espacio de estados $\mathcal{S}$:} Mehdi y Prost estimaron que el número total de posiciones legales en el ajedrez $5\times5$ es aproximadamente $9\times 10^{18}$ \cite{DBLP:journals/corr/MhallaP13}, descontando posiciones ilegales (reyes en jaque simultáneo, peones en las filas de inicio/coronación, etc...). 
     
     \textcolor{red}{\textbf{TODO: no mencionan como lo obtuvieron. puede que sea un recuento combinatorio estilo total = permutaciones(25, 10) * comb(15,5) * comb(10,5), (ordenar las 10 piezas principales, luego peones negros y luego blancos), pero esto deja muchas jugadas que son ilegales o que simplemente no tienen sentido , ademas de no contar las posiciones con capturas.}}
     \item \textbf{Complejidad del árbol de juego:} Considerando un factor de ramificación promedio $b \approx 12 \text{ a } 15$ jugadas legales por posición y una profundidad promedio de partida $d \approx 20$ plies (medios movimientos),
@@ -256,7 +260,7 @@ Si definimos el estado del ajedrez únicamente por la disposición física de la
 Para modelar el ajedrez $5\times5$ como un MDP, es necesario expandir el espacio de estados. Definimos el nuevo estado expandido $s \in \mathcal{S}$ como una tupla $s = (B, p, h)$ donde:
 \begin{enumerate}
     \item $B$: La disposición exacta de todas las piezas en el tablero de $5\times5$ en el instante $t$.
-    \item $p$: Un reloj o contador (\textit{half-move clock}) que registra el número de medios movimientos realizados desde la última captura o avance de peón.
+    \item $p$: Un contador, el \textit{half-move clock} o reloj de media jugada, que registra el número de medios movimientos realizados desde la última captura o avance de peón.
     \item $h$: Un registro de las posiciones previas ocurridas desde la última transición irreversible (o, de forma computacionalmente más eficiente, un mapa de frecuencias que contabilice cuántas veces se ha visitado la disposición $B$ actual en la partida en curso).
 \end{enumerate}
 
@@ -264,9 +268,9 @@ Al encapsular explícitamente los contadores $p$ y $h$ dentro de la representaci
 
 \subsubsection{Arquitectura basada en Transformers: Encoder y Self-Attention}\label{sec:transformer}
 
-A diferencia de los modelos de lenguaje (LLMs) que generan secuencias texto \textit{token} a \textit{token} utilizando una arquitectura de decodificador con enmascaramiento causal, la evaluación de un tablero de ajedrez requiere una comprensión bidireccional del estado completo en un instante de tiempo / posición. No es necesario enmascarar la atención para evitar observar tokens futuros, ya que por la propiedad de Markov demostrada anteriormente, una posición no depende de estados posteriores ni anteriores.
+A diferencia de los modelos de lenguaje (LLMs) que generan secuencias de texto token a token utilizando una arquitectura de decodificador con enmascaramiento causal, la evaluación de un tablero de ajedrez requiere una comprensión bidireccional del estado completo en un instante de tiempo / posición. No es necesario enmascarar la atención para evitar observar tokens futuros, ya que por la propiedad de Markov demostrada anteriormente, una posición no depende de estados posteriores ni anteriores.
 
-Por ello, la arquitectura propuesta se fundamenta en un \textbf{Transformer Encoder}. Este modelo procesa simultáneamente todas las casillas del tablero, permitiendo que cada pieza calcule su relevancia respecto a todas las demás sin restricciones de enmascaramiento. El núcleo de esta arquitectura es el mecanismo de Auto-Atención (\textit{Self-Attention})\cite{NIPS2017_3f5ee243}, definido formalmente como:
+Por ello, la arquitectura propuesta se fundamenta en un \textbf{Transformer Encoder}. Este modelo procesa simultáneamente todas las casillas del tablero, permitiendo que cada pieza calcule su relevancia respecto a todas las demás sin restricciones de enmascaramiento. El núcleo de esta arquitectura es el mecanismo de \textit{Self-Attention}\cite{NIPS2017_3f5ee243}, definido formalmente como:
 
 \[
     \text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V
@@ -293,9 +297,9 @@ $$\mathcal{L}= -L^{CLIP} + c_1 L^{VF}-c_2 L^{ENT}$$
 
 \textbf{Diseño de la Función de Recompensa}
 
-El Aprendizaje por Refuerzo es altamente susceptible al fenómeno de \textit{reward hacking}, donde el agente aprende a explotar lagunas en la función de recompensa para maximizar su puntuación sin alcanzar el objetivo real del problema. Por ejemplo, si se otorgara una recompensa positiva por cada captura de material, el agente podría aprender a retrasar el jaque mate indefinidamente para ``farmear'' piezas del oponente.
+El Aprendizaje por Refuerzo es muy susceptible al fenómeno de \textit{reward hacking} \cite{weng2024rewardhacking}, donde el agente aprende a explotar lagunas en la función de recompensa para maximizar su puntuación sin alcanzar el objetivo real del problema. Por ejemplo, si se otorgara una recompensa positiva por cada captura de material, el agente podría aprender a retrasar el jaque mate indefinidamente para ``farmear'' piezas del oponente, o tomar decisiones subóptimas como capturar un peón cuando se encuentre frente a una situación peligrosa.
 
-Para evitar este comportamiento subóptimo, se define una función de recompensa dispersa (\textit{sparse reward}) $R_t$, que únicamente emite una señal al alcanzar un estado terminal final, denominado $T$:
+Para evitar este comportamiento subóptimo, se define una función de recompensa dispersa $R_t$, que únicamente emite una señal al alcanzar un estado terminal final, denominado $T$:
 
 \[
 R_t = 
@@ -306,8 +310,7 @@ R_t =
 \end{cases}
 \]
 
-Esta escasez de señal dificulta las fases iniciales del entrenamiento, justificando así la necesidad de técnicas avanzadas o inicialización supervisada para guiar al modelo en las etapas tempranas para acelerar la convergencia de PPO.
-
+Esta escasez de señal dificulta las fases iniciales del entrenamiento, lo que justifica la necesidad de técnicas avanzadas o inicialización supervisada para guiar al modelo en las etapas tempranas para acelerar la convergencia de PPO.
 
 
 \subsection{Marco práctico}\label{sec:marco_practico}
@@ -329,11 +332,11 @@ Para evaluar la Hipótesis 1, se instrumentarán y compararán dos representacio
 De manera análoga, la forma en que la red proyecta sus predicciones altera drásticamente la topología del espacio de optimización. Se implementarán las siguientes cabezas de salida:
 
 \begin{itemize}
-    \item \textbf{Política Plana Discreta (Flat Policy):} Consiste en un vector de salida lineal que mapea todas las posibles transiciones legales del juego. En un tablero 5x5, considerando que una pieza no puede moverse a su propia casilla origen, existen $5^2 \times (5^2 - 1) = 600$ movimientos posicionales puros. Adicionalmente, las promociones de peón requieren un modelado independiente. 
+    \item \textbf{Política Plana Discreta (Flat Policy):} Consiste en un vector de salida lineal que mapea todas las posibles transiciones legales del juego. En un tablero 5x5, considerando que una pieza no puede moverse a su propia casilla origen, existen $5^2 \times (5^2 - 1) = 600$ movimientos posicionales puros. Adicionalmente, las coronaciones de peón requieren un modelado independiente. 
     
-    En Minichess, los peones en las columnas exteriores (a, e) tienen 2 opciones al coronar (avance o captura simple), mientras que los peones en columnas centrales (b, c, d) tienen 3. Esto resulta en $(2+3+3+3+2) = 13$ movimientos de promoción. Multiplicado por las 4 piezas posibles de promoción (Reina, Torre, Alfil, Caballo) y los 2 colores, se añaden 104 neuronas. La salida de la política (\textit{policy head}) será, por tanto, un vector estricto de \textbf{704 neuronas}.
+    En Minichess, los peones en las columnas exteriores (a, e) tienen 2 opciones al coronar (avance o captura simple), mientras que los peones en columnas centrales (b, c, d) tienen 3. Esto resulta en $(2+3+3+3+2) = 13$ movimientos de coronación. Multiplicado por las 4 piezas posibles de coronación (Reina, Torre, Alfil, Caballo) y los 2 colores, se añaden 104 neuronas. La salida de la política (\textit{policy head}) será, por tanto, un vector estricto de \textbf{704 neuronas}.
 
-    \item \textbf{Política Factorizada (Origen-Destino) como Tarea Auxiliar:} Esta codificación no sustituye a la política discreta plana principal de 704 salidas; añade una cabeza auxiliar para informar más del gradiente de pérdida durante el entrenamiento. Se compone de tres cabezas complementarias: una para la casilla de origen del movimiento (25 salidas), otra para la casilla de destino (25 salidas) y una tercera para predecir la clase de promoción (9 salidas). La pérdida de estas cabezas se pondera con un factor de 0.5 y se suma a la pérdida total. Esto reduce el espacio de salida de esta cabeza de 704 a 59 dimensiones en total, simplificando la tarea de optimización del gradiente. El objetivo es facilitar el aprendizaje de las representaciones del backbone de atención, y acelerar la convergencia inicial del entrenamiento proporcionando una señal de error más explícita y estructurada.
+    \item \textbf{Política Factorizada (Origen-Destino) como Tarea Auxiliar:} Esta codificación no sustituye a la política discreta plana principal de 704 salidas; añade una cabeza auxiliar para informar más del gradiente de pérdida durante el entrenamiento. Se compone de tres cabezas complementarias: una para la casilla de origen del movimiento (25 salidas), otra para la casilla de destino (25 salidas) y una tercera para predecir la clase de coronación (9 salidas). La pérdida de estas cabezas se pondera con un factor de 0.5 y se suma a la pérdida total. Esto reduce el espacio de salida de esta cabeza de 704 a 59 dimensiones en total, simplificando la tarea de optimización del gradiente. El objetivo es facilitar el aprendizaje de las representaciones del backbone de atención, y acelerar la convergencia inicial del entrenamiento proporcionando una señal de error más explícita y estructurada.
     
     \item \textbf{Cabeza de valor:} Se incluye una cabeza de valor que predice el valor esperado de la posición actual, lo que permite al modelo aprender a evaluar la calidad de las posiciones además de predecir acciones. Esta cabeza se implementa como una proyección lineal seguida de una activación $\tanh$ para acotar la salida en el rango $[-1, 1]$, donde -1 representa una derrota segura, 0 un empate y +1 una victoria segura. 
     
@@ -348,7 +351,7 @@ La arquitectura neural propuesta se basa en un modelo \textbf{Transformer Encode
 
     \item \textbf{Capa de Proyección de Entrada:} Dependiendo de la representación seleccionada (de las mencionadas en la sección~\ref{sec:encoder_input}):
     \begin{itemize}
-        \item \textit{Para la representación plana simple:} Consta de 25 casillas (que clasifican las piezas o casilla vacía), más la cuenta de repeticiones y la regla de los 50 movimientos (27 elementos en total). Adicionalmente, se concatena un \textbf{token de clase} \textit{CLS}, resultando en una secuencia de 28 tokens que se proyectan a la dimensión $d_k$ mediante una tabla de embeddings.
+        \item \textit{Para la representación plana simple:} Consta de 25 casillas (que clasifican las piezas o casilla vacía), más la cuenta de repeticiones y la regla de los 50 movimientos (27 elementos en total). Adicionalmente, se concatena un token de clase \texttt{CLS}, resultando en una secuencia de 28 tokens que se proyectan a la dimensión $d_k$ mediante una tabla de embeddings.
         
         \item \textit{Para la representación espacial (estilo AlphaZero):} El tablero reconstruye un tensor de dimensiones $15 \times 5 \times 5$ (12 canales de piezas, 1 canal para el jugador activo, 1 canal de repeticiones y 1 canal de halfmove clock). Cada una de las 25 casillas del tablero cuenta con un vector de 15 canales que se proyecta linealmente a la dimensión $d_k$. Adicionalmente, se concatena el \textbf{token de clase} \textit{CLS}, resultando en una secuencia de 26 tokens.
 
@@ -356,7 +359,7 @@ La arquitectura neural propuesta se basa en un modelo \textbf{Transformer Encode
     
     \item \textbf{Codificación Posicional:}
     \begin{itemize}
-        \item \textit{Para la representación plana simple:} Se añade un \textit{embedding} posicional absoluto \texttt{w\_pos\_embed} unidimensional de tamaño 28, asignando un vector aprendido a cada posición de la secuencia.
+        \item \textit{Para la representación plana simple:} Se añade un \textit{embedding} posicional absoluto y unidimensional de tamaño 28, asignando un vector aprendido a cada posición de la secuencia.
         \item \textit{Para la representación espacial:} Se inyecta información geométrica explícita en 2D. Se definen dos tablas de embeddings aprendidas: \texttt{row\_pos\_embed} de tamaño \texttt{(5, D)} (para las filas) y \texttt{col\_pos\_embed} de tamaño \texttt{(5, D)} (para las columnas). Para cada una de las 25 posiciones del tablero en la coordenada $(y, x)$, su codificación posicional es la suma de los embeddings de su fila y su columna. Para el token CLS se concatena un parámetro aprendido independiente \texttt{cls\_pos\_embed}.
     \end{itemize}
     
@@ -372,10 +375,10 @@ La arquitectura neural propuesta se basa en un modelo \textbf{Transformer Encode
 
     \item \textbf{Cabezas de Salida:} Tras la última normalización RMS, el estado se divide, extrayendo el tensor del \textit{CLS token} y aislando los $25$ vectores resultantes del estado final de las iteraciones de atención sobre las celdas del tablero. A continuación se bifurca en los siguientes procesos:
     \begin{itemize}
-        \item \textbf{Cabeza de Política Orientada a Relaciones (``\textit{Matrix Policy Head}"):} Proyecta cada uno de los 25 \textit{tokens} de las casillas paralelamente evaluando si estas funcionan como origen (\texttt{proj\_from}) y como destino (\texttt{proj\_to}) mediante MLPs. A continuación realiza un producto interno espacial (\textit{batched matmul}) entre estas incrustaciones elaborando una matriz de correlación $25 \times 25$. Paralelamente, se obtienen otros $104$ \textit{logits} del tensor \textit{CLS} que reflejan opciones de promoción, y se concatenan a los $600$ movimientos ordinarios. Obtenemos por lo tanto, una distribución de $704$ \textit{acciones}.
+        \item \textbf{Cabeza de Política Orientada a Relaciones (``\textit{Matrix Policy Head}"):} Proyecta cada uno de los 25 \textit{tokens} de las casillas paralelamente evaluando si estas funcionan como origen (\texttt{proj\_from}) y como destino (\texttt{proj\_to}) mediante MLPs. A continuación realiza un producto interno espacial (\textit{batched matmul}) entre estas incrustaciones elaborando una matriz de correlación $25 \times 25$. Paralelamente, se obtienen otros $104$ \textit{logits} del tensor \textit{CLS} que reflejan opciones de coronación, y se concatenan a los $600$ movimientos ordinarios. Obtenemos por lo tanto, una distribución de $704$ \textit{acciones}.
         \item \textbf{Cabeza de Valor (\textit{Value Head}):} Procesa únicamente el \textit{token CLS} final en un \textit{MLP} denso (Expansión Lineal, GELU, Dropout, Reducción de dim a escalar, Tanh) que acota la salida en el intervalo $[-1, 1]$.
 
-        \item \textbf{Cabezas Auxiliares de Política Factorizada:} Estas cabezas no se activan siempre. Se trata de las cabezas mencionada en la sección~\ref{sec:encoder_output}. Decodifican las representaciones del tablero y de CLS mediante tres proyecciones independientes en logits de casilla de origen (25), destino (25) y tipo de promoción (9). Estas cabezas se evalúan únicamente durante el entrenamiento supervisado, con propósitos de mejora de la señal de error.
+        \item \textbf{Cabezas Auxiliares de Política Factorizada:} Estas cabezas no se activan siempre. Se trata de las cabezas mencionada en la sección~\ref{sec:encoder_output}. Decodifican las representaciones del tablero y de CLS mediante tres proyecciones independientes en logits de casilla de origen (25), destino (25) y tipo de coronación (9). Estas cabezas se evalúan únicamente durante el entrenamiento supervisado, con propósitos de mejora de la señal de error.
     \end{itemize}
 
     \item \textbf{Funciones de Pérdida combinada:} Durante el entrenamiento supervisado se minimiza una función de pérdida multiobjetivo. Para las variantes sin pérdida factorizada auxiliar, la pérdida total $\mathcal{L}$ es la suma directa de la pérdida de la política principal $\mathcal{L}_p$ (entropía cruzada con logits), y la pérdida de valor, $\mathcal{L}_v$ (error cuadrático medio):
@@ -413,11 +416,9 @@ Por el contrario, Proximal Policy Optimization (PPO) es un algoritmo de aprendiz
 
 \textbf{Mecánica de Optimización y Estimación de Ventaja}
 
-El algoritmo PPO actualiza los pesos para evitar colapsar debido a cambios demasiado severos de la política por una actualización errónea. Esta es la función fundamental del hiperparámetro de recorte $\epsilon$ (\textit{clipping mechanism}). Este asegura que la actualización no destruya la política existente, al penalizar las actualizaciones estocásticas grandes que diverjan significativamente de la política anterior empleada para recolectar el episodio en cuestión.
+El algoritmo PPO actualiza los pesos para evitar colapsar debido a cambios demasiado severos de la política por una actualización errónea. Esta es la función fundamental del hiperparámetro de recorte $\epsilon$. Este asegura que la actualización no destruya la política existente, al penalizar las actualizaciones estocásticas grandes que diverjan significativamente de la política anterior empleada para recolectar el episodio en cuestión.
 
 Para balancear correctamente el sesgo y la varianza a la hora de determinar lo buena que es la acción tomada respecto a la acción promedio en el estado actual, se emplea la Estimación Generalizada de Ventaja (GAE - \textit{Generalized Advantage Estimation})\cite{DBLP:journals/corr/SchulmanWDRK17}. El algoritmo se puede sintetizar en el pseudocódigo del Algoritmo~\ref{alg:ppo}.
-
-\textcolor{red}{TODO revisar comparar con} \url{https://spinningup.openai.com/en/latest/algorithms/ppo.html#spinup.ppo_pytorch} \textcolor{red}{y paper original} 
 
 \begin{algorithm}[H]
 \caption{Proximal Policy Optimization (PPO-Clip)}\label{alg:ppo}
@@ -466,15 +467,16 @@ Para el entrenamiento en la fase de aprendizaje supervisado, se ha optado por ut
 La elección de entrenar el modelo únicamente con datos analizados a profundidad 4 responde a la necesidad de capturar la complejidad, sin utilizar algoritmos de búsqueda o planificación como MCTS en la fase de RL. El agente debe aprender a modelar la búsqueda como una función. Modelar el comportamiento de un motor clásico a este nivel obliga a la arquitectura a ir más allá de heurísticas simples. El conjunto de datos presenta cierta complejidad debido a dos factores principales:
 
 \begin{itemize}
-    \item \textbf{Aislamiento de posiciones quiescentes (\textit{quiescent positions}):} Se han filtrado y eliminado sistemáticamente las posiciones tácticas puras (tales como capturas inmediatas de material o movimientos bajo jaques forzados). Este filtrado garantiza que el Transformer no aprenda respuestas reactivas simples, sino que se vea obligado a internalizar patrones posicionales complejos o a emular conceptualmente la propia idea de búsqueda en profundidad bajo condiciones de recompensas dispersas (las señales terminales de victoria, derrota o empate).
+    \item \textbf{Aislamiento de posiciones quiescentes (\textit{quiescent positions}):} El generador de datos de \texttt{fairy-stockfish} ha filtrado y eliminado sistemáticamente las posiciones tácticas puras (tales como capturas inmediatas de material o movimientos bajo jaques forzados). Este filtrado se realiza habitualmente en entrenamiento de redes neuronales para motores de ajedrez con búsqueda, ya que obliga a la red a desarrollar una comprensión posicional, dejando los cálculos tácticos para el algoritmo de búsqueda. 
+    Esto garantiza que el Transformer no aprenda respuestas reactivas simples, sino que se vea obligado a internalizar patrones posicionales complejos o a emular conceptualmente la propia idea de búsqueda en profundidad bajo condiciones de recompensas dispersas.
     \item \textbf{Filtrado de posiciones repetidas:} Se ha aplicado un proceso de deduplicación sobre el archivo crudo para eliminar estados idénticos del tablero, previniendo memorización y contaminación de los conjuntos de validación o test.
 \end{itemize}
 
 Asimismo, el conjunto de datos cuenta con particularidades estructurales importantes:
 \begin{itemize}
-    \item \textbf{Restricción en las coronaciones:} A diferencia del modelo teórico que contempla múltiples opciones de promoción, las coronaciones registradas se limitan a la dama por una restricción de la librería de generación de datos. Prácticamente, esta suele ser la jugada óptima y la red sigue permitiendo la subcoronación en la posterior fase de RL.
+    \item \textbf{Restricción en las coronaciones:} A diferencia del modelo teórico que contempla múltiples opciones de coronación, las coronaciones registradas se limitan a la dama por una restricción de la librería de generación de datos. Prácticamente, esta suele ser la jugada óptima y la red sigue permitiendo la subcoronación en la posterior fase de RL.
     \item \textbf{Falta de información de repetición en FEN:} El formato FEN representa de manera estática el estado físico del tablero, el jugador activo, los derechos de enroque y la regla de los 50 movimientos. Sin embargo, carece del historial de posiciones pasadas de la partida, haciendo imposible determinar a partir de un solo FEN si se ha producido una repetición de la posición (regla de la triple repetición).
-    \item \textbf{Peculiaridad de la señal de resultado:} El campo \texttt{result} de las muestras de entrenamiento está expresado desde la perspectiva del jugador al que le toca mover (\textit{side to move}). De este modo, un valor de \texttt{1} indica la victoria para el jugador activo, un valor de \texttt{-1} indica su derrota, y un \texttt{0} indica tablas, a diferencia de una codificación absoluta donde el signo se asocia fijamente a un color.
+    \item \textbf{Peculiaridad de la señal de resultado:} El campo \texttt{result} de las muestras de entrenamiento está expresado desde la perspectiva del jugador al que le toca mover. De este modo, un valor de \texttt{1} indica la victoria para el jugador activo, un valor de \texttt{-1} indica su derrota, y un \texttt{0} indica tablas, a diferencia de una codificación absoluta donde el signo se asocia fijamente a un color.
     \item \textbf{Métricas de distribución y balance:} Sobre una muestra aleatoria representativa de 10,005,000 posiciones analizadas en detalle, se registra una clara predominancia de tablas con un ratio del $54.31\%$ (5,433,596 posiciones). El resto del conjunto refleja una ligera ventaja para las blancas, obteniendo un $23.53\%$ de victorias (2,354,634 posiciones) frente al $22.16\%$ de las negras (2,216,770 posiciones). Un desglose completo de estas estadísticas se incluye en el Anexo~\ref{sec:anexo_stats_dataset}.
 \end{itemize}
 
@@ -573,22 +575,24 @@ Para demostrar el efecto de la inicialización supervisada sobre la convergencia
                 \item Ejecutar el entrenamiento de PPO durante un horizonte fijo de iteraciones / episodios.
                 \item \textbf{Estrategia de Pool de Oponentes (\textit{Opponent Pooling}):} Siguiendo el método de optimización continua de AlphaZero, los juegos de \textit{self-play} se generan utilizando directamente los parámetros de la red en su estado más reciente \cite{silver2018general}, omitiendo pasos de evaluación explícitos o filtros de corte de rendimiento estilo AlphaGo Zero. No obstante, para prevenir el olvido catastrófico y el sobreajuste a la política inmediata anterior, se implementa un buffer mixto de emparejamiento con un ratio de 80/20:
                     \begin{itemize}
-                        \item El \textbf{80\%} de los entornos vectorizados jugarán contra la versión de la red continuamente actualizada (\textit{Self-Play} puro en tiempo real).
-                        \item El \textbf{20\%} restante de los entornos se emparejará contra un checkpoint aleatorio extraído del histórico acumulado del propio agente, el cual almacena una copia en disco de la red de forma periódica cada $K$ iteraciones de PPO.
+                        \item El \textbf{80\%} de los entornos vectorizados jugarán contra la versión de la red continuamente actualizada (\textit{self-play} puro).
+                        \item El \textbf{20\%} restante de los entornos se emparejará contra un checkpoint aleatorio extraído del histórico del propio agente. Este almacena una copia en disco de la red de forma periódica cada $K$ iteraciones de PPO.
                     \end{itemize}
                 \item Durante la recolección, las acciones se seleccionarán mediante muestreo estocástico directo a partir de las probabilidades obtenidas por la cabeza de política una vez aplicada la máscara de movimientos ilegales.
                 \item Registrar y guardar los datos internos del bucle: pérdida de la política (\textit{Policy Loss}), pérdida del crítico (\textit{Value Loss}), entropía de la acción y recompensa media del buffer.
             \end{enumerate}
     \end{itemize}
-\item \textbf{Métrica de Anclaje Externo (\textit{Anchor Arena}):} Dado que la recompensa interna del buffer es una métrica móvil relativa al nivel del pool de oponentes, la verdadera fuerza de juego se monitorizará mediante evaluaciones externas estáticas. Cada 5 iteraciones de PPO, se pausará el entrenamiento de forma síncrona y el modelo congelado disputará un torneo cerrado con un número significativo de partidas (TODO por definir) contra una serie de agentes concretos (TODO por definir, ideas: random, simple, heuristic baseline, etc). A partir de los resultados de este torneo, se calculará la tasa de victoria (\textit{winrate}) y el ELO estimado del agente.
-\item \textbf{Validación Estadística de la Convergencia:} Una vez finalizadas las ejecuciones de las 5 semillas, se extraerán los valores finales de ELO y las tasas de victoria del torneo. Se aplicarán tests estadísticos con el fin de rechazar matemáticamente la hipótesis nula de igualdad de medias y certificar que la aceleración del \textit{warm-start} es estadísticamente significativa ($\alpha = 0.05$).
-\textbf{Outputs esperados}: Gráfico de líneas temporal con la evolución del ELO estimado frente al oponente heurístico (donde la línea sólida representa la media paramétrica de las semillas y la región sombreada su desviación estándar $\pm\sigma$), y una tabla comparativa que contraste el ELO máximo e iteración de estabilización entre ambas variantes. Gráficas de recompensa media, con marcadores que indican los puntos en los que acaba un episodio (y por tanto puede haber un cambio de oponentes, y una fluctuation en la recompensa media).
+
+Dado que la recompensa interna del buffer es una métrica móvil relativa al nivel del pool de oponentes, la verdadera fuerza de juego se monitorizará mediante evaluaciones externas estáticas. Cada 5 iteraciones de PPO, se pausará el entrenamiento de forma síncrona y el modelo congelado disputará un torneo cerrado de 40 partidas contra un agente aleatorio y el agente heurístico. A partir de los resultados de este torneo, se calculará la tasa de victoria y el ELO estimado del agente.
+\item \textbf{Validación Estadística de la Convergencia:} Una vez finalizadas las ejecuciones de las 5 semillas, se extraerán los valores finales de ELO y las tasas de victoria del torneo. Se aplicarán tests estadísticos con el fin de rechazar matemáticamente la hipótesis nula de igualdad de medias y certificar que la aceleración del modelo preentrenado es estadísticamente significativa ($\alpha = 0.05$).
+\textbf{Outputs esperados}: Gráfico de líneas temporal con la evolución del ELO estimado frente al oponente heurístico (donde la línea sólida representa la media paramétrica de las semillas y la región sombreada su desviación estándar $\pm\sigma$), y una tabla comparativa que contraste el ELO máximo e iteración de estabilización entre ambas variantes. Gráficas de recompensa media, con marcadores que indican los puntos en los que acaba un episodio (y por tanto puede haber un cambio de oponentes, y una fluctuación en la recompensa media).
 \end{enumerate}
 
 \newpage
 % 5.12. Planificación y seguimiento
 \section{Planificación y seguimiento}\label{sec:planificacion}
 
+\textcolor{red}{TODO: escribir esto de forma más detallada. dar las fechas aproximadas iniciales, y explicar por que se retrasaron o se aplazaron}
 
 La sigiente planificación es una aproximación orientada a la experimentación rápida. Para minimizar la fricción en el desarrollo de los experimentos y la lógica interna del ajedrez Gardner esta se delega a \texttt{pyffish}, y del mismo modo, en la medida de lo posible los demás componentes se delegan también. Esta decisión acelera las fases iniciales del proyecto y permite además obtener datos de buena calidad para el preentrenamiento de los modelos. A continuación se presenta el plan de trabajo, dividido en fases:
 
@@ -603,14 +607,14 @@ La sigiente planificación es una aproximación orientada a la experimentación 
 
 \begin{itemize}
     \item Integración de \texttt{pyffish} para la configuración de la variante \texttt{gardner} y validación de movimientos.
-    \item Desarrollo y ejecución de \textit{scripts} de \textit{self-play} basados en evaluaciones a profundidad controlada de Fairy-Stockfish para construir el \textit{dataset} de supervisado inicial.
+    \item Desarrollo y ejecución de scripts de \textit{self-play} basados en evaluaciones a profundidad controlada de Fairy-Stockfish para construir el dataset de supervisado inicial.
 \end{itemize}
 
 \textbf{Fase 2: Arquitectura y Preentrenamiento (Supervisado)}
 
 \begin{itemize}
     \item Implementación del modelo Transformer Encoder y las distintas capas de adaptación (I/O).
-    \item Ejecución de experimentos de aprendizaje supervisado utilizando los \textit{datasets} generados, evaluando la velocidad de convergencia y capacidad de las distintas representaciones de tablero y acción.
+    \item Ejecución de experimentos de aprendizaje supervisado utilizando los datasets generados, evaluando la velocidad de convergencia y capacidad de las distintas representaciones de tablero y acción.
 \end{itemize}
 
 \textbf{Fase 3: Aprendizaje por Refuerzo (Pipeline de Self-Play)}
@@ -635,13 +639,6 @@ La sigiente planificación es una aproximación orientada a la experimentación 
 
 % 5.13. Principales aportaciones
 \section{Principales aportaciones}\label{sec:aportaciones}
-
-\textcolor{red}{\textbf{TODO aquí las gráficas!!!}}
-\textcolor{red}{\textbf{\begin{itemize}
-    \item No introducir conceptos nuevos. directo al grano.
-    \item Agrupar los resultados por cada una de las 3 hipótesis. Insertar las 1 o 2 gráficas correspondientes a cada bloque.
-\end{itemize}
-}}
 
 \subsection{Resultados generales en el entorno de Minichess}
 \textcolor{red}{qué gráficas / tablas puedo aportar para esta hipótesis? no es exactamente un problema cuantificable. quizás sirve con algo como:} 
@@ -849,7 +846,7 @@ Por otro lado, observamos que \textbf{el uso de una cabeza extra de política no
 \begin{enumerate}
     \item Por el diseño de la cabeza de política, ya existe un sesgo inductivo muy similar al de esta cabeza factorizada, que viene dado por el uso de la proyección a un vector de origen y destino y la posterior batch matrix multiplication, lo que puede anular su efecto sobre la representación interna.
     \item La función de pérdida utilizada de valor tiene una magnitud aproximadamente 5 veces menor que la de política. Si a esta función de pérdida añadimos la función de pérdida de la política factorizada, aún reducida al multiplicar por 0.5, es posible que esto resulte en un desbalance de la pérdida, provocando que el modelo reciba más "señal" de la política y menos del valor.
-    \item Finalmente, para explicar el empeoramiento de la política factorizada sobre los movimientos, una posibilidad es que este se deba a la introducción de un sesgo de independencia condicional. Al forzar a la red a predecir mediante tres sub-cabezas independientes (casilla de origen, casilla de destino y tipo de promoción), se introduce un sesgo inductivo de independencia condicional en la probabilidad conjunta de la jugada. 
+    \item Finalmente, para explicar el empeoramiento de la política factorizada sobre los movimientos, una posibilidad es que este se deba a la introducción de un sesgo de independencia condicional. Al forzar a la red a predecir mediante tres sub-cabezas independientes (casilla de origen, casilla de destino y tipo de coronación), se introduce un sesgo inductivo de independencia condicional en la probabilidad conjunta de la jugada. 
     Para el aprendizaje supervisado puro, esto puede ser un lastre: a pesar de resultar más informativo, acertar una jugada de profundidad de búsqueda 4 es más difícil si la red tiene que coordinar el acierto de tres variables discretas por separado en lugar de clasificar limpiamente un único vector unificado de 704 logits.
 \end{enumerate}
 
@@ -913,6 +910,9 @@ A partir de los resultados experimentales obtenidos, podemos concluir lo siguien
     \item equilibrar el valor de las pérdidas: dar mas peso a value loss
     \item dado el alcance, quizás habría sido mejor entrenar con un dataset sin filtrar, que incluya capturas y jaques...
     \item puede que girar el tablero fuera buena idea
+    \item utilizar distintos diseños para la función de recompensa, con el objetivo de acelerar la convergencia del aprendizaje. por ejemplo, utilizar un sistema de puntos por captura de piezas (valoradas según su tipo), o por control de zonas del tablero. esto, por supuesto, conlleva un riesgo a nivel de reward hacking, pero se podría mitigar utilizando mitigando esta recompensa gradualmente a medida que las iteraciones del aprendizaje por refuerzo avanzan
+    \item hablar sobre el no-uso de búsqueda. lo que se renuncia a nivel de performance al no usarla, y el por que no usarla es una decisión explícita para estudiar la capacidad de los modelos de aprender sin ayuda externa (no hay conocimiento previo de ajedrez)
+    
 \end{itemize}
 
 \textcolor{red}{TODO limitaciones del enfoque y posibles mejoras}
@@ -1115,9 +1115,9 @@ En la Tabla~\ref{tab:model_parameters_comparison} se resume la comparativa del n
     \hline
     \textbf{Modelo} & \textbf{Backbone / Configuración} & \textbf{N.º de Parámetros} & \textbf{Tamaño en Memoria} \\
     \hline
-    \texttt{Transformer dk64\_n3} & $d_k = 64$, $N = 3$ layers & 212,649 & 0.81 MB \\
-    \texttt{Transformer dk128\_n5} & $d_k = 128$, $N = 5$ layers & 1,132,137 & 4.32 MB \\
-    \texttt{MLP\_Baseline} (Big MLP) & 4 capas lineales densas & 5,270,212 & 20.10 MB \\
+    \texttt{Transformer dk64\_n3} & $d_k = 64$, $N = 3$ bloques transformer & 212,649 & 0.81 MB \\
+    \texttt{Transformer dk128\_n5} & $d_k = 128$, $N = 5$ bloques transformer & 1,132,137 & 4.32 MB \\
+    \texttt{MLP\_Baseline} & 4 capas lineales de 1024 neuronas & 5,270,212 & 20.10 MB \\
     \hline
     \end{tabular}
     \caption{Comparación de complejidad, parámetros entrenables y huella de memoria de los modelos evaluados.}
@@ -1333,7 +1333,7 @@ Las pérdidas individuales que componen la función de optimización global dura
         \mathcal{L}_v = (v - \hat{v})^2
     \end{equation}
 
-    \item \textbf{Pérdida Auxiliar de la Política Factorizada ($\mathcal{L}_{\text{aux}}$):} Para los modelos factorizados, esta pérdida se desglosa en la suma de tres entropías cruzadas independientes aplicadas sobre las predicciones de la casilla de origen ($\mathcal{L}_{\text{from}}$), casilla de destino ($\mathcal{L}_{\text{to}}$) y el tipo de pieza de promoción ($\mathcal{L}_{\text{promo}}$):
+    \item \textbf{Pérdida Auxiliar de la Política Factorizada ($\mathcal{L}_{\text{aux}}$):} Para los modelos factorizados, esta pérdida se desglosa en la suma de tres entropías cruzadas independientes aplicadas sobre las predicciones de la casilla de origen ($\mathcal{L}_{\text{from}}$), casilla de destino ($\mathcal{L}_{\text{to}}$) y el tipo de pieza de coronación ($\mathcal{L}_{\text{promo}}$):
     \begin{equation}
         \mathcal{L}_{\text{aux}} = \mathcal{L}_{\text{from}} + \mathcal{L}_{\text{to}} + \mathcal{L}_{\text{promo}}
     \end{equation}
