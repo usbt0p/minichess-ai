@@ -872,22 +872,203 @@ A partir de los resultados experimentales obtenidos, podemos concluir lo siguien
     \item \textbf{Resultados de Juego}: El mejor modelo obtenido supera en Elo a un modelo con conocimiento previo del valor de las piezas, aunque la tasa de victorias sea ligeramente inferior contra el mismo.
 \end{itemize}
 
-\subsection{Efectos de la inicialización supervisada sobre la convergencia del aprendizaje por refuerzo}
-\placeholderfig{Gráfica: Curva de convergencia Tabula Rasa vs Supervisado}{Tasa de victoria y avance del ELO estimado a lo largo del entrenamiento.}{fig:hip3_grafica}
+\subsection{Efectos de la inicialización supervisada sobre la convergencia del aprendizaje por refuerzo (Hipótesis 3)}
+
+Esta sección detalla el análisis del impacto de la inicialización supervisada (\textit{warm-start}) frente a un entrenamiento desde cero (\textit{tabula rasa}) en el algoritmo PPO de Minichess.
+
+- Explicar que se entrenaron 10 semillas independientes para cada variante (Tabula Rasa vs. Pre-entrenado) durante 300 iteraciones en self-play.
+
+- Reportar hiperparámetros! son similares a los de ablacio, pero hay datos concretos de ppo...
+
+- Metricas principales: Recompensa acumulada media por episodio, Entropía de la política (medida de la dispersión de exploración), Elo relativo obtenido mediante evaluaciones periódicas contra dos baselines fijos (Random y Heuristic).
+
+- explicar que el número de iteraciones habitual de algoritmos como este es enorme!!! el eje x de alphazero usa miles de iteraciones como medida, y aqui solo 300
+
+- Incluír hiperparámetros de esto!!!
+
+
+\subsubsection{Resultados del Entrenamiento y Convergencia de Pérdidas}
+
+- Explicar como converge la pérdida para cada variante...
+
+% put two at the top and one centered below them
+\begin{figure}[htbp]
+    \centering
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/h3_figures/mean_episode_reward.png}
+        \caption{Evolución de la recompensa media por episodio en self-play para Tabula Rasa y Pre-entrenado.}
+        \label{fig:hip3_reward}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/h3_figures/policy_entropy.png}
+        \caption{Decaimiento de la entropía de la política durante el entrenamiento.}
+        \label{fig:hip3_entropy}
+    \end{subfigure}
+    
+    \vspace{2em}
+    
+    \begin{subfigure}[b]{0.55\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/h3_figures/mean_total_loss.png}
+        \caption{Convergencia de la pérdida total media durante el entrenamiento PPO.}
+        \label{fig:hip3_total_loss}
+    \end{subfigure}
+    \caption{Curvas de aprendizaje de PPO para Tabula Rasa y Pre-entrenado: Recompensa media, Entropía de política y Pérdida total.}
+    \label{fig:hip3_learning_curves}
+\end{figure}
+
+\newpage
+
+\subsubsection{Evolución del Elo y Razones de Finalización de Partida}
+
+- Incluír hiperparámetros de esto!!!
+
+- \textbf{Elo relativo}: Explicar que las evaluaciones se realizan de forma aislada, por lo que las diferencias de Elo son relativas a la fuerza de cada baseline ($y=0$).
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.6\textwidth]{figures/h3_figures/elo_evolution_joint.png}
+    \caption{Evolución conjunta del Elo relativo contra agentes aleatorios y heurísticos.}
+    \label{fig:hip3_elo_joint}
+\end{figure}
+
+- Comentar cómo las partidas del modelo pre-entrenado pasan rápidamente de tablas a victorias por jaque mate, mientras que el modelo \textit{tabula rasa} requiere un periodo mucho más prolongado de exploración 
+
+- Explicar que las razones de finalizacion informan sobre lo bueno que es el modelo y lo que aprende. En los datos no había jaques!!! 
+
+- Es raro que la regla de 3 movimientos y otras cosas siguen ocurriendo. esto puede indicar que los tokens de metadatos no funcionan bien o que el entorno no esta reportando bien las repeticiones o otros datos
+
+-  TODO poner el otro torneo!! el de 20 ceckpoints... pero es poco informativo
+
+\begin{figure}[htbp]
+    \centering
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/h3_figures/pretrained_reasons_vs_heuristic.png}
+        \caption{Modelo Pre-entrenado}
+        \label{fig:hip3_reasons_pretrained}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/h3_figures/tabula_reasons_vs_heuristic.png}
+        \caption{Modelo Tabula Rasa}
+        \label{fig:hip3_reasons_tabula}
+    \end{subfigure}
+    \caption{Estructura apilada de los desenlaces de partida a lo largo del entrenamiento frente al baseline heurístico.}
+    \label{fig:hip3_reasons_joint}
+\end{figure}
+
+\subsubsection{Evaluación Estadística de la Fuerza de Juego Final}
+
+- Incluír hiperparámetros de esto!!!
+
+A lo largo de las 300 iteraciones de entrenamiento de PPO, se realizaron 40 enfrentamientos individuales de evaluación entre los modelos y 2 agentes de referencia, uno aleatorio y otro heurístico. Esto sirve como una medida de mejora del modelo a lo largo del entrenamiento, y lo que se observa es un aumento tanto en la diferencia de ELO (que es interpretable como un aumento en la probabilidad de victoria) así como una mayor velocidad de convergencia para los agentes preentrenados.
+
+Estos resultados se confirman a través de 2 tests estadísticos, uno paramétrico y otro no paramétrico (Welch's t-test y Wilcoxon rank-sum test sobre las 10 semillas utilizadas). Ambos concuerdan en el rechazo de la hipótesis nula; existe una diferencia significativa en la fuerza de juego final entre los modelos preentrenados y los modelos con inicializacion aleatoria.
+
+Se define formalmente la iteración de estabilización como la primera iteración $i$ donde el Elo medio iguala o supera el $90\%$ del Elo medio final siguiendo de acuerdo a la siguiente ecuación $I_{\text{estabilización}} = \min \{ i \in \text{Iteraciones} \mid \text{Elo}_i \ge 0.9 \cdot \text{Elo}_{\text{final}} \}$
+
+*(Para valores finales negativos de Elo, el criterio se ajusta proporcionalmente).*
+\textbf{Interpretación}: El modelo pre-entrenado se estabiliza contra el heurístico en la iteración $70$, mientras que el de tabula rasa necesita hasta la iteración $210$ (convergencia **$3.0\times$ más rápida**). Ambos test confirman que la diferencia en Elo final es altamente significativa ($p < 0.05$).
 
 \begin{table}[htbp]
     \centering
-    \begin{tabular}{|c|c|c|}
+    \begin{tabular}{|l|c|c|c|c|c|c|}
     \hline
-    \textbf{Inicialización del Agente} & \textbf{Epochs al pico ELO} & \textbf{ELO final} \\
+    \textbf{Métrica de Evaluación} & \textbf{Tabula Rasa} & \textbf{Pre-entrenado} & \textbf{$t$-stat} & \textbf{t-pval} & \textbf{$W$-stat} & \textbf{W-pval} \\
     \hline
-    Tabula rasa & & \\
-    Pre-entrenado (Supervisado) & & \\
+    Final Elo Diff vs. Random & $94.6 \pm 19.1$ & $\mathbf{457.3 \pm 82.0}$ & $12.52$ & $< 0.001$ & $3.06$ & $0.0022$ \\
+    Iteración de Estabilización & $105$ & $\mathbf{90}$ & -- & -- & -- & -- \\
+    \hline
+    Final Elo Diff vs. Heuristic & $-17.4 \pm 21.4$ & $\mathbf{283.4 \pm 50.7}$ & $15.06$ & $< 0.001$ & $3.06$ & $0.0022$ \\
+    Iteración de Estabilización & $210$ & $\mathbf{70}$ & -- & -- & -- & -- \\
     \hline
     \end{tabular}
-    \caption{Comparativa de convergencia pre-entrenamiento vs tabula rasa (Hipótesis 3).}
-    \label{tab:hip3}
+    \caption{Comparación estadística detallada de la convergencia y fuerza final (Semilla 42).}
+    \label{tab:hip3_stats}
 \end{table}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.6\textwidth]{figures/h3_figures/final_elo_joint_violin.png}
+    \caption{Gráfico de violín de la distribución de Elo final}
+    \label{fig:hip3_stats_plots}
+\end{figure}
+
+
+\subsubsection{Resultados del Torneo Mixto de 8 Agentes}
+Para co-calibrar la progresión real de los checkpoints, se muestra el torneo de liga (round-robin) en una escala de Elo única (Bradley-Terry) anclada al agente aleatorio en $1000$ Elo.
+
+- OJO!!! este torneo se hizo con un método distinto al anterior: se usó directamente el output de la política, tal y como juega el agente en el ppo, no con muestreo de 1 ply
+
+- Incluír hiperparámetros de esto!!!
+
+\begin{table}[htbp]
+    \centering
+    \begin{tabular}{|l|c|}
+    \hline
+    \textbf{Nombre del Agente} & \textbf{Clasificación Elo (BT)} \\
+    \hline
+    \texttt{RandomAgent} & $1000.0$ \\
+    \texttt{HeuristicAgent} & $1092.6$ \\
+    \texttt{tabula\_rasa\_it0} & $996.1$ \\
+    \texttt{tabula\_rasa\_it150} & $1080.2$ \\
+    \texttt{tabula\_rasa\_it300} & $1147.7$ \\
+    \texttt{pretrained\_it0} & $985.1$ \\
+    \texttt{pretrained\_it150} & $1418.5$ \\
+    \texttt{pretrained\_it300} & $\mathbf{1424.4}$ \\
+    \hline
+    \end{tabular}
+    \caption{Resultados del Torneo Mixto de 8 Agentes.}
+    \label{tab:hip3_mixed_tournament}
+\end{table}
+
+\begin{figure}[htbp]
+    \centering
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/h3_figures/win_rate_matrix_with_draws.png}
+        \caption{Con tablas incluidas}
+        \label{fig:hip3_matrix_with_draws}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/h3_figures/win_rate_matrix_no_draws.png}
+        \caption{Sin tablas (solo victorias/derrotas)}
+        \label{fig:hip3_matrix_no_draws}
+    \end{subfigure}
+    \caption{Matrices de tasa de victoria en el torneo de calibración cruzada de 8 agentes.}
+    \label{fig:hip3_matrices}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.8\textwidth]{figures/h3_figures/game_termination_reasons.png}
+    \caption{Estructura apilada de los desenlaces de partida durante el torneo mixto de calibración.}
+    \label{fig:hip3_tournament_reasons}
+\end{figure}
+
+\begin{itemize}
+    \item \textbf{Análisis de Progreso}: 
+    \begin{itemize}
+        \item el modelo preentrenado lo hace peor que el aleatorio...
+        \item el mejor es el más entrenado
+    \end{itemize}
+\end{itemize}
+
+Explicar que al evaluar sin búsqueda Monte Carlo, el muestreo con baja temperatura en el estado inicial idéntico tiende a volverse completamente determinista. Observando las partidas del torneo el modelo de 300 iteraciones escoge siempre la misma apertura a pesar dw que el torneo tiene temperatura 0.225
+
+- Incluír hiperparámetros de esto!!!
+
+\subsubsection{Conclusión sobre la Hipótesis 3}
+\begin{itemize}
+    \item \textbf{Se confirma la hipótesis}: La inicialización supervisada proporciona un punto de partida óptimo que acelera sustancialmente el aprendizaje por refuerzo y permite alcanzar cotas de juego superiores en una fracción del tiempo de computación.
+\end{itemize}
 
 % 5.14. Conclusiones
 \section{Conclusiones}\label{sec:conclusiones}
@@ -912,6 +1093,7 @@ A partir de los resultados experimentales obtenidos, podemos concluir lo siguien
     \item puede que girar el tablero fuera buena idea
     \item utilizar distintos diseños para la función de recompensa, con el objetivo de acelerar la convergencia del aprendizaje. por ejemplo, utilizar un sistema de puntos por captura de piezas (valoradas según su tipo), o por control de zonas del tablero. esto, por supuesto, conlleva un riesgo a nivel de reward hacking, pero se podría mitigar utilizando mitigando esta recompensa gradualmente a medida que las iteraciones del aprendizaje por refuerzo avanzan
     \item hablar sobre el no-uso de búsqueda. lo que se renuncia a nivel de performance al no usarla, y el por que no usarla es una decisión explícita para estudiar la capacidad de los modelos de aprender sin ayuda externa (no hay conocimiento previo de ajedrez)
+    \item en general, molaría escalar el experimento... mejor entorno, paralelizar entre varios ordenadores, quizas usar PGX para aprovechar JAX y entorno vectorizado. también, una red más grande y más datos de preentrenamiento.
     
 \end{itemize}
 

@@ -78,7 +78,7 @@ class TransformerAgent(ChessAgent):
             policy_logits = policy_logits.squeeze(0)
 
         # Mask out illegal moves
-        legal_indices = [uci_to_index(m, promotions=True) for m in legal_moves]
+        legal_indices = [uci_to_index(m) for m in legal_moves]
         masked_logits = torch.full_like(policy_logits, -1e9)
         masked_logits[legal_indices] = policy_logits[legal_indices]
 
@@ -158,7 +158,7 @@ class TransformerAgent(ChessAgent):
             value_val = value_pred.squeeze(-1).squeeze(0).item()
 
         # Mask out illegal moves
-        legal_indices = [uci_to_index(m, promotions=True) for m in legal_moves]
+        legal_indices = [uci_to_index(m) for m in legal_moves]
 
         # Softmax over legal moves
         legal_logits = policy_logits[legal_indices]
@@ -198,7 +198,7 @@ class InMemoryTransformerAgent(ChessAgent):
         self.representation = encoder_config.representation
 
     def select_move(
-        self, fen: str, legal_moves: list, temperature: float = 0.1, repetition: int = 0
+        self, fen: str, legal_moves: list, temperature: float = 1.0, repetition: int = 0
     ):
         """Select a move by sampling from the policy head directly (no search lookahead)."""
         if not legal_moves:
