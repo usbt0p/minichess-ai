@@ -95,7 +95,23 @@ def plot_win_rate_matrix(
     matrix = np.array(matrix, dtype=float)
     np.fill_diagonal(matrix, np.nan)
 
-    plt.figure(figsize=(9, 7), dpi=150)
+    num_agents = len(agent_names)
+    
+    # Scale figure size, ticks, text size, and numeric format dynamically
+    if num_agents > 15:
+        plt.figure(figsize=(10, 8), dpi=150)
+        fontsize_tick = 7
+        fontsize_text = 6
+        diagonal_text = "-"
+        val_format = lambda v: f"{int(round(v * 100))}%"
+        title_fontsize = 12
+    else:
+        plt.figure(figsize=(9, 7), dpi=150)
+        fontsize_tick = 9
+        fontsize_text = 9
+        diagonal_text = "-"
+        val_format = lambda v: f"{v * 100:.1f}%"
+        title_fontsize = 14
 
     # Copy colormap and set bad values to lightgray
     cmap = plt.colormaps.get_cmap("RdBu_r").copy()
@@ -105,22 +121,22 @@ def plot_win_rate_matrix(
     plt.colorbar(im, label=colorbar_label)
 
     # Tick labels
-    plt.xticks(np.arange(len(agent_names)), agent_names, rotation=45, ha="right")
-    plt.yticks(np.arange(len(agent_names)), agent_names)
+    plt.xticks(np.arange(num_agents), agent_names, rotation=45, ha="right", fontsize=fontsize_tick)
+    plt.yticks(np.arange(num_agents), agent_names, fontsize=fontsize_tick)
 
     # Cell text annotations
-    for i in range(len(agent_names)):
-        for j in range(len(agent_names)):
+    for i in range(num_agents):
+        for j in range(num_agents):
             if i == j:
                 plt.text(
                     j,
                     i,
-                    "-",
+                    diagonal_text,
                     ha="center",
                     va="center",
                     color="black",
                     fontweight="bold",
-                    fontsize=10,
+                    fontsize=fontsize_text,
                 )
             else:
                 val = matrix[i, j]
@@ -129,15 +145,15 @@ def plot_win_rate_matrix(
                 plt.text(
                     j,
                     i,
-                    f"{val*100:.1f}%",
+                    val_format(val),
                     ha="center",
                     va="center",
                     color=color,
                     fontweight="bold",
-                    fontsize=9,
+                    fontsize=fontsize_text,
                 )
 
-    plt.title(title, fontsize=14, pad=15)
+    plt.title(title, fontsize=title_fontsize, pad=15)
     plt.tight_layout()
     plt.savefig(save_path)
     plt.close()
