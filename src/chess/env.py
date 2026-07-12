@@ -11,7 +11,7 @@ import pyffish
 from src.chess.arena import get_game_status_with_reason
 from src.chess.agents.base import FenParts
 from src.chess.agents.random import RandomAgent
-from src.chess.agents.transformer import InMemoryTransformerAgent
+from src.chess.agents.transformer import TransformerAgent
 from src.chess.agents.historical import HistoricalAgent
 from src.models.dataset_parser import parse_fens_to_tensor, uci_to_index
 from src.models.transformerEncoder import MiniChessTransformerEncoder
@@ -201,7 +201,7 @@ def _worker(conn, count, opponent_types, encoder_config, pool_dir):
             opponents.append(RandomAgent())
         elif opp_type == "self_play":
             opponents.append(
-                InMemoryTransformerAgent(self_play_model, encoder_config, device="cpu")
+                TransformerAgent(self_play_model, encoder_config, device="cpu", use_lookahead=False)
             )
         elif opp_type == "historical":
             opponents.append(HistoricalAgent(encoder_config, pool_dir))
@@ -255,7 +255,7 @@ def _worker(conn, count, opponent_types, encoder_config, pool_dir):
                 for idx, env in enumerate(envs):
                     if not results[idx][2]: # not ended
                         opp = opponents[idx]
-                        if isinstance(opp, InMemoryTransformerAgent):
+                        if isinstance(opp, TransformerAgent) and not opp.use_lookahead:
                             self_play_indices.append(idx)
                             self_play_fens.append(env.current_fen)
                             self_play_reps.append(env._get_repetition_count())

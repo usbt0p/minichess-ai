@@ -13,7 +13,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from src.chess.agents.heuristic import HeuristicAgent
 from src.chess.agents.random import RandomAgent
-from src.chess.agents.transformer import InMemoryTransformerAgent
+from src.chess.agents.transformer import TransformerAgent
 from src.chess.arena import play_matchup
 from src.chess.env import MinichessEnv, ParallelVectorEnv, batch_parse_fens
 from src.models.transformerEncoder import MiniChessTransformerEncoder, EncoderConfig
@@ -115,7 +115,7 @@ def run_evaluation_vs_baseline(
     Returns:
         dict: Summary results of the evaluation matchup.
     """
-    agent_model = InMemoryTransformerAgent(model, encoder_config, device=device, name="current_model")
+    agent_model = TransformerAgent(model, encoder_config, device=device, name="current_model", use_lookahead=False)
     if baseline_name == "random":
         agent_baseline = RandomAgent()
     elif baseline_name == "heuristic":

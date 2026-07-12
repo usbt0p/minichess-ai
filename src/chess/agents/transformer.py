@@ -13,17 +13,22 @@ class TransformerAgent(ChessAgent):
     """
     ChessAgent that uses a trained MiniChessTransformerEncoder for move selection.
     Exposes 2 methods for move selection:
-    1. `select_move`: Uses a 1-step lookahead using the value head among the top-k moves suggested by the policy head. Can't be used directly in PPO.
+    1. `select_move`: Uses a 1-step lookahead using the value head among the top-k moves suggested by the policy head (if use_lookahead=True),
+       or samples from the policy head directly (if use_lookahead=False).
     2. `select_move_ppo`: Samples from the policy head directly, without lookahead. Can be used directly in PPO.
     """
 
     def __init__(
-        self, model_path: str, config_args: dict, device: str = "cpu", name: str = None
+        self, model_or_path, config_args: dict, device: str = "cpu", name: str = None, use_lookahead: bool = True
     ):
         if name is None:
-            name = os.path.basename(model_path).replace(".pth", "").replace(".pt", "")
+            if isinstance(model_or_path, str):
+                name = os.path.basename(model_or_path).replace(".pth", "").replace(".pt", "")
+            else:
+                name = "in_memory_model"
         super().__init__(name=name)
         self.device = device
+        self.use_lookahead = use_lookahead
 
         # Build EncoderConfig if dict is passed
         if isinstance(config_args, dict):
@@ -45,9 +50,12 @@ class TransformerAgent(ChessAgent):
             raise TypeError("config_args must be a dict or EncoderConfig instance")
 
         self.representation = encoder_config.representation
-        self.model = MiniChessTransformerEncoder.from_pretrained(
-            model_path, config=encoder_config, device=device
-        )
+        if isinstance(model_or_path, str):
+            self.model = MiniChessTransformerEncoder.from_pretrained(
+                model_or_path, config=encoder_config, device=device
+            )
+        else:
+            self.model = model_or_path
         self.model.eval()
 
     def select_move(
@@ -56,6 +64,7 @@ class TransformerAgent(ChessAgent):
         """
         Select a move using the Transformer agent. Uses both policy head to select top 6 moves and
         value head to select the best move among them, so equivalent to a 1-ply search.
+        If use_lookahead is False, bypasses lookahead completely and samples from policy head.
 
         Args:
             fen: The current FEN string.
@@ -79,11 +88,10 @@ class TransformerAgent(ChessAgent):
 
         # Mask out illegal moves
         legal_indices = [uci_to_index(m) for m in legal_moves]
-        masked_logits = torch.full_like(policy_logits, -1e9)
-        masked_logits[legal_indices] = policy_logits[legal_indices]
 
         # calculate policy entropy
-        probs = F.softmax(policy_logits[legal_indices], dim=-1)
+        legal_logits = policy_logits[legal_indices]
+        probs = F.softmax(legal_logits, dim=-1)
         entropy = -torch.sum(probs * torch.log(probs + 1e-9)).item()
 
         # Extract top-6 probabilities
@@ -91,6 +99,16 @@ class TransformerAgent(ChessAgent):
             zip(legal_moves, probs.tolist()), key=lambda x: x[1], reverse=True
         )
         top_6 = [{"move": m, "prob": round(p, 4)} for m, p in move_probs[:6]]
+
+        if not self.use_lookahead:
+            # Bypass value lookahead completely, sample from policy head
+            if temperature > 0.0:
+                probs_sample = F.softmax(legal_logits / temperature, dim=-1)
+                idx = torch.multinomial(probs_sample, 1).item()
+            else:
+                idx = torch.argmax(probs).item()
+            best_move = legal_moves[idx]
+            return best_move, entropy, top_6
 
         # 1-step lookahead using Value Head
         k = min(6, len(legal_moves))
@@ -183,44 +201,3 @@ class TransformerAgent(ChessAgent):
         log_prob = torch.log(probs_all[best_move_idx] + 1e-9).item()
 
         return best_move, best_move_idx, log_prob, value_val
-
-
-class InMemoryTransformerAgent(ChessAgent):
-    """
-    ChessAgent wrapper for in-memory model instances, primarily used in PPO environments and evaluations.
-    Bypasses value-lookahead search for fast evaluation and training rollouts.
-    """
-
-    def __init__(self, model, encoder_config, device="cpu", name="current_model"):
-        super().__init__(name=name)
-        self.model = model
-        self.device = device
-        self.representation = encoder_config.representation
-
-    def select_move(
-        self, fen: str, legal_moves: list, temperature: float = 1.0, repetition: int = 0
-    ):
-        """Select a move by sampling from the policy head directly (no search lookahead)."""
-        if not legal_moves:
-            return None, 0.0, []
-
-        features = parse_fens_to_tensor(
-            [fen], [repetition], self.representation, self.device
-        )
-
-        with torch.no_grad():
-            policy_logits, _ = self.model(features)
-            policy_logits = policy_logits.squeeze(0)
-
-        legal_indices = [uci_to_index(m) for m in legal_moves]
-        legal_logits = policy_logits[legal_indices]
-
-        if temperature > 0.0:
-            probs = F.softmax(legal_logits / temperature, dim=-1)
-            idx = torch.multinomial(probs, 1).item()
-        else:
-            probs = F.softmax(legal_logits, dim=-1)
-            idx = torch.argmax(probs).item()
-
-        best_move = legal_moves[idx]
-        return best_move, 0.0, []
