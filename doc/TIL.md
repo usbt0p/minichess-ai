@@ -82,3 +82,10 @@ just learned about shell brace expansion... this is so useful!
 scp -r lucas@1.2.3.4:~/tfg/minichess-ai/results/hypothesis3/tabula_rasa_seed_{1,32,999} results/hypothesis3/
 ```
 also, wildcard works there too!
+
+## 1307
+
+find the latest edited files in a directory (recursively) using
+```bash
+find /path -printf '%T+ %p\n' | sort -r | head
+```
