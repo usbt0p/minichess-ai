@@ -108,24 +108,29 @@ Las secciones finales presentan las aportaciones principales y resultados empír
 
 \subsection{Objetivo principal}
 
-Diseñar, entrenar y evaluar un agente de Inteligencia Artificial basado en arquitecturas Transformer mediante Aprendizaje por Refuerzo para el entorno de ajedrez $5\times5$.
+Diseñar, entrenar y evaluar un agente de Inteligencia Artificial basado en arquitecturas Transformer mediante Aprendizaje por Refuerzo para el entorno de ajedrez $5\times5$. Probar la viabilidad del entorno de ajedrez $5\times5$ en un contexto de investigación entorno a RL, demostrar la mejora proporcionada por sesgos inductivos en modelos de ajedrez, y confirmar la ventaja de modelos preentrenados frente a modelos entrenados desde cero en PPO.
+
+\rule{\textwidth}{0.2pt}
 
 \subsection{Objetivos específicos}
 
 \begin{enumerate}
     \item Implementar un algoritmo de RL para ajedrez $5\times5$, junto a la lógica necesaria para self-play.
-    \item Desarrollar y adaptar una arquitectura Transformer para procesar estados del tablero y predecir distribuciones de probabilidad sobre el espacio de acciones.
+    \item Desarrollar y adaptar una arquitectura Transformer para procesar estados del tablero y predecir distribuciones de probabilidad sobre el espacio de acciones y valores de estado.
+    \item Obtener datos adecuados para el preentrenamiento de un modelo de ajedrez Gardner.
     \item Preentrenar de forma eficiente un modelo transformer mediante aprendizaje supervisado.
     \item Evaluar empíricamente el impacto de distintas representaciones del tablero y del espacio de acciones en la velocidad de aprendizaje y rendimiento del modelo.
     \item Comparar el rendimiento y la eficiencia de convergencia entre un agente entrenado mediante RL desde una inicialización aleatoria (\textit{tabula rasa}) frente a un agente con inicialización mediante aprendizaje supervisado.
 \end{enumerate}
 
+\rule{\textwidth}{0.2pt}
+
 \subsection{Alcance y limitaciones}
 
-El alcance de este trabajo se ha enmarcado en los siguientes límites prácticos e investigativos:
+El alcance del trabajo se ha enmarcado en los siguientes límites prácticos e investigativos:
 \begin{itemize}
     \item \textbf{Entorno de juego:} Se limita estrictamente a la variante Gardner de ajedrez $5\times5$. No se explorarán otras variantes del miniajedrez ni el ajedrez estándar $8\times8$.
-    \item \textbf{Recursos computacionales:} El entrenamiento de los modelos se realizará utilizando hardware de consumo accesible (una GPU de gama media/alta) con un límite temporal de entrenamiento acotado a un número de horas que permita la experimentación iterativa ágil.
+    \item \textbf{Recursos computacionales:} El entrenamiento de los modelos se realizará utilizando hardware de consumo accesible (GPUs de gama media) con un límite temporal de entrenamiento acotado a un número de horas que permita la experimentación iterativa ágil.
     \item \textbf{Algoritmos de aprendizaje:} Se prioriza el uso de métodos de optimización basados en gradiente de política (PPO), evaluando el \textit{Model-Free RL}. No se hará uso de algoritmos basados en planificación o búsqueda explícita como MCTS (Monte Carlo Tree Search), con el fin de optimizar el tiempo de ejecución en hardware de consumo.
 \end{itemize}
 
@@ -138,7 +143,8 @@ El Aprendizaje por Refuerzo (RL) ha demostrado en los últimos años resultados 
 
 Ambos procesos, búsqueda y aprendizaje, son altamente exigentes en términos de computación, pero bajo la suposición de que esta aumenta al ritmo de la Ley de Moore, los métodos que aprovechan la computación superan eventualmente aquellos basados en conocimiento humano. Esto es especialmente cierto en entornos (discretos o continuos) con espacios de estado masivos, como son el ajedrez o la robótica.
 
-\noindent\rule{\textwidth}{0.2pt}
+\rule{\textwidth}{0.2pt}
+
 \subsection{Deep reinforcement learning en ajedrez}
 
 Desde la irrupción del aprendizaje profundo y el aprendizaje por refuerzo en los juegos de tablero, se han explorado diversas arquitecturas neuronales. El hito inicial lo marcó AlphaGo \cite{silver2016mastering}, que combinó redes convolucionales (CNNs) con búsqueda de árbol Monte Carlo (MCTS) para vencer al campeón mundial de Go. Posteriormente, esta metodología se generalizó con AlphaZero \cite{silver2018general}, un algoritmo de RL capaz de dominar el ajedrez, el shogi y el Go partiendo desde cero y utilizando una única red neuronal para evaluar posiciones y priorizar jugadas. El impacto de estos métodos fué más allá, al demostrar el poder del \textit{deep reinforcement learning} en otros dominios científicos complejos, como la predicción de estructuras de proteínas mediante AlphaFold \cite{jumper2021highly}.
@@ -147,7 +153,7 @@ Paralelamente, en el ámbito de los motores de ajedrez tradicionales, enfoques c
 
 En estos motores de juego, las redes neuronales actúan como la parte \textit{estratégica} mientras que la búsqueda actúa como la parte \textit{táctica}, decidiendo a corto plazo bajo una serie de restricciones más claras (jugadas forzadas, amenazas claras como jaques o pérdida de material), y depende más del \textit{cálculo}. Esto es, en cierto modo, reminiscente de cómo los humanos estructuramos nuestro pensamiento a la hora de jugar al ajedrez.
 
-\noindent\rule{\textwidth}{0.2pt}
+\rule{\textwidth}{0.2pt}
 \subsection{Transformers en ajedrez}
 
 Entre los enfoques anteriores, ninguno hacía uso de mecanismos de atención ni de arquitecturas basadas en Transformers, lo que nos lleva a explorar el potencial de estos últimos.
@@ -159,41 +165,34 @@ Por su parte, el estudio del miniajedrez o ajedrez en tableros reducidos tiene u
 
 En 2013, Mehdi y Prost resolvieron débilmente el ajedrez Gardner, esto es, obtuvieron un algoritmo que permite asegurar el resultado de la partida partiendo de la posición inicial, pero no desde cualquier posición arbitraria. Utilizando técnicas de búsqueda e intervención humana, obtuvieron un oráculo para el jugador blanco y negro que asegura un empate partiendo de la jugada inicial. \cite{DBLP:journals/corr/MhallaP13}   
 
-\newpage
+\rule{\textwidth}{0.2pt}
 % 5.10. Resumen de la solución propuesta
 \section{Resumen de la solución propuesta}\label{sec:resumen}
 
-\textcolor{red}{\textbf{[TODO: Redactar bien el pipeline, por ahora solo es un esqueleto. Como es un resumen, tampoco tiene que ser super extenso, un par de líneas por cada parte quizás. Btw, no se solapa algo con la planificación?]}}
+El desarrollo del trabajo se estructura en torno a la validación de las tres hipótesis planteadas \ref{sec:hipotesis}. En primer lugar, se mide el impacto de la representación en un estudio de ablación supervisado, comparando codificaciones planas contra espaciales en la entrada, y políticas simples contra factorizadas en la salida. Tercero, se compara la velocidad de convergencia y la fuerza de juego de un bucle de PPO al inicializar la red desde cero frente a usar un preentrenamiento supervisado. 
+El estudio de estas dos hipótesis permite analizar si el miniajedrez 5x5 conserva dinámicas estratégicas suficientes para servir como entorno de experimentación de aprendizaje por refuerzo con recursos limitados. 
+De esta forma, el modelado y el diseño de la arquitectura detallados en la Sección~\ref{sec:marco} conectan directamente con los torneos y análisis estadísticos de la Sección~\ref{sec:aportaciones}.
 
-\begin{enumerate}
-    \item Generación de un dataset de partidas de Minichess con un motor clásico.
-    \item Estudio, filtrado y procesado de datos.
-    \item Diseño de arquitectura de un modelo Transformer Encoder.
-    \item Evaluación de distintos sesgos de input / output en fase de entrenamiento supervisado.
-    \item Definición del bucle de entrenamiento e implementación de algoritmo de RL (PPO).
-    \item Fase de evaluación contra una \textit{baseline} (ej. Stockfish o heurísticas simples).
-    \item Evaluación de red preentrenada VS. from-scratch (mismo numero de epochs).
-\end{enumerate}
-
-\newpage
+\rule{\textwidth}{0.2pt}
 % 5.11. Marco teórico y práctico
-\section{Marco teórico y práctico. Herramientas empleadas}\label{sec:marco}
+\section{Marco teórico y práctico}\label{sec:marco}
 
 \subsection{Marco teórico}\label{sec:marco_teorico}
 
-\subsubsection{Diseño de hipótesis}
+\subsubsection{Diseño de hipótesis} \label{sec:hipotesis}
 
 Para dar respuesta a los objetivos planteados, el desarrollo práctico se articula en torno a la demostración de las siguientes hipótesis experimentales, las cuales estructuran el diseño experimental del trabajo:
 
 \begin{itemize}
-    \item \textbf{Hipótesis 1 (Reducción del problema)}: El ajedrez 5x5 como entorno simplificado de RL puede conservar suficientes dinámicas esenciales del aprendizaje por refuerzo adversarial al tiempo que se mantiene computacionalmente manejable para la experimentación.
+    \item \textbf{Hipótesis 1 (Reducción del problema)}: El ajedrez 5x5 como entorno simplificado de RL puede conservar suficientes dinámicas del aprendizaje por refuerzo adversarial, y justificar el uso de redes neuronales con mecanismos de atención, al tiempo que se mantiene computacionalmente manejable para la experimentación.
     
     \item \textbf{Hipótesis 2 (Representación):} El uso de representaciones estructuradas del tablero y del espacio de acciones (ej. planos espaciales vs. predicción por casillas origen/destino) mejora la eficiencia del aprendizaje frente a representaciones planas.
 
     \item \textbf{Hipótesis 3 (Inicialización):} Un agente inicializado mediante aprendizaje supervisado a partir de jugadas generadas por un motor de referencia alcanza un nivel de rendimiento competitivo en menos \textit{epochs} que un agente entrenado de forma puramente \textit{tabula rasa}.
 \end{itemize}
 
-\subsubsection{Entorno: reglas del ajedrez 5x5}
+\rule{\textwidth}{0.2pt}
+\subsubsection{Entorno: reglas del ajedrez 5x5} \label{sec:reglas_gardner}
 
 El ajedrez $5\times5$ en su variante de Gardner es una reducción del ajedrez estándar. Para alguien familiar con el ajedrez, la variante de Gardner es idéntica, excepto que se recorta el tablero a un tamaño inferior, y se mantiene la distribución de las piezas de la columna a hasta la e, eliminando el enroque y el avance doble de peón. 
 En caso de no conocer las reglas del ajedrez, a continuación se detallan las de esta variante:
@@ -208,9 +207,10 @@ En caso de no conocer las reglas del ajedrez, a continuación se detallan las de
 
 Esta variante mantiene la naturaleza estratégica y la profundidad del ajedrez, pero en una fracción de su complejidad de cálculo original.
 
+\rule{\textwidth}{0.2pt}
 \textbf{Representación de estados mediante notación FEN}
 
-Para interactuar con el entorno de ajedrez y alimentar los modelos de aprendizaje, se utiliza la notación FEN (\textit{Forsyth-Edwards Notation}). Esta notación describe una posición particular del tablero mediante una cadena de texto que codifica la ubicación de las piezas, el jugador al que le toca mover y las disponibilidades de reglas especiales. En el contexto del ajedrez 5x5, el FEN se simplifica ya que cierta información no es aplicable a la variante de Gardner (como los enroques o las capturas al paso).
+Para interactuar con el entorno de ajedrez y proporcionar datos a los modelos de aprendizaje, se utiliza la notación FEN (\textit{Forsyth-Edwards Notation}). Esta notación describe una posición particular del tablero mediante una cadena de texto que codifica la ubicación de las piezas, el jugador al que le toca mover y las disponibilidades de reglas especiales. En el contexto del ajedrez 5x5, el FEN se simplifica ya que cierta información no es aplicable a la variante de Gardner (como los enroques o las capturas al paso).
 
 El FEN inicial de la variante Gardner se representa como:
 \begin{verbatim}
@@ -226,6 +226,7 @@ La Figura~\ref{fig:minichess} ilustra la disposición física y la colocación d
     \label{fig:minichess}
 \end{figure}
 
+\rule{\textwidth}{0.2pt}
 \textbf{El ajedrez como juego y proceso teórico de decisión}
 
 El ajedrez es un juego de información perfecta y completa. En todo momento los jugadores tienen información total acerca de las funciones de utilidad de su rival y del estado de la partida, tanto presente como pasado. Esto proporciona fundamentos teóricos sólidos para probar algoritmos de RL; un entorno determinista y con funciones de transición bien definidas.
@@ -249,6 +250,7 @@ Para estimar la complejidad de la variante Gardner $5\times5$, siguiendo un razo
 
 Dada la complejidad del entorno, nos gustaría poder modelarlo de modo que el aprendizaje se realice únicamente sobre el estado actual, ya que comprobar el historial de jugadas completo tendría un coste computacional excesivo. Buscamos que la probabilidad de alcanzar un estado futuro dependa únicamente del estado presente, y no del historial de estados anteriores. Esta es la propiedad de Markov.
 
+\rule{\textwidth}{0.2pt}
 \textbf{El ajedrez como Proceso de Decisión de Markov (MDP)}
 
 Un proceso estocástico cumple la propiedad de Markov si la probabilidad de alcanzar un estado futuro, $s_{t+1}$, depende únicamente del estado presente $s_t$, siendo condicionalmente independiente del historial de estados anteriores. Formalmente:
@@ -266,6 +268,7 @@ Para modelar el ajedrez $5\times5$ como un MDP, es necesario expandir el espacio
 
 Al encapsular explícitamente los contadores $p$ y $h$ dentro de la representación del estado actual $s_t$, el modelo no necesita consultar cronológicamente cómo se llegó a dicho estado. Toda la información temporal y causal necesaria para evaluar la legalidad de las jugadas futuras o detectar empates está autocontenida en el instante presente. Bajo esta formulación, se satisface la propiedad de Markov, lo que nos permite simplificar el modelado.
 
+\rule{\textwidth}{0.2pt}
 \subsubsection{Arquitectura basada en transformers: encoder y self-attention}\label{sec:transformer}
 
 A diferencia de los modelos de lenguaje (LLMs) que generan secuencias de texto token a token utilizando una arquitectura de decodificador con enmascaramiento causal, la evaluación de un tablero de ajedrez requiere una comprensión bidireccional del estado completo en un instante de tiempo / posición. No es necesario enmascarar la atención para evitar observar tokens futuros, ya que por la propiedad de Markov demostrada anteriormente, una posición no depende de estados posteriores ni anteriores.
@@ -273,8 +276,8 @@ A diferencia de los modelos de lenguaje (LLMs) que generan secuencias de texto t
 Por ello, la arquitectura propuesta se fundamenta en un \textbf{Transformer Encoder}. Este modelo procesa simultáneamente todas las casillas del tablero, permitiendo que cada pieza calcule su relevancia respecto a todas las demás sin restricciones de enmascaramiento. El núcleo de esta arquitectura es el mecanismo de \textit{Self-Attention}\cite{NIPS2017_3f5ee243}, definido formalmente como:
 
 \[
-    \text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V
-    \]
+\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V
+\]
     
 Donde $Q$ (Query), $K$ (Key) y $V$ (Value) son matrices obtenidas mediante proyecciones lineales de las representaciones del tablero. Dada una entrada $X$,   
 
@@ -286,9 +289,15 @@ $$\text{MultiHead}(X) = \text{Concat}(\text{head}_1, ..., \text{head}_h)W^O$$
 
 Donde $\text{head}_i = \text{Attention}(QW_i^Q, KW_i^K, VW_i^V)$, $W^O$ es una matriz de pesos entrenables y $h$ es el número de cabezas de atención. 
 
+\rule{\textwidth}{0.2pt}
 \subsubsection{Modelado del aprendizaje por refuerzo}
 
-\textcolor{red}{TODO una pequeña explicación introductoria de lo que es el aprendizaje por refuerzo? + métodos de gradiente de política?? un párrafo cada una máximo}
+El Aprendizaje por Refuerzo (RL) es un paradigma de la inteligencia artificial en el que un agente aprende a tomar decisiones secuenciales mediante la interacción con un entorno. En cada paso $t$, el agente observa el estado $s_t \in \mathcal{S}$ del entorno, realiza una acción $a_t \in \mathcal{A}$ según su política $\pi(a_t|s_t)$ y recibe una recompensa $R_{t+1} \in \mathbb{R}$ y una transición al siguiente estado $s_{t+1}$. \\
+El objetivo del agente es maximizar el retorno esperado $G_t = \sum_{k=0}^{\infty} \gamma^k R_{t+k+1}$, donde $\gamma \in [0, 1)$ representa el factor de descuento.
+
+Por su parte, los métodos de gradiente de política (\textit{Policy Gradient}) son una aproximación que optimiza directamente los parámetros $\theta$ de una política $\pi_\theta(a_t|s_t)$ por ascenso de gradiente, con el fin de maximizar la recompensa acumulada esperada $J(\theta) = \mathbb{E}_{\tau \sim \pi_\theta} [R(\tau)]$ sobre trayectorias $\tau$. Mediante el teorema del gradiente de política, el gradiente de la función objetivo se formula como la esperanza analítica:
+$$\nabla_\theta J(\theta) = \mathbb{E}_{s_t, a_t \sim \pi_\theta} \left[ \nabla_\theta \log \pi_\theta(a_t \mid s_t) \Psi_t \right]$$
+Dependiendo del método, $\Psi_t$ puede tomar varias formas, pero actúa como un estimador de la calidad de la decisión (como el retorno $G_t$ o la función de ventaja $A(s_t, a_t)$), lo que orienta las actualizaciones de la política sin requerir un modelado explícito de la dinámica del entorno.
 
 El problema del ajedrez $5\times5$ se modela a través de una formulación clásica de Proceso de Decisión de Markov (MDP). En cada paso $t$, el agente observa el estado actual $s_t$, elige una acción estocástica basada en una política parametrizada $\pi_\theta(a_t|s_t)$ y pasa a un nuevo estado $s_{t+1}$. La iteración prosigue hasta el final de la trayectoria (fin de la partida), momento en el cual el agente interactúa con el entorno recibiendo una recompensa terminal (victoria, derrota o empate).
 
@@ -297,6 +306,7 @@ $$L^{CLIP}(\theta) = \hat{\mathbb{E}}_t \left[ \min(r_t(\theta)\hat{A}_t, \text{
 donde $r_t(\theta) = \frac{\pi_\theta(a_t|s_t)}{\pi_{\theta_{\text{old}}}(a_t|s_t)}$ es el cociente de probabilidades, $\hat{A}_t$ es la estimación de la ventaja y $\epsilon$ es el hiperparámetro de recorte (clipping). La red también minimiza el error cuadrático medio en la estimación del valor $V_\theta(s_t)$. La función de pérdida conjunta total es:
 $$\mathcal{L}= -L^{CLIP} + c_1 L^{VF}-c_2 L^{ENT}$$
 
+\rule{\textwidth}{0.2pt}
 \textbf{Diseño de la Función de Recompensa}
 
 El Aprendizaje por Refuerzo es muy susceptible al fenómeno de \textit{reward hacking} \cite{weng2024rewardhacking}, donde el agente aprende a explotar lagunas en la función de recompensa para maximizar su puntuación sin alcanzar el objetivo real del problema. Por ejemplo, si se otorgara una recompensa positiva por cada captura de material, el agente podría aprender a retrasar el jaque mate indefinidamente para ``farmear'' piezas del oponente, o tomar decisiones subóptimas como capturar un peón cuando se encuentre frente a una situación peligrosa.
@@ -314,7 +324,7 @@ R_t =
 
 Esta escasez de señal dificulta las fases iniciales del entrenamiento, lo que justifica la necesidad de técnicas avanzadas o inicialización supervisada para guiar al modelo en las etapas tempranas para acelerar la convergencia de PPO.
 
-
+\rule{\textwidth}{0.2pt}
 \subsection{Marco práctico}\label{sec:marco_practico}
 
 \subsubsection{Codificación del espacio de estados (input)}\label{sec:encoder_input}
@@ -329,6 +339,7 @@ Para evaluar la Hipótesis 1, se instrumentarán y compararán dos representacio
 
 \placeholderfig{figura ilustrativa con una visualización de las distintas codificaciones de entrada}{Visualización de codificaciones de entrada. De izquierda a derecha: a, b, c...}{fig:codificaciones_entrada}
 
+\rule{\textwidth}{0.2pt}
 \subsubsection{Codificación del espacio de acciones (output)}\label{sec:encoder_output}
 
 De manera análoga, la forma en que la red proyecta sus predicciones altera drásticamente la topología del espacio de optimización. Se implementarán las siguientes cabezas de salida:
@@ -346,6 +357,7 @@ De manera análoga, la forma en que la red proyecta sus predicciones altera drá
 
 \placeholderfig{figura ilustrativa con una visualización de las distintas codificaciones de salida}{Visualización de codificaciones de salida. De izquierda a derecha: a, b, c...}{fig:codificaciones_salida}
 
+\rule{\textwidth}{0.2pt}
 \subsubsection{Arquitectura transformer}
 
 La arquitectura neural propuesta se basa en un modelo \textbf{Transformer Encoder} que procesa el estado del tablero de forma bidireccional, permitiendo que cada componente preste atención a todos los demás, y se describe a continuación:
@@ -367,9 +379,9 @@ La arquitectura neural propuesta se basa en un modelo \textbf{Transformer Encode
     
     \item \textbf{Pila de Bloques Encoder:} El tensor resultante se procesa a través de una serie de $L$ capas de codificación con $h$ cabezas. Cada capa contiene:
     \begin{itemize}
-        \item Un mecanismo (\textit{Multi-Head Self-Attention}) sin causal-masking.
+        \item Un mecanismo auto-atención multicabeza, sin causal-masking. Esencialmente un transformer encoder como el que se podría encontrar en modelos como BERT.
         
-        \item Conexiones residuales de inicio a fin y normalización, utilizando \textit{pre-norm} y \textbf{RMSNorm}. La convención \textit{pre-norm} aplica normalización antes de cada subcapa de la forma $z = x + sublayer(normalization(x))$, donde $sublayer$ es una de las $L$ capas encoder, mejorando la estabilidad del entrenamiento\cite{DBLP:journals/corr/abs-2002-04745}. La normalización RMS es utilizada por transformers modernos debido a que reduce la complejidad computacional frente a alternativas como LayerNorm\cite{gupta2025geometricinterpretationlayernormalization}.
+        \item Conexiones residuales de inicio a fin y normalización, utilizando \textbf{RMSNorm} y la convención \textit{pre-norm}. Esta ñultima aplica normalización antes de cada subcapa de la forma $z = x + sublayer(normalization(x))$, donde $sublayer$ es una de las $L$ capas encoder, mejorando la estabilidad del entrenamiento\cite{DBLP:journals/corr/abs-2002-04745}. Esta normalización se utiliza en transformers modernos debido a que reduce la complejidad computacional frente a alternativas como LayerNorm \cite{gupta2025geometricinterpretationlayernormalization}.
         
         \item Una capa \textit{Feed-Forward Network} o \textit{Multi-Layer Perceptron} (MLP), compuesta de la forma:
         $$\text{FFN}(x) := FC_{expand}(x) \rightarrow \text{GELU} \rightarrow FC_{project}(x) \rightarrow \text{Dropout}$$
@@ -377,7 +389,7 @@ La arquitectura neural propuesta se basa en un modelo \textbf{Transformer Encode
 
     \item \textbf{Cabezas de Salida:} Tras la última normalización RMS, el estado se divide, extrayendo el tensor del \textit{CLS token} y aislando los $25$ vectores resultantes del estado final de las iteraciones de atención sobre las celdas del tablero. A continuación se bifurca en los siguientes procesos:
     \begin{itemize}
-        \item \textbf{Cabeza de Política Orientada a Relaciones (``\textit{Matrix Policy Head}"):} Proyecta cada uno de los 25 \textit{tokens} de las casillas paralelamente evaluando si estas funcionan como origen (\texttt{proj\_from}) y como destino (\texttt{proj\_to}) mediante MLPs. A continuación realiza un producto interno espacial (\textit{batched matmul}) entre estas incrustaciones elaborando una matriz de correlación $25 \times 25$. Paralelamente, se obtienen otros $104$ \textit{logits} del tensor \textit{CLS} que reflejan opciones de coronación, y se concatenan a los $600$ movimientos ordinarios. Obtenemos por lo tanto, una distribución de $704$ \textit{acciones}.
+        \item \textbf{Cabeza de Política Orientada a Relaciones (\textit{Matrix Policy Head}):} Proyecta cada uno de los 25 \textit{tokens} de las casillas paralelamente evaluando si estas funcionan como origen (\texttt{proj\_from}) y como destino (\texttt{proj\_to}) mediante MLPs. A continuación realiza un producto interno espacial (\textit{batched matmul}) entre estas incrustaciones elaborando una matriz de correlación $25 \times 25$. Paralelamente, se obtienen otros $104$ \textit{logits} del tensor \textit{CLS} que reflejan opciones de coronación, y se concatenan a los $600$ movimientos ordinarios. Obtenemos por lo tanto, una distribución de $704$ \textit{acciones}.
         \item \textbf{Cabeza de Valor (\textit{Value Head}):} Procesa únicamente el \textit{token CLS} final en un \textit{MLP} denso (Expansión Lineal, GELU, Dropout, Reducción de dim a escalar, Tanh) que acota la salida en el intervalo $[-1, 1]$.
 
         \item \textbf{Cabezas Auxiliares de Política Factorizada:} Estas cabezas no se activan siempre. Se trata de las cabezas mencionada en la sección~\ref{sec:encoder_output}. Decodifican las representaciones del tablero y de CLS mediante tres proyecciones independientes en logits de casilla de origen (25), destino (25) y tipo de coronación (9). Estas cabezas se evalúan únicamente durante el entrenamiento supervisado, con propósitos de mejora de la señal de error.
@@ -401,14 +413,13 @@ La figura ~\ref{fig:encoder_arch} ilustra la arquitectura propuesta, mostrando e
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=1\textwidth]{figures/Gemini_Diagram_small.png}
-    \caption{[Placeholder] Diagrama de la arquitectura utilizada (generado con IA, tiene errores / inconsistencias). Además, está desactualizado con respecto a la descripción anterior. Igual es mejor separar los diagramas de las cabezas, y hacerlos más abstractos en la arquitectura general.}
+    \caption[Diagrama de la arquitectura Transformer propuesta]{Diagrama de la arquitectura utilizada transformer propuesta}
     \label{fig:encoder_arch}
 \end{figure}
 
 % \placeholderfig{diagrama de arquitectura propuesta}{Arquitectura Encoder-only propuesta.}{fig:resultados_hollow}
 
-\newpage
-
+\rule{\textwidth}{0.2pt}
 \subsubsection{Algoritmo de RL: Proximal Policy Optimization (PPO)}
 
 Cabe preguntarse: ¿por qué este algoritmo en lugar del MCTS usado en enfoques como AlphaGO o AlphaZero? Clásicamente, metodologías como MCTS y \textit{Expert Iteration} actúan más como como planificadores a futuro que como RL propiamente dicho: descubren futuros hipotéticos mediante búsqueda por fuerza bruta al contar con un modelo perfecto del entorno. En ellos, la red neuronal actúa como una memoria supervisada que aproxima las probabilidades de visita ya descubiertas por la búsqueda. 
@@ -416,6 +427,7 @@ Estos sistemas no están aprendiendo \textit{per se} (algo que se obtiene de la 
 
 Por el contrario, Proximal Policy Optimization (PPO) es un algoritmo de aprendizaje por refuerzo puro (\textit{Model-Free}). La red neuronal carece de un mecanismo explícito de previsión del futuro mediante un árbol con estados; es ella, iterativamente a través métodos Actor-Crítico y puramente por descenso de gradiente, la que asimila las estrategias óptimas guiada por ensayo y error. Además, al requerirse exactamente una única inferencia por tablero en cada estado, los tableros / estados pueden agruparse en (\textit{batches}) mayores, maximizando la ocupación de GPU.
 
+\rule{\textwidth}{0.2pt}
 \textbf{Mecánica de Optimización y Estimación de Ventaja}
 
 El algoritmo PPO actualiza los pesos para evitar colapsar debido a cambios demasiado severos de la política por una actualización errónea. Esta es la función fundamental del hiperparámetro de recorte $\epsilon$. Este asegura que la actualización no destruya la política existente, al penalizar las actualizaciones estocásticas grandes que diverjan significativamente de la política anterior empleada para recolectar el episodio en cuestión.
@@ -462,6 +474,7 @@ En este pseudocódigo, se deben denotar varios aspectos:
     
 \end{itemize}
 
+\rule{\textwidth}{0.2pt}
 \subsubsection{Descripción del conjunto de datos}
 
 Para el entrenamiento en la fase de aprendizaje supervisado, se ha optado por utilizar exclusivamente un conjunto de datos sintéticos generado con una profundidad de búsqueda de 4 jugadas por \texttt{fairy-stockfish}, descartando por completo el uso de mezclas con evaluaciones de profundidades inferiores ($D2$ o $D3$). Este conjunto de datos definitivo cuenta con un volumen total de 60,030,000 posiciones, el cual ha sido procesado mediante una división estricta de un $97\%$ para el conjunto de entrenamiento (58,234,050 posiciones) y un $3\%$ reservado para el conjunto de validación (1,795,950 posiciones).
@@ -482,8 +495,9 @@ Asimismo, el conjunto de datos cuenta con particularidades estructurales importa
     \item \textbf{Métricas de distribución y balance:} Sobre una muestra aleatoria representativa de 10,005,000 posiciones analizadas en detalle, se registra una clara predominancia de tablas con un ratio del $54.31\%$ (5,433,596 posiciones). El resto del conjunto refleja una ligera ventaja para las blancas, obteniendo un $23.53\%$ de victorias (2,354,634 posiciones) frente al $22.16\%$ de las negras (2,216,770 posiciones). Un desglose completo de estas estadísticas se incluye en el Anexo~\ref{sec:anexo_stats_dataset}.
 \end{itemize}
 
-A continuación se muestra un fragmento extraído del conjunto de entrenamiento que ilustra la estructura textual de los datos sintéticos de entrada, compuestos por el FEN de la posición, el movimiento seleccionado por el motor, la puntuación de evaluación heurística, los plies y el resultado relativo:
-
+\begin{figure}[htbp]
+    \centering
+    \begin{minipage}{0.8\textwidth}
 \begin{verbatim}
 fen rnb1k/1p1qp/pPp2/P1PP1/RNBQK w - - 0 4
 move d1e2
@@ -498,7 +512,12 @@ ply 9
 result 0
 [...]
 \end{verbatim}
+    \end{minipage}
+    \caption[Ejemplo del conjunto de datos]{Fragmento de ejemplo del conjunto de datos de entrenamiento. Cada muestra está delimitada por la letra \texttt{e} y contiene el estado en notación FEN, el movimiento seleccionado, la puntuación heurística del motor, el número de ply y el resultado relativo.}
+    \label{fig:dataset_example}
+\end{figure}
 
+\rule{\textwidth}{0.2pt}
 \subsubsection{Herramientas y tecnologías empleadas}
 
 El desarrollo práctico e investigativo del proyecto se implementará utilizando las siguientes herramientas de desarrollo de software:
@@ -513,7 +532,7 @@ El desarrollo práctico e investigativo del proyecto se implementará utilizando
     \item \textbf{Tests estadísticos:} Se utilizaron \texttt{scipy} y \texttt{statsmodels} para realizar tests estadísticos sobre los resultados obtenidos en los experimentos.
 \end{itemize}
 
-\subsection{Diseño experimental}
+\subsection{Diseño experimental}\label{sec:experimental_design}
 
 \subsubsection{Diseño experimental para hipótesis 2}
 
@@ -590,19 +609,20 @@ Dado que la recompensa interna del buffer es una métrica móvil relativa al niv
 \textbf{Outputs esperados}: Gráfico de líneas temporal con la evolución del ELO estimado frente al oponente heurístico (donde la línea sólida representa la media paramétrica de las semillas y la región sombreada su desviación estándar $\pm\sigma$), y una tabla comparativa que contraste el ELO máximo e iteración de estabilización entre ambas variantes. Gráficas de recompensa media, con marcadores que indican los puntos en los que acaba un episodio (y por tanto puede haber un cambio de oponentes, y una fluctuación en la recompensa media).
 \end{enumerate}
 
-\newpage
 % 5.12. Planificación y seguimiento
+\rule{\textwidth}{0.2pt}
 \section{Planificación y seguimiento}\label{sec:planificacion}
 
-\textcolor{red}{TODO: escribir esto de forma más detallada. dar las fechas aproximadas iniciales, y explicar por que se retrasaron o se aplazaron}
-
-La sigiente planificación es una aproximación orientada a la experimentación rápida. Para minimizar la fricción en el desarrollo de los experimentos y la lógica interna del ajedrez Gardner esta se delega a \texttt{pyffish}, y del mismo modo, en la medida de lo posible los demás componentes se delegan también. Esta decisión acelera las fases iniciales del proyecto y permite además obtener datos de buena calidad para el preentrenamiento de los modelos. A continuación se presenta el plan de trabajo, dividido en fases:
+La siguiente planificación es una aproximación orientada a la experimentación rápida. Para minimizar la fricción en el desarrollo de los experimentos y la lógica interna del ajedrez Gardner esta se delega a \texttt{pyffish}, y del mismo modo, en la medida de lo posible los demás componentes se delegan también. Esta decisión acelera las fases iniciales del proyecto y permite además obtener datos de buena calidad para el preentrenamiento de los modelos. \\
+Las distintas secciones no cuentan con una duración fija. 
+A continuación se presenta el plan de trabajo, dividido en fases:
 
 \textbf{Fase 0: Investigación previa y documentación inicial}
 
 \begin{itemize}
     \item Investigación del estado del arte en RL y Transformers aplicados al ajedrez.
     \item Consolidación de objetivos generales y específicos. Creación del marco teórico y práctico para el desarrollo del TFG.
+    \item Diseño de arquitectura de red neuronal, y algoritmo de aprendizaje por refuerzo. Diseño de metodología de experimentación e hipótesis. 
 \end{itemize}
 
 \textbf{Fase 1: Preparación del Entorno y Generación de Datos Sintéticos}
@@ -615,7 +635,8 @@ La sigiente planificación es una aproximación orientada a la experimentación 
 \textbf{Fase 2: Arquitectura y Preentrenamiento (Supervisado)}
 
 \begin{itemize}
-    \item Implementación del modelo Transformer Encoder y las distintas capas de adaptación (I/O).
+    \item Implementación del modelo Transformer Encoder, dataloaders, parsing de datos.
+    \item Ajuste básico de hiperparámetros fundamentales.
     \item Ejecución de experimentos de aprendizaje supervisado utilizando los datasets generados, evaluando la velocidad de convergencia y capacidad de las distintas representaciones de tablero y acción.
 \end{itemize}
 
@@ -623,35 +644,35 @@ La sigiente planificación es una aproximación orientada a la experimentación 
 
 \begin{itemize}
     \item Construcción del entorno vectorizado para muestreo paralelo guiado por las predicciones de política y valor del Transformer.
-    \item Implementación o integración del algoritmo Actor-Crítico Proximal Policy Optimization (PPO).
+    \item Implementación o integración del algoritmo Proximal Policy Optimization (PPO).
+    \item Testing de funcionamiento correcto del entorno, recolección de rollouts y funcionamiento de PPO. 
 \end{itemize}
 
 \textbf{Fase 4: Evaluación y Generación de Métricas}
 
 \begin{itemize}
-    \item Ejecución de torneos automatizados entre agentes de control (Stockfish limitado, modelos puramente \textit{tabula rasa} frente a modelos preentrenados).
+    \item Ejecución de torneos automatizados entre agentes de control.
     \item Extracción y visualización de las métricas de rendimiento para la validación de las hipótesis planteadas.
+    \item Interpretación de resultados. Tests estadísticos y generación de gráficas. 
 \end{itemize}
 
 \textbf{Fase 5: Documentación y Conclusiones}
 
 \begin{itemize}
-    \item Consolidación de los resultados en el documento de Trabajo de Fin de Grado, análisis crítico de las gráficas resultantes y preparación de la defensa.
+    \item Documentación concurrente al desarrollo. Se diseñan los experimentos, programan, ejecutan y obtienen resultados, y se documenta el proceso previamente a cada uno de estos pasos. Por tanto, no es una fase que se aborde al final, sino que es un proceso continuo a lo largo de todo el proyecto.
+    \item Consolidación de los resultados en el documento, análisis crítico de las gráficas resultantes y preparación de la defensa.
 \end{itemize}
 
 % 5.13. Principales aportaciones
+\rule{\textwidth}{0.2pt}
 \section{Principales aportaciones}\label{sec:aportaciones}
 
-\subsection{Resultados generales en el entorno de Minichess}
-\textcolor{red}{TODO: qué gráficas / tablas puedo aportar para esta hipótesis? no es exactamente un problema cuantificable. quizás sirve con algo como:} 
-\textit{"Como hemos visto en el desarrollo anterior, el problema del Minichess mantiene suficiente complejidad para ser utilizado como entorno de estudio a pesar de su tamaño reducido y su condición de weakly-solved"}
-
-
-\subsection{Efectos de la representación sobre la eficiencia y calidad del aprendizaje}
+\subsection{Efectos de la representación sobre la eficiencia y calidad del aprendizaje} \label{sec:representation_results}
 
 Para contrastar la \textbf{Hipótesis 2}, que plantea que las representaciones estructuradas del tablero y del espacio de acciones mejoran la eficiencia del aprendizaje en comparación con las representaciones planas, se ha llevado a cabo una evaluación sistemática y un análisis estadístico sobre las 4 variantes de arquitectura bajo 10 semillas aleatorias independientes. Los detalles del modelo utilizado e hiperparámetros fijados pueden consultarse en el anexo ~\ref{sec:hiperparametros_ablacion}. 
 Cabe destacar que este modelo es relativamente pequeño (dimensión de embedding de 64, 3 capas transformer), y por tanto ve su capacidad limitada. Las conclusiones aquí obtenidas se desarrollan sobre este, pero se realizaron pruebas idénticas sobre un modelo ligeramente mayor (dimensión de embedding de 128, 5 capas transformer), que obtuvieron conclusiones en la misma dirección, con resultados mejores, lo cual apunta a que el escalado de estos modelos permite mejorar su capacidad. Estas pueden consultarse en el anexo ~\ref{sec:anexo_ablation_big_model}.
 
+\rule{\textwidth}{0.2pt}
 \subsubsection{Evaluación sobre el conjunto de test}
 
 Los modelos se evaluaron sobre un conjunto de test holdout que contiene $299.325$ posiciones de Gardner Minichess extraídas de forma independiente de las trayectorias de entrenamiento. Se reportan métricas tanto para la cabeza de política (predicción de movimientos) como para la cabeza de valor (predicción de resultados). 
@@ -711,10 +732,11 @@ La Tabla~\ref{tab:resultados_test_ablation} presenta los resultados de test cons
         \label{subtab:valor}
     \end{subtable}
     
-    \caption{Rendimiento medio y desviación estándar de las métricas sobre el conjunto de test (10 semillas $\times$ 4 variantes).}
+    \caption[Rendimiento medio y desviación estándar sobre el conjunto de test] {Rendimiento medio y desviación estándar de las métricas sobre el conjunto de test (10 semillas $\times$ 4 variantes).}
     \label{tab:resultados_test_ablation}
 \end{table}
 
+\rule{\textwidth}{0.2pt}
 \subsubsection{Test de significatividad estadística}
 
 Con el propósito de validar de forma matemáticamente rigurosa que las diferencias observadas entre las arquitecturas de ablación no se deben a fluctuaciones aleatorias provocadas por la semilla de inicialización, se aplicó un análisis estadístico compuesto por un test de Shapiro-Wilk para comprobar la normalidad, un test ANOVA de una vía para evaluar la significatividad de las diferencias globales, y comparaciones por parejas post-hoc utilizando el test de Tukey HSD. El análisis completo, junto con las tablas de resultados numéricos de las pruebas, se expone en detalle en el Anexo~\ref{sec:anexos_significancia}. A continuación se resumen las conclusiones principales derivadas de estos tests:
@@ -750,10 +772,11 @@ Los boxplots de la Figura~\ref{fig:boxplots_test} ilustran visualmente la disper
         \caption{Exactitud de Resultados (Valor)}
         \label{fig:box_res}
     \end{subfigure}
-    \caption{Distribución y variabilidad de las métricas en test sobre las 10 semillas independientes.}
+    \caption[Distribución de las métricas de test]{Distribución y variabilidad de las métricas en test sobre las 10 semillas independientes.}
     \label{fig:boxplots_test}
 \end{figure}
 
+\rule{\textwidth}{0.2pt}
 \subsubsection{Evolución y curvas de aprendizaje}
 
 Para analizar el comportamiento dinámico durante el entrenamiento de 30 épocas, se promediaron las métricas de validación y entrenamiento a través de las 10 semillas. La Figura~\ref{fig:curvas_aprendizaje} muestra las curvas de evolución media (línea continua) y su desviación estándar (área sombreada). Las paradas tempranas aplicadas durante el entrenamiento se gestionan manteniendo el último estado registrado hasta el final del estudio (carry forward).
@@ -773,12 +796,13 @@ Para analizar el comportamiento dinámico durante el entrenamiento de 30 épocas
         \caption{Result Accuracy (Validation)}
         \label{fig:curve_val_res}
     \end{subfigure}
-    \caption{Curvas de aprendizaje promediadas con sombreado de desviación estándar.}
+    \caption[Curvas de aprendizaje promediadas]{Curvas de aprendizaje promediadas con sombreado de desviación estándar.}
     \label{fig:curvas_aprendizaje}
 \end{figure}
 
 Observamos que la exactitud del movimiento las curvas de los modelos planos y espaciales sin factorizar son prácticamente paralelas e idénticas en convergencia, mientras que la exactitud de resultados muestra que el modelo espacial converge a una asíntota notablemente superior a la del modelo plano.
 
+\rule{\textwidth}{0.2pt}
 \subsubsection{Evaluación en juego real} \label{sec:eval_juego_h2}
 
 A pesar de que la evaluación anterior sobre el conjunto de test permite medir la capacidad predictiva de los modelos en situaciones aisladas, el objetivo final del agente es interactuar con el jugador opuesto y ganar partidas reales de ajedrez, y las métricas no tienen por qué correlacionarse directamente con la capacidad de juego del agente. Con este fin, se diseñó un torneo round-robin enfrentando directamente a todos los agentes entre sí, para mostrar la capacidad de juego real. 
@@ -812,7 +836,7 @@ donde $R_i$ y $R_j$ son los ratings Elo de los agentes. Para calibrar la escala,
     \texttt{simple\_nofact} & Transformer (Plano, Simple) & 964.7 & 1.3037 \\
     \hline
     \end{tabular}
-    \caption{Clasificación final y Elo estimado de los agentes tras el torneo round-robin de 100 partidas.}
+    \caption[Resultados del torneo de 100 partidas]{Clasificación final y Elo estimado de los agentes tras el torneo round-robin de 100 partidas.}
     \label{tab:elo_tournament}
 \end{table}
 
@@ -833,10 +857,11 @@ La Figura~\ref{fig:matrices_winrate} muestra las matrices de tasa de victoria re
         \caption{Win Rate (solo victorias / derrotas)}
         \label{fig:win_nodraws}
     \end{subfigure}
-    \caption{Matrices de winrate cruzado del torneo de 100 partidas.}
+    \caption[Matrices de winrate del torneo]{Matrices de winrate del torneo de 100 partidas.}
     \label{fig:matrices_winrate}
 \end{figure}
 
+\rule{\textwidth}{0.2pt}
 \subsubsection{Discusión de los resultados}
 
 Analizando los resultados obtenidos, podemos extraer una serie de conclusiones interesantes. Las más relevantes son la \textbf{confirmación de que una mejor representación ayuda al modelo}; el agente \texttt{spatial\_nofact} obtiene la mejor puntuación en el torneo, con 1168.8 de Elo, superando significativamente a la versión plana \texttt{simple\_nofact} (964.7 Elo, una diferencia de $+204$ puntos de Elo). Esta diferencia de rendimiento se alinea con el incremento del $+8.51\%$ observado en la exactitud del valor durante el test supervisado, y con los resultados obtenidos en las tablas de la tabla~\ref{tab:resultados_test_ablation} y la figura~\ref{fig:boxplots_test}, y también señala a que la capacidad para estimar el valor de la posición resulta en mejor capacidad de juego.
@@ -852,6 +877,7 @@ Por otro lado, observamos que \textbf{el uso de una cabeza extra de política no
     Para el aprendizaje supervisado puro, esto puede ser un lastre: a pesar de resultar más informativo, acertar una jugada de profundidad de búsqueda 4 es más difícil si la red tiene que coordinar el acierto de tres variables discretas por separado en lugar de clasificar limpiamente un único vector unificado de 704 logits.
 \end{enumerate}
 
+\rule{\textwidth}{0.2pt}
 
 Observamos también en el torneo, que \textbf{el agente heurístico de capturas} (\texttt{HeuristicAgent}, 1129.4 Elo) \textbf{obtiene puntuaciones más altas de lo inicialmente esperado}. Esto se debe sobre todo a los datos con los que han sido entrenados los modelos: posiciones con capturas y situaciones tácticas han sido filtradas y hacen que los modelos hayan visto pocos jaques, capturas, etc, y por tanto tengan dificultades para responder ante estas, ya que se encuentran fuera de la distribución de entrenamiento. Además, en un tablero reducido de $5\times5$, la proximidad constante de las piezas hace que cualquier despiste táctico de captura sea castigado al instante. 
 A pesar de su simplicidad, el heurístico supera al baseline MLP y al modelo plano simple. Sin embargo, los modelos espaciales \texttt{spatial\_nofact} (1168.8 Elo) y \texttt{spatial\_fact} (1135.2 Elo) logran superar al heurístico. Esto demuestra que los agentes basados en Transformer espacial han aprendido conceptos posicionales más sutiles (estructura de peones, control del centro y seguridad del rey) que les permiten maniobrar y tender trampas incluso sin búsqueda.
@@ -865,6 +891,7 @@ Un \textbf{detalle estadístico relevante} surge al analizar los enfrentamientos
 
 Cabe destacar, finalmente, que el ajedrez Gardner es un juego con tendencia al empate, dado que al ser un tablero tan pequeño situaciones de ahogado son muy comunes y el juego tiende a posiciones donde ambos jugadores se "traban", evitando dar ventajas al otro. Esto se puede ver claramente tanto en el torneo como en las estadístias del dataset, donde la tasa de empates es significativamente alta. 
 
+\rule{\textwidth}{0.2pt}
 \subsubsection{Conclusión sobre la hipótesis 2}
 
 A partir de los resultados experimentales obtenidos, podemos concluir lo siguiente respecto a la \textbf{Hipótesis 2}:
@@ -874,22 +901,20 @@ A partir de los resultados experimentales obtenidos, podemos concluir lo siguien
     \item El mejor modelo obtenido supera en Elo a un modelo con conocimiento previo del valor de las piezas, aunque la tasa de victorias sea ligeramente inferior contra el mismo.
 \end{itemize}
 
-\subsection{Efectos de la inicialización supervisada sobre la convergencia del aprendizaje por refuerzo (hipótesis 3)}
+\rule{\textwidth}{0.2pt}
+\subsection{Efectos de la inicialización supervisada sobre la convergencia del aprendizaje por refuerzo} \label{sec:rl_results}
 
-A continuación, presentan y discuten los resultados obtenidos en el análisis del impacto de la inicialización supervisada frente a un entrenamiento desde cero. De forma similar a los experimentos de ablación anteriores, se utilizaron 10 semillas independientes para las 2 variantes utilizadas (Tabula Rasa vs. Pre-entrenado), con un total de 300 iteraciones cada una, las cuales corresponden a pasos de recolección de trayectorias y entrenamiento de PPO.
-Del mismo modo que en los experimentos anteriores, los hiperparámetros utilizados se mantienen fijos y se detallan en el anexo (TODO hacer la sección del anexo y la tabla, citarlas aquí).
-
-Como se menciona en la sección de diseño experimental (TODO referencia), a lo largo del entrenamiento se recopilaron una serie de métricas. Junto a métricas intrínsecas del algoritmo de RL, como la recompensa media acumulada por iteración o la pérdida de la \textit{surrogate loss} y entropía, se recogió una medida de Elo en enfrentamientos 1 a 1 contra 2 agentes base; un agente aleatorio, y un agente heurístico (ambos presentes en el experimento anterior). 
+A continuación, se presentan y discuten los resultados obtenidos en el análisis del impacto de la inicialización supervisada frente a un entrenamiento desde cero, con el fin de verificar la hipótesis 3 \ref{sec:hipotesis}. De forma similar a los experimentos de ablación anteriores, se utilizaron 10 semillas independientes para las 2 variantes utilizadas (Tabula Rasa vs. Pre-entrenado), con un total de 300 iteraciones cada una, las cuales corresponden a pasos de recolección de trayectorias y entrenamiento de PPO.
+Del mismo modo que en los experimentos anteriores, los hiperparámetros utilizados se mantienen fijos y se detallan en el Anexo~\ref{sec:hiperparam_ppo}. Junto a métricas intrínsecas del algoritmo de RL, como la recompensa media acumulada por iteración o la pérdida de la \textit{surrogate loss} y entropía, se recogió una medida de Elo en enfrentamientos 1 a 1 contra 2 agentes base; un agente aleatorio, y un agente heurístico (ambos presentes en el experimento anterior). 
 
 Cabe destacar también, que el número de iteraciones de self-play utilizado es reducido para un problema como este (modelos como AlphaZero utilican millones de iteraciones en entornos altamente optimizados), lo que sumado al tamaño relativamente pequeño del modelo utilizado, resulta en un modelo competente, pero cuya fuerza de juego real (contra un humano o un sistema como Stockfish) no es muy alta. Esto no es negativo, ya que la reducción explícita del problema es parte de este trabajo: el problema no es más que un medio para el fin de probar las hipótesis planteadas.
 
 - TODO Hacer un "algoritmo" de como funcionan los rollouts en PPO. el entrenamiento ya está detallado.
 
-- TODO Reportar hiperparámetros! son similares a los de ablacion, pero hay datos concretos de ppo...
-
+\rule{\textwidth}{0.2pt}
 \subsubsection{Resultados del entrenamiento}
 
-Las figuras (TODO referenciar las figuras) presentan información acerca de la evolución del entrenamiento.
+Las figuras \ref{fig:curvas_aprendizaje} presentan información acerca de la evolución del entrenamiento.
 Cabe destacar una serie de puntos sobre estas. Observando la evolución de al recompensa media, se aprecia una tendencia: ambas recompensas, en lugar de crecer de forma sostenida, se estabilizan alrededor de cierto punto. Esto es algo normal para el caso de RL por self-play, ya que la política no se mantiene fija, sino que evoluciona y se adapta a la mejor versión de sí misma, haciendo que obtener recompensas sea más difícil a medida que el entrenamiento avanza. 
 
 La recompensa media acumulada del modelo preentrenado comienza alta en torno a 0.10, y se estabiliza en torno 0.04-0.05, indicando que el modelo encuentra gradualmente más dificil obtener recompensas (buena señal, ya que quiere decir que le resulta más dificil ganar a su versión anterior y que por lo tanto esta es más fuerte). Un resultado inverso se obtiene en el modelo entrenado desde cero, cuya recompensa media comienza entorno a 0, y aumenta hasta 0.3-0.4. De nuevo, esto es lógico, ya que este modelo inicia con conocimiento cero del juego, y por tanto no tiene una política adecuada para elegir acciones ni una cabeza de valor adecuada para estimar la ventaja.
@@ -924,21 +949,22 @@ Razonar sobre por qué el PPO es buena idea dado esto. Si tenemos un "prior", co
         \caption{Convergencia de la pérdida total media durante el entrenamiento PPO.}
         \label{fig:hip3_total_loss}
     \end{subfigure}
-    \caption{Curvas de aprendizaje de PPO para \textit{tabula rasa} y pre-entrenado: recompensa media, entropía de política y pérdida total.}
+    \caption[Curvas de aprendizaje de PPO]{Curvas de aprendizaje de PPO para \textit{tabula rasa} y pre-entrenado: recompensa media, entropía de política y pérdida total.}
     \label{fig:hip3_learning_curves}
 \end{figure}
 
 \newpage
 
+\rule{\textwidth}{0.2pt}
 \subsubsection{Evolución del Elo y razones de finalización de partida} \label{sec:evolucion_elo_rel}
 
-Dado que la recompensa y las pérdidas no proporcionan una señal clara de la evolución o la capacidad de juego del modelo, se recurre a una serie de métricas extrínsecas adicionales, evaluando el Elo relativo contra dos agentes, uno aleatorio y otro heurístico, y registrando las razones de finalización de partida de entre las mencionadas en la sección (TODO referencia a la sección de reglas). Las evaluaciones son aisladas, en torneos 1vs1 de 40 partidas, y se registraron cada 5 iteraciones de entrenamiento. \\
+Dado que la recompensa y las pérdidas no proporcionan una señal clara de la evolución o la capacidad de juego del modelo, se recurre a una serie de métricas extrínsecas adicionales, evaluando el Elo relativo contra dos agentes, uno aleatorio y otro heurístico, y registrando las razones de finalización de partida de entre las mencionadas en la sección \ref{sec:reglas_gardner}. Las evaluaciones son aisladas, en torneos 1vs1 de 40 partidas, y se registraron cada 5 iteraciones de entrenamiento. \\
 Las evaluaciones se realizan de forma aislada, por lo que no se muestra el Elo absoluto, sino las diferencias de Elo relativas entre las parejas de agentes. Los modelos entrenados jugaron exclusivamente contra si mismos, o con versiones anteriores de si mismos, por lo que esta evaluación es aislada y no está contaminada por posibles sesgos que el agente haya podido aprender a explotar en estos oponentes.
 
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.7\textwidth]{figures/h3_figures/elo_evolution_joint.png}
-    \caption{Evolución conjunta del Elo relativo contra agentes aleatorios y heurísticos.}
+    \caption[Evolución conjunta del Elo relativo]{Evolución conjunta del Elo relativo contra agentes aleatorios y heurísticos.}
     \label{fig:hip3_elo_joint}
 \end{figure}
 
@@ -957,7 +983,7 @@ Las evaluaciones se realizan de forma aislada, por lo que no se muestra el Elo a
         \caption{Modelo Tabula Rasa}
         \label{fig:hip3_reasons_tabula_h}
     \end{subfigure}
-    \caption{Desenlaces de partida a lo largo del entrenamiento frente al baseline heurístico.}
+    \caption[Desenlaces de partida frente al baseline heurístico]{Desenlaces de partida a lo largo del entrenamiento frente al baseline heurístico.}
     \label{fig:hip3_reasons_joint}
 \end{figure}
 
@@ -976,7 +1002,7 @@ Las evaluaciones se realizan de forma aislada, por lo que no se muestra el Elo a
         \caption{Modelo Tabula Rasa}
         \label{fig:hip3_reasons_tabula_a}
     \end{subfigure}
-    \caption{Desenlaces de partida a lo largo del entrenamiento frente al baseline aleatorio.}
+    \caption[Desenlaces de partida frente al baseline aleatorio]{Desenlaces de partida a lo largo del entrenamiento frente al baseline aleatorio.}
     \label{fig:hip3_reasons_joint}
 \end{figure}
 
@@ -990,12 +1016,8 @@ Por otro lado el modelo \textit{tabula rasa} muestra (\ref{fig:hip3_reasons_tabu
 Es importante contextualizar estas observaciones. Recordemos que el modelo preentrenado ha visto pocas (o ninguna) posiciones tácticas como capturas / coronaciones / secuencias de mate, etc., y por ello no tiene conocimiento de estas situaciones, además de no tener visión de futuro explícita a través de la búsqueda; el aumento de mates en este contexto es una buena señal que indica que se modelan aspectos tácticos del ajedrez Gardner. \\
 Por otro lado, los modelos parecen exhibir dificultad para reducir el número de finales por triple repetición y por número máximo de movimientos. Esto puede indicar problemas en la manera en la que el modelo procesa estos tokens de estado del juego, o que el entrenamiento no ha sido suficiente para que el modelo aprenda a evitar estas situaciones.
 
-- TODO poner el otro torneo!! el de 20 ceckpoints... pero es poco informativo y dificilmente interpretable
-
-
+\rule{\textwidth}{0.2pt}
 \subsubsection{Evaluación estadística de la fuerza de juego final}
-
-- TODO ver si todos los hiperparámetros de esto están bien puestos!!!
 
 Los resultados anteriores sirven como una medida de mejora del modelo a lo largo del entrenamiento. Junto a los resultados de la sección anterior, se observa un aumento tanto en la diferencia de ELO (que es interpretable como un aumento en la probabilidad de victoria) así como una mayor velocidad de convergencia para los agentes preentrenados.
 
@@ -1018,18 +1040,18 @@ Observamos que el modelo pre-entrenado se estabiliza contra el heurístico en la
     Iteración de Estabilización & $210$ & $\mathbf{70}$ & -- & -- & -- & -- \\
     \hline
     \end{tabular}
-    \caption{Comparación estadística detallada de la convergencia y fuerza final (Semilla 42).}
+    \caption[Comparación estadística de convergencia]{Comparación estadística detallada de la convergencia y fuerza final (Semilla 42).}
     \label{tab:hip3_stats}
 \end{table}
 
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.6\textwidth]{figures/h3_figures/final_elo_joint_violin.png}
-    \caption{Gráfico de violín de la distribución de Elo final}
+    \caption[Distribución de Elo final]{Gráfico de violín de la distribución de Elo final}
     \label{fig:hip3_stats_plots}
 \end{figure}
 
-
+\rule{\textwidth}{0.2pt}
 \subsubsection{Resultados del torneo mixto de 8 agentes}
 
 Las métricas de Elo obtenidas en las secciones anteriores se obtuvieron  en enfrentamientos 1vs1 aislados, por lo que no indican una capacidad de victoria absoluta. Para co-calibrar la capacidad y progresión de los distintos checkpoints, se realizó un torneo de round-robin similar al realizado en la hipótesis.
@@ -1053,7 +1075,7 @@ Los agentes utilizados fueron: agentes aleatorio y heurístico como base, y 3 ch
     \texttt{pretrained\_it300} & $\mathbf{1424.4}$ \\
     \hline
     \end{tabular}
-    \caption{Resultados del torneo mixto de 8 agentes.}
+    \caption[Resultados del torneo mixto de 8 agentes]{Resultados del torneo mixto de 8 agentes.}
     \label{tab:hip3_mixed_tournament}
 \end{table}
 
@@ -1072,14 +1094,14 @@ Los agentes utilizados fueron: agentes aleatorio y heurístico como base, y 3 ch
         \caption{Sin tablas (solo victorias/derrotas)}
         \label{fig:hip3_matrix_no_draws}
     \end{subfigure}
-    \caption{Matrices de tasa de victoria en el torneo de calibración cruzada de 8 agentes.}
+    \caption[Matrices de tasa de victoria del torneo mixto]{Matrices de tasa de victoria en el torneo de 8 agentes.}
     \label{fig:hip3_matrices}
 \end{figure}
 
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.8\textwidth]{figures/h3_figures/game_termination_reasons.png}
-    \caption{Estructura apilada de los desenlaces de partida durante el torneo mixto de calibración.}
+    \caption[Desenlaces de partida del torneo mixto]{Gráfica apilada de los desenlaces de partida durante el torneo mixto.}
     \label{fig:hip3_tournament_reasons}
 \end{figure}
 
@@ -1088,12 +1110,12 @@ La interpretación de la Tabla \ref{tab:hip3_mixed_tournament} y las matrices de
 
 En primer lugar, se observa un fenómeno interesante en el rendimiento de \texttt{pretrained\_it0} ($985.1$ Elo), que se sitúa por debajo del agente aleatorio de control. Dado que en este torneo se prescindió de la búsqueda de profundidad 1, y junto a la temperatura utilizasa de $0.225$, este resultado evidencia la fragilidad del modelo preentrenado, cuyos datos están pensados para búsqueda. Es probable que los datos fuera de distribución provoquen este comportamiento.
 
-En segundo lugar, a pesar de lo anterior, los resultados validan la efectividad del algoritmo PPO para el autoaprendizaje en el entorno de ajedrez $5\times5$. Los modelos \texttt{tabula\_rasa} muestran una progresión lineal y constante, a pesar de resultados negativos en el Elo relativo \cite{sec:evolucion_elo_rel}, ascendiendo desde los $996.1$ Elo iniciales hasta $1147.7$ Elo en la iteración 300, logrando superar con éxito al agente heurístico. \\
+En segundo lugar, a pesar de lo anterior, los resultados validan la efectividad del algoritmo PPO para el autoaprendizaje en el entorno de ajedrez $5\times5$. Los modelos \texttt{tabula\_rasa} muestran una progresión lineal y constante, a pesar de resultados negativos en el Elo relativo \ref{sec:evolucion_elo_rel}, ascendiendo desde los $996.1$ Elo iniciales hasta $1147.7$ Elo en la iteración 300, logrando superar con éxito al agente heurístico. \\
 A pesar de esto, el modelo con inicialización supervisada mantiene una mejor capacidad de juego, confirmando las suposiciones de la hipótesis. El agente \texttt{pretrained\_it150} alcanza los $1418.5$ Elo, a pesar de que el aumento de puntuación da rendimientos decrecientes desde la iteración 150 a 300.
 
 Por otro lado, la Figura \ref{fig:hip3_tournament_reasons} desglosa la distribución de los motivos de finalización de las partidas para cada agente a lo largo del torneo. Este análisis revela diferencias cualitativas drásticas en la estructura de las partidas:
 
-En los agentes más débiles (\texttt{RandomAgent}, \texttt{HeuristicAgent} y los estados iniciales de \texttt{tabula\_rasa}), una proporción muy significativa de los encuentros (entre el $10\%$ y el $15\%$) finaliza por alcanzar el límite físico de movimientos (\textit{Max Moves} fijado en 100 medio-movimientos) \cite{arena.py}. Esto denota una dificultad para trazar planes de mate o coordinar piezas para obtener ventajas decisivas. En contraste, en los agentes preentrenados avanzados (\texttt{pretrained\_50\%} y \texttt{pretrained\_100\%}), las partidas por límite de movimientos desaparecen, lo que demuestra su mejora en su juego. \\
+En los agentes más débiles (\texttt{RandomAgent}, \texttt{HeuristicAgent} y los estados iniciales de \texttt{tabula\_rasa}), una proporción muy significativa de los encuentros (entre el $10\%$ y el $15\%$) finaliza por alcanzar el límite físico de movimientos (fijado en 100 halfmoves). Esto denota una dificultad para trazar planes de mate o coordinar piezas para obtener ventajas decisivas. En contraste, en los agentes preentrenados avanzados (\texttt{pretrained\_50\%} y \texttt{pretrained\_100\%}), las partidas por límite de movimientos desaparecen, lo que demuestra su mejora en su juego. \\
 Los modelos \texttt{pretrained\_50\%} y \texttt{pretrained\_100\%} registran una subida en el número de jaques mates, siguiendo observaciones de datos anteriores \ref{fig:hip3_reasons_pretrained_h}, del mismo modo que ne el caso de las triples repeticiones.
 
 Estos resultados no se pueden interpretar como completamente conclusivos por el bajo número de iteraciones y la selección dispersa de checkpoints del modelo (otros checkpoints podrían obtener mejores resultados), pero proporcionan una intuición de la mejor capacidad de los modelos preentrenados y la efectividad del PPO.
@@ -1103,23 +1125,51 @@ Estos resultados no se pueden interpretar como completamente conclusivos por el 
     \item \textbf{Se confirma la hipótesis}: La inicialización supervisada proporciona un punto de partida óptimo que acelera sustancialmente el aprendizaje por refuerzo y permite alcanzar cotas de juego superiores en una fracción del tiempo de computación.
 \end{itemize}
 
+\rule{\textwidth}{0.2pt}
+\subsection{Resultados generales en el entorno de Minichess} \label{sec:general_results}
+
+Finalmente, la hipótesis 1 propuesta en la sección \ref{sec:hipotesis} busca justificar el uso del entorno reducido de ajedrez en el desarrollo de este trabajo.  
+
+Los resultados obtenidos en los distintos experimentos llevados a cabo permiten validar la hipótesis de que el Minichess es un entorno de estudio adecuado para la investigación en aprendizaje por refuerzo y redes neuronales. \\
+Por un lado, su tamaño reducido permite una experimentación rápida y eficiente, eliminando la necesidad de recursos computacionales excesivos; todo el desarrollo de este proyecto se ha llevado a cabo con hardware de consumo, alternando entre computadoras (\textit{Nvidia RTX 5060 Ti} 16GB + 32GB RAM, y \textit{Nvidia RTX 3090} 24GB + 128GB RAM), y por tanto puede ser reproducido de forma sencilla y accesible.
+
+Sin embargo, esta reducción del problema no implica una simplificación excesiva, ya que el Minichess mantiene suficiente complejidad para ser un entorno de estudio válido: a nivel de aprendizaje por refuerzo, esto se observa en la diferencia de elo y métricas obtenidas en la sección anterior \ref{sec:rl_results}; se puede realizar un entrenamiento en RL de fórma ágil y con resultados positivos en este entorno.
+
+En cuanto al uso de redes neuronales, se observa también una mejora consistente en los modelos transformer entrenados, a pesar de su tamaño reducido \ref{tab:model_parameters_comparison}. Esta mejora cual está por encima de modelos más simples como MLP's en el caso del preentrenamiento supervisado \ref{fig:curvas_aprendizaje}, lo que justifica su uso, y permite obtener conclusiones sobre eficiencia de representación, arquitecturas y métodos de entrenamiento.
+
+Adicionalmente, y como se menciona en los antecedentes \ref{sec:antecedentes}, la condición \textit{weakly-solved} de este juego podría dar pie en estudios futuros a evaluaciones más exigentes, contra los agentes teóricamente perfectos; algo posible en esta variante pero no en ajedrez estándar.
+
 % 5.14. Conclusiones
+\rule{\textwidth}{0.2pt}
 \section{Conclusiones}\label{sec:conclusiones}
 
-\textcolor{red}{TODO}
+En conclusión, las secciones \ref{sec:representation_results}, \ref{sec:rl_results} y \ref{sec:general_results} presentan las aportaciones principales del trabajo, y los resultados obtenidos para las hipótesis planteadas. Los resultados obtenidos permiten confirmar que un sesgo inductivo bidimensional en la codificación del input es altamente beneficioso para un modelo transformer aplicado al ajedrez en cuanto a la mejora de la predicción de valor de una posición, no tanto en el caso de la predicción de la política, y que la adición de una cabeza factorizada con la intención de re-orientar las predicciones a un formato de origen-destino no resulta beneficioso. Por otro lado, queda demostrado que el \textit{warm-start} supervisado es significativamente beneficioso para PPO, acelerando el aprendizaje y permitiendo obtener mejores resultados en un menor tiempo de computación. Finalmente y a pesar de sus desventajas como la alta proporción de tablas, la falta de bases de datos de posiciones o la ausencia de ciertos movimientos, el entorno de Minichess ha demostrado ser un entorno de estudio adecuado para la investigación en aprendizaje por refuerzo adversarial y redes neuronales bajo restricciones de cómputo. 
 
-\begin{itemize}
-    \item Análisis crítico de las gráficas, lectura matemática.
-    \item ¿Se confirman las hipótesis o se desmienten?
-\end{itemize}
+\rule{\textwidth}{0.2pt}
+
+Dicho esto, me gustaría remarcar ciertas conclusiones a un nivel más personal. El objetivo de este trabajo era múltiple. Por un lado, este tiene una motivacion personal; servir como una base simple y estable para comprender el preentrenamiento de modelos transformer y su posterior refinamiento mediante métodos de aprendizaje por refuerzo. Esto proporciona una intuición muy cercana tanto del funcionamiento de sistemas que usan esta estructura de entrenamiento (LLMs y modelos como AlphaGo), como de los retos que presentan.
+
+Por otro lado, busca ser una base para explorar el trabajo investigativo: reproducir y expandir ideas de investigación ya existentes, como algunas de las presentadas en la sección de antecedentes. El aprendizaje por refuerzo es un campo complejo y lleno de retos; interpretabilidad, definición de funciones de recompensa, políticas cambiantes, inestabilidad de entrenamiento, baja eficiencia de muestreo, alto coste computacional y cuellos de botella en simulación, entre otros. Poder estudiarlo desde la perspectiva simplificada que ofrece el ajedrez Gardner permite mitigar algunos de estos problemas, y como ya se ha observado, aún así, obtener resultados interesantes y conclusiones relevantes a partir de una serie de hipótesis simples pero concretas. 
+
+Al plantear varias de estas hipótesis, yo mismo llegué a pensar que eran demasiado simples; algo que se ``intuía'' sin necesidad de demostración rigurosa.\\
+Pero llegados al final de este trabajo, me doy cuenta de que esto no es así, y esto es precisamente lo que hace la investigación necesaria. Veamos por ejemplo, el caso de la hipótesis 3. Cualquiera que lleve un tiempo entrenando redes neuronales conoce de sobra la idea del \textit{fine-tuning} sobre redes preentrenadas, una modalidad de \textit{transfer-learning} ayuda a acelerar el aprendizaje sobre dominios concretos: una red se entrena con una gran cantidad de datos generales de cierto ámbito, y a continuación se especializa en otros específicos, omitiendo en en este segundo entrenamiento el aprendizaje de muchas de las características comunes a ambos problemas.
+
+Sin embargo, esta intuición común no funciona igual en todos los casos: en el caso de este trabajo, por ejemplo, una observación importante muestra un cambio en el modelo, dado que la tarea para la que se ha entrenado cambia de la fase de preentrenamiento a la fase de fine-tuning por RL. En la primera fase, la tarea objetivo consiste en predecir tanto el valor la política del estado, dados los datos obtenidos del motor de \texttt{fairy-stockfish}. Estos datos, que se obtienen de una búsqueda de profundidad 4, deben ser modelados por una red sin capacidad de búsqueda. Los resultados que observamos para esta fase \ref{tab:model_parameters_comparison} muestran como los resultados de la cabeza de valor son mejores, y estos son los que finalmente guían la elección de movimientos en las evaluaciones supervisadas: en los torneos, los agentes no eligen directamente con la política, sino que realizan un filtrado con esta y posterior elección de la mejor jugada según la cabeza de valor.
+
+Sin embargo, tras el RL, durante el cual el modelo se ve forzado a utilizar la cabeza de política como selector de movimientos, y la de valor como el estimador principal de la ventaja esperada, la tarea cambia ligeramente. Así, al ejecutar los torneos del mismo modo a los anteriores, la red toma acciones inesperadamente mal: no es hasta que se cambia el método a una selección directa por la política, como se entrenó en el RL, que no se obtienen buenos resultados. Esto es algo ligeramente contraintuitivo y que se entiende mejor dada la investigación realizada: los datos iniciales estaban pensados para búsqueda y funcionaban mejor aplicando una versión reducida de esta, pero la búsqueda no es compatible con PPO, dado que esto haría la pérdida de la política no diferenciable. Y aún así, esta red entrenada con PPO, que solo elige la siguiente jugada, vence a la versión preentrenada y a todas las demás que se probaron. Esto recuerda a la frase de Capablanca; cuando un reportero le preguntó cuántas jugadas en adelante calculaba en una posición, el respondió: \textit{``Solo una, ¡la correcta!''}.
+
+Otro caso curioso es el de la factorización de la política; al proponer la hipótesis, estaba bastante convencido de que esto ayudaría, aunque fuera ligeramente, al modelo a mejorar. Al fin y al cabo, tal y como había leído en papers como \textit{Mastering chess with a transformer model} \cite{monroe2024masteringchesstransformermodel}, el uso de varias cabezas para proporcionar mayor seña al modelo era algo útil y común. Sin embargo, resultó no ser beneficioso en este caso, contrario a la intuición inicial (auque el estudio de la causa exacta queda fuera del alcance de este trabajo).
+
+Estos son solo un par de ejemplos de muchos que demuestran que hasta una idea aparentemente intuitiva merece cierta investigación. Finalmente, tras todo el trabajo y conclusiones, lo que más me llevo son preguntas. Esto no es algo malo, al contrario, es el resultado de haber profundizado en el tema y haber ganado una perspectiva más crítica sobre el mismo, y surge de la maravillosa curiosidad que me producen los temas que he cubierto. En la sección siguiente, presento algunas de estas dudas y posibles expansiones, en caso de continuar este trabajo a futuro.
 
 % 5.15. Vías de trabajo futuro
+\rule{\textwidth}{0.2pt}
 \section{Vías de trabajo futuro}\label{sec:futuro}
 
-\textcolor{red}{TODO Lo que me quedó en el tintero}
+\textcolor{red}{TODO redactar esto bien}
 
 \begin{itemize}
-    \item \textcolor{red}{TODO: posible RoPE??}  \href{https://meta-pytorch.org/torchtune/0.3/generated/torchtune.modules.RotaryPositionalEmbeddings.html}{(referencia pytorch)}
+    \item posible RoPE?? o otro encoding... \href{https://meta-pytorch.org/torchtune/0.3/generated/torchtune.modules.RotaryPositionalEmbeddings.html}{(referencia pytorch)}
     \item en vez de factorizar la politica, hacerlo con el valor! usar una cabeza auxiliar que sea categórica en lugar de regresiva
     \item equilibrar el valor de las pérdidas: dar mas peso a value loss
     \item dado el alcance, quizás habría sido mejor entrenar con un dataset sin filtrar, que incluya capturas y jaques...
@@ -1130,6 +1180,10 @@ Estos resultados no se pueden interpretar como completamente conclusivos por el 
     \item usar algún tipo de curriculum learning inicialmente
     \item hacer una interpretación de las distintas cabezas de atención con taps. visualizar los mapas de atención, ver si se puede asociar distintas cabezas a distintas capacidades
     \item probar el transfer learning: un ajedrez más grande, o variantes de este como los reyes en esquinas distintas, etc...
+    \item look more deeply into the preformance with / without 1-ply search and the policy in pretraining not improving with spatial
+    \item sería interesante explorar la idea de el aprendizaje implícito de búsqueda: si tengo datos en profundidades 2, 3 y 4, puedo demostrar de algún modo que los modelos están aprendiendo a "simular" la búsqueda de forma interna? existe una diferencia entre simular una búsqueda y aprender la distribución de datos de una profundidad concreta? por otro lado: escalar parámetros + datos + computación es algo que se ha visto que mejora el rendimiento de los transformers. pero, puede escalarse también el rendimiento de juego one-shot (sin hacer iteraciones de búsqueda, una sola inferencia) utilizando no más, sino datos a mayor profundidad, con modelos mayores, y sigue este escalado alguna proporcionalidad lógica?
+
+\textcolor{red}{añadir cosas de notion}
 
 \end{itemize}
 
@@ -1187,7 +1241,7 @@ La Tabla~\ref{tab:hiperparametros_ablation} detalla la configuración y valores 
     Semillas aleatorias ($Seed$) & 912, 32, 5000, 1, 4474, 42, 123, 2026, 777, 8765 & Múltiples semillas para evaluar estabilidad estocástica de los resultados. \\
     \hline
 \end{tabular}
-    \caption{Hiperparámetros fijos empleados en las ejecuciones del estudio de ablación de arquitectura.}
+    \caption[Hiperparámetros fijos del estudio de ablación]{Hiperparámetros fijos empleados en las ejecuciones del estudio de ablación de arquitectura.}
     \label{tab:hiperparametros_ablation}
 \end{table}
 
@@ -1292,7 +1346,7 @@ La Figura~\ref{fig:dist_casillas_origen} muestra la distribución de la casilla 
         \caption{Distribución de movimientos del jugador negro: casilla de origen}
         \label{fig:plot_king_b}
     \end{subfigure}
-    \caption{Distribución de movimientos del jugador blanco y negro: casilla de origen.}
+    \caption[Distribución de movimientos: casilla de origen]{Distribución de movimientos del jugador blanco y negro: casilla de origen.}
     \label{fig:dist_casillas_origen}
 \end{figure}
 
@@ -1311,7 +1365,7 @@ La Figura~\ref{fig:dist_casillas_origen} muestra la distribución de la casilla 
         \caption{Distribución de movimientos del jugador negro: casilla de destino}
         \label{fig:plot_king_b}
     \end{subfigure}
-    \caption{Distribución de movimientos del jugador blanco y negro: casilla de destino.}
+    \caption[Distribución de movimientos: casilla de destino]{Distribución de movimientos del jugador blanco y negro: casilla de destino.}
     \label{fig:dist_casillas_destino}
 \end{figure}
 
@@ -1325,19 +1379,19 @@ En concreto, se incrementó la dimensión de los embeddings ($d_k$) a 128 (frent
 
 En la Tabla~\ref{tab:model_parameters_comparison} se resume la comparativa del número total de parámetros entrenables y tamaño en memoria (en FP32) de las tres arquitecturas principales utilizadas en este trabajo.
 
-\begin{table}[htbp]
+\begin{table}[htbp]\label{tab:model_parameters_comparison}
     \centering
     \small
     \begin{tabular}{|l|c|c|c|}
     \hline
     \textbf{Modelo} & \textbf{Backbone / Configuración} & \textbf{N.º de Parámetros} & \textbf{Tamaño en Memoria} \\
     \hline
-    \texttt{Transformer dk64\_n3} & $d_k = 64$, $N = 3$ bloques transformer & 212,649 & 0.81 MB \\
-    \texttt{Transformer dk128\_n5} & $d_k = 128$, $N = 5$ bloques transformer & 1,132,137 & 4.32 MB \\
+    \texttt{Transformer dk64\_n3} & $d_k = 64$, $N = 3$ bloques transf. & 212,649 & 0.81 MB \\
+    \texttt{Transformer dk128\_n5} & $d_k = 128$, $N = 5$ bloques transf. & 1,132,137 & 4.32 MB \\
     \texttt{MLP\_Baseline} & 4 capas lineales de 1024 neuronas & 5,270,212 & 20.10 MB \\
     \hline
     \end{tabular}
-    \caption{Comparación de complejidad, parámetros entrenables y huella de memoria de los modelos evaluados.}
+    \caption[Parámetros y complejidad de modelos]{Comparación de complejidad, parámetros entrenables y huella de memoria de los modelos evaluados.}
     \label{tab:model_parameters_comparison}
 \end{table}
 
@@ -1370,7 +1424,7 @@ Los hiperparámetros de entrenamiento del modelo de mayor tamaño se optimizaron
     Semillas aleatorias ($Seed$) & 123, 2026, 32, 42, 5000, 777, 8765, 912 & 8 semillas aleatorias independientes para comprobar consistencia. \\
     \hline
     \end{tabular}
-    \caption{Hiperparámetros empleados en el entrenamiento del modelo \texttt{Transformer dk128\_n5}.}
+    \caption[Hiperparámetros del modelo grande]{Hiperparámetros empleados en el entrenamiento del modelo \texttt{Transformer dk128\_n5}.}
     \label{tab:hiperparametros_ablation_dk128}
 \end{table}
 
@@ -1417,7 +1471,7 @@ Los modelos grandes se evaluaron sobre el mismo conjunto de test estático. La T
         \label{subtab:valor_dk128}
     \end{subtable}
     
-    \caption{Rendimiento medio y desviación estándar de las métricas en test para el modelo grande \texttt{Transformer dk128\_n5} (8 semillas $\times$ 4 variantes).}
+    \caption[Métricas de test para el modelo grande]{Rendimiento medio y desviación estándar de las métricas en test para el modelo grande \texttt{Transformer dk128\_n5} (8 semillas $\times$ 4 variantes).}
     \label{tab:resultados_test_ablation_dk128}
 \end{table}
 
@@ -1454,7 +1508,7 @@ Los boxplots de la Figura~\ref{fig:boxplots_test_dk128} ilustran la dispersión 
         \caption{Exactitud de Resultados (Valor)}
         \label{fig:box_res_dk128}
     \end{subfigure}
-    \caption{Distribución y variabilidad de las métricas en test para el modelo grande \texttt{Transformer dk128\_n5} sobre las 8 semillas.}
+    \caption[Distribución y variabilidad de las métricas en test para el modelo grande]{Distribución y variabilidad de las métricas en test para el modelo grande \texttt{Transformer dk128\_n5} sobre las 8 semillas.}
     \label{fig:boxplots_test_dk128}
 \end{figure}
 
@@ -1477,7 +1531,7 @@ Las curvas de aprendizaje promediadas a lo largo de las 8 semillas independiente
         \caption{Result Accuracy (Validation)}
         \label{fig:curve_val_res_dk128}
     \end{subfigure}
-    \caption{Curvas de aprendizaje promediadas para el modelo \texttt{Transformer dk128\_n5} (con área sombreada de desviación estándar).}
+    \caption[Curvas de aprendizaje promediadas para el modelo grande]{Curvas de aprendizaje promediadas para el modelo grande \texttt{Transformer dk128\_n5} (con área sombreada de desviación estándar).}
     \label{fig:curvas_aprendizaje_dk128}
 \end{figure}
 
@@ -1503,7 +1557,7 @@ La Tabla~\ref{tab:eloration_ablation_tournament_dk128} muestra los resultados de
     \texttt{RandomAgent} & Selección aleatoria uniforme & 1000.0 & N/A \\
     \hline
     \end{tabular}
-    \caption{Clasificación final y Elo de los agentes basados en el modelo grande \texttt{Transformer dk128\_n5} (Semilla 42).}
+    \caption[Elo y clasificación para el modelo grande]{Clasificación final y Elo de los agentes basados en el modelo grande \texttt{Transformer dk128\_n5} (Semilla 42).}
     \label{tab:eloration_ablation_tournament_dk128}
 \end{table}
 
@@ -1531,7 +1585,7 @@ Las matrices de tasas de victorias (con y sin empates) del torneo del modelo gra
         \caption{Win Rate (solo victorias / derrotas)}
         \label{fig:win_nodraws_dk128}
     \end{subfigure}
-    \caption{Matrices cruzadas de tasas de victorias para el torneo del modelo grande \texttt{Transformer dk128\_n5} (Semilla 42).}
+    \caption[Matrices cruzadas de tasas de victorias para el torneo del modelo grande]{Matrices cruzadas de tasas de victorias para el torneo del modelo grande \texttt{Transformer dk128\_n5} (Semilla 42).}
     \label{fig:matrices_winrate_dk128}
 \end{figure}
 
@@ -1583,7 +1637,7 @@ Para analizar cómo cada cabeza de salida aprende las características supervisa
         \caption{Pérdida Auxiliar ($\mathcal{L}_{\text{aux}}$)}
         \label{fig:loss_aux_head}
     \end{subfigure}
-    \caption{Evolución de las pérdidas de entrenamiento desglosadas por cabeza de salida en el estudio de ablación (media de 10 semillas $\pm$ desviación estándar).}
+    \caption[Evolución de las pérdidas de entrenamiento desglosadas por cabeza de salida en el estudio de ablación]{Evolución de las pérdidas de entrenamiento desglosadas por cabeza de salida en el estudio de ablación (media de 10 semillas $\pm$ desviación estándar).}
     \label{fig:learning_curves_loss_heads}
 \end{figure}
 
@@ -1628,7 +1682,7 @@ Se aplica el test de Tukey HSD con una tasa de error global controlada ($\text{F
     \texttt{spatial\_fact} & \texttt{spatial\_nofact} & $+0.0042$ & $0.0036$ & $[+0.0012, +0.0072]$ & \textbf{Sí} \\
     \hline
     \end{tabular}
-    \caption{Comparación por parejas post-hoc de Tukey HSD para la exactitud del movimiento (Política).}
+    \caption[Comparación estadística usando Tukey HSD para la política]{Comparación por parejas post-hoc de Tukey HSD para la exactitud del movimiento (Política).}
     \label{tab:tukey_mov}
 \end{table}
 
@@ -1648,32 +1702,43 @@ Se aplica el test de Tukey HSD con una tasa de error global controlada ($\text{F
     \texttt{spatial\_fact} & \texttt{spatial\_nofact} & $+0.0056$ & $0.0000$ & $[+0.0035, +0.0077]$ & \textbf{Sí} \\
     \hline
     \end{tabular}
-    \caption{Comparación por parejas post-hoc de Tukey HSD para la exactitud del resultado (Valor).}
+    \caption[Comparación estadística usando Tukey HSD para el valor]{Comparación por parejas post-hoc de Tukey HSD para la exactitud del resultado (Valor).}
     \label{tab:tukey_res}
 \end{table}
 
+\newpage
 \subsection{Hiperparámetros PPO}\label{sec:hiperparam_ppo}
 
-% for now empty hiperparams, just names
+En esta sección se detallan los hiperparámetros del algoritmo Proximal Policy Optimization (PPO) empleados durante los experimentos de autoaprendizaje (\textit{self-play}) para la evaluación de la Hipótesis 3.
+
+La Tabla~\ref{tab:hiperparam_ppo} especifica la configuración del búfer de recolección de trayectorias, la estimación de ventaja (GAE), la función de pérdida multiobjetivo y la optimización.
+
 \begin{table}[htbp]
     \centering
     \small
-    \begin{tabular}{|l|l|}
+    \begin{tabular}{|p{5cm}|p{2.5cm}|p{8cm}|}
     \hline
-    \textbf{Parámetro} & \textbf{Valor} \\
+    \textbf{Hiperparámetro (Símbolo)} & \textbf{Valor} & \textbf{Descripción / Contexto Experimental} \\
     \hline
-    Epochs & 0 \\
-    Batch Size & 0 \\
-    Learning Rate & 0 \\
-    Gamma & 0 \\
-    Entropy Coeficient & 0 \\
-    clip-$\epsilon$ & 0 \\
-    Value Loss Coeficient & 0 \\
-    $\lambda$ & 0 \\
-    Number of Episodes & 0 \\
+    Entornos paralelos ($N$) & 100 & Número de instancias concurrentes del entorno de ajedrez Gardner. \\ \hline
+    Pasos de rollout ($T$) & 100 & Pasos temporales ejecutados por entorno en cada iteración de recolección. \\ \hline
+    Transiciones por iteración & 10,000 & Volumen total de muestras ($N \times T$) recolectadas por iteración PPO. \\ \hline
+    Épocas de optimización ($K$) & 8 & Pasadas de optimización sobre las muestras recopiladas por iteración. \\ \hline
+    Tamaño de minibatch ($B$) & 1024 & Tamaño de lote empleado en cada paso de actualización del optimizador. \\ \hline
+    Tasa de aprendizaje ($\alpha$) & $2 \times 10^{-4}$ & Tasa de aprendizaje fijada para el optimizador AdamW. \\ \hline
+    Optimizador & AdamW & Algoritmo de optimización por descenso de gradiente. \\ \hline
+    Factor de descuento ($\gamma$) & 0.99 & Factor de descuento para el cálculo del retorno acumulado futuro. \\ \hline
+    Parámetro GAE ($\lambda_{\text{GAE}}$) & 0.75 & Coeficiente de sintonización sesgo-varianza en la estimación de ventaja GAE. \\ \hline
+    Coeficiente de recorte ($\epsilon$) & 0.2 & Rango de recorte en la función objetivo del ratio de política ($L^{CLIP}$). \\ \hline
+    Coeficiente de valor ($c_1$) & 0.5 & Ponderación del error cuadrático medio de la cabeza de valor ($L^{VF}$). \\ \hline
+    Coeficiente de entropía ($c_2$) & 0.01 & Ponderación del término de regularización por entropía de la política ($L^{ENT}$). \\ \hline
+    Recorte de gradiente ($\text{max\_grad\_norm}$) & 0.5 & Umbral máximo para la norma del gradiente global. \\ \hline
+    Iteraciones de PPO & 300 & Pasos completos de recolección y actualización del modelo. \\ \hline
+    Semillas aleatorias ($Seed$) & 10 semillas & Evaluado sobre 10 semillas independientes para validez estadística. \\ \hline
+    Pool de oponentes (\textit{Self-play}) & Ratio 80 / 20 & 80\% de partidas contra el modelo activo, 20\% contra checkpoints pasados. \\
     \hline
     \end{tabular}
-    \caption{Hiperparámetros PPO.}
+    \caption[Hiperparámetros del algoritmo PPO]{Hiperparámetros empleados en el entrenamiento y recolección de trayectorias de PPO.}
     \label{tab:hiperparam_ppo}
 \end{table}
 
