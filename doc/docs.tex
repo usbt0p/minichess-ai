@@ -235,17 +235,15 @@ Dado el factor de ramificación estimado del ajedrez estándar (media de 35 hijo
 
 Para estimar la complejidad de la variante Gardner $5\times5$, siguiendo un razonamiento similar al de Shannon, se pueden calcular las siguientes métricas:
 \begin{itemize}
-    \item \textbf{Espacio de estados $\mathcal{S}$:} Mehdi y Prost estimaron que el número total de posiciones legales en el ajedrez $5\times5$ es aproximadamente $9\times 10^{18}$ \cite{DBLP:journals/corr/MhallaP13}, descontando posiciones ilegales (reyes en jaque simultáneo, peones en las filas de inicio/coronación, etc...). 
+    \item \textbf{Espacio de estados $\mathcal{S}$:} Mehdi y Prost estimaron que el número total de posiciones legales en el ajedrez $5\times5$ es aproximadamente $9\times 10^{18}$, descontando posiciones ilegales (reyes en jaque simultáneo, peones en las filas de inicio/coronación, etc...)\cite{DBLP:journals/corr/MhallaP13}. 
+
+    \item \textbf{Complejidad del árbol de juego:} Realizando un análisis estadístico simple sobre los datos de entrenamiento de este trabajo, (10 millones de posiciones y 1.177.627 partidas completas) se obtiene un factor de ramificación promedio de $b \approx 8.78$ jugadas legales por posición y una profundidad promedio de partida de $d \approx 87.82$ medios movimientos.
     
-    \textcolor{red}{\textbf{TODO: no mencionan como lo obtuvieron. puede que sea un recuento combinatorio estilo total = permutaciones(25, 10) * comb(15,5) * comb(10,5), (ordenar las 10 piezas principales, luego peones negros y luego blancos), pero esto deja muchas jugadas que son ilegales o que simplemente no tienen sentido , ademas de no contar las posiciones con capturas.}}
-    \item \textbf{Complejidad del árbol de juego:} Considerando un factor de ramificación promedio $b \approx 12 \text{ a } 15$ jugadas legales por posición y una profundidad promedio de partida $d \approx 20$ plies (medios movimientos),
+    Siguiendo la estimación de Shannon $b^d$, la complejidad del árbol de juego para Gardner se sitúa en:
+    $$N_{\text{media}} \approx 8.78^{87.82} \approx 7.2 \times 10^{82}$$
     
-    \textcolor{red}{\textbf{(TODO:por ahora estos 3 numeros son placeholders. son estimaciones sensatas pero estaría bien sacar datos exactos de las estadísticas de generación de partidas)}}
-    
-    la complejidad de Shannon $b^d$ para Gardner es:
-    $$N_{upper} \approx 15^{20} \approx 3.3 \times 10^{23}$$
-    $$N_{lower} \approx 12^{20} \approx 3.8 \times 10^{21}$$
-    Estos valores son infinitamente menores que el límite superior del ajedrez estándar ($10^{120}$), lo que permite que el \textit{self-play} converja con órdenes de magnitud menos recursos computacionales.
+    Este valor es 38 órdenes de magnitud inferior al límite superior del ajedrez convencional ($10^{120}$); mantiene una complejidad numérica suficiente como para mantener prohibitiva la ressolución del juego por fuerza bruta, al mismo tiempo que permite una experimentación y convergencia de aprendizaje más rápida que el ajedrez estándar en hardware de consumo.
+
 \end{itemize}
 
 Dada la complejidad del entorno, nos gustaría poder modelarlo de modo que el aprendizaje se realice únicamente sobre el estado actual, ya que comprobar el historial de jugadas completo tendría un coste computacional excesivo. Buscamos que la probabilidad de alcanzar un estado futuro dependa únicamente del estado presente, y no del historial de estados anteriores. Esta es la propiedad de Markov.
@@ -909,7 +907,35 @@ Del mismo modo que en los experimentos anteriores, los hiperparámetros utilizad
 
 Cabe destacar también, que el número de iteraciones de self-play utilizado es reducido para un problema como este (modelos como AlphaZero utilican millones de iteraciones en entornos altamente optimizados), lo que sumado al tamaño relativamente pequeño del modelo utilizado, resulta en un modelo competente, pero cuya fuerza de juego real (contra un humano o un sistema como Stockfish) no es muy alta. Esto no es negativo, ya que la reducción explícita del problema es parte de este trabajo: el problema no es más que un medio para el fin de probar las hipótesis planteadas.
 
-- TODO Hacer un "algoritmo" de como funcionan los rollouts en PPO. el entrenamiento ya está detallado.
+A continuación, el Algoritmo~\ref{alg:ppo_rollouts} detalla el procedimiento síncrono de recolección de trayectorias (\textit{rollouts}) ejecutado en cada iteración de PPO sobre $N$ entornos vectorizados en paralelo.
+
+\begin{algorithm}[H]
+\caption{Recolección de Trayectorias (\textit{Rollouts}) en PPO Paralelo}\label{alg:ppo_rollouts}
+\begin{algorithmic}[1]
+\Require Política $\pi_\theta$, función de valor $V_\theta$, $N$ entornos vectorizados, horizonte $T$
+\Ensure Búfer de trayectorias $\mathcal{D}$ para optimización Actor-Crítico
+\State Inicializar estados de los entornos $\{s_0^{(i)}\}_{i=1}^N$ y contadores de repetición
+\For{paso temporal $t = 0, 1, \dots, T-1$}
+    \State Convertir posiciones $\{s_t^{(i)}\}$ a tensores de características espaciales $x_t^{(i)}$
+    \State Evaluar red: logits $\mathbf{z}_t^{(i)}$ y valores $v_t^{(i)} \leftarrow V_\theta(x_t^{(i)})$ (sin cálculo de gradientes)
+    \State Consultar jugadas legales y crear máscaras binarias $M_t^{(i)} \in \{0, 1\}^{704}$
+    \State Enmascarar logits ilegales: $\tilde{\mathbf{z}}_t^{(i)} \leftarrow \text{where}(M_t^{(i)}, \mathbf{z}_t^{(i)}, -10^9)$
+    \State Calcular distribuciones de probabilidad: $p_t^{(i)} \leftarrow \text{softmax}(\tilde{\mathbf{z}}_t^{(i)})$
+    \State Muestrear acciones $a_t^{(i)} \sim p_t^{(i)}$ y calcular log-probabilidades $\log \pi_\theta(a_t^{(i)} \mid s_t^{(i)})$
+    \State Transicionar entornos en paralelo con $\{a_t^{(i)}\} \rightarrow$ recibir $\{s_{t+1}^{(i)}, r_t^{(i)}, d_t^{(i)}\}$
+    \For{cada entorno $i \in \{1, \dots, N\}$}
+        \If{el episodio ha finalizado ($d_t^{(i)} = \text{verdadero}$)}
+            \State Reiniciar entorno $s_{t+1}^{(i)} \leftarrow s_{\text{inicio}}$
+            \If{el agente juega con negras}
+                \State Ejecutar movimiento inicial del oponente en $s_{t+1}^{(i)}$
+            \EndIf
+        \EndIf
+    \EndFor
+    \State Almacenar la tupla $(x_t^{(i)}, a_t^{(i)}, \log \pi_\theta, v_t^{(i)}, r_t^{(i)}, d_t^{(i)}, M_t^{(i)})$ en el búfer $\mathcal{D}$
+\EndFor
+\State \Return Búfer de trayectorias $\mathcal{D}$
+\end{algorithmic}
+\end{algorithm}
 
 \rule{\textwidth}{0.2pt}
 \subsubsection{Resultados del entrenamiento}

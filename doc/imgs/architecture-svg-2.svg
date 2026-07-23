@@ -1,0 +1,2547 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   viewBox="0 0 1180 780"
+   width="100%"
+   height="100%"
+   version="1.1"
+   id="svg110"
+   sodipodi:docname="architecture-svg-2.svg"
+   inkscape:version="1.4.4 (dcaf3e7d9e, 2026-05-05)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview110"
+     pagecolor="#505050"
+     bordercolor="#eeeeee"
+     borderopacity="1"
+     inkscape:showpageshadow="0"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#505050"
+     inkscape:zoom="0.75084746"
+     inkscape:cx="384.89842"
+     inkscape:cy="431.51242"
+     inkscape:window-width="1920"
+     inkscape:window-height="1080"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg110" />
+  <defs
+     id="defs2">
+    <marker
+       style="overflow:visible"
+       id="marker229"
+       refX="0"
+       refY="0"
+       orient="auto-start-reverse"
+       inkscape:stockid="Triangle arrow"
+       markerWidth="1"
+       markerHeight="1"
+       viewBox="0 0 1 1"
+       inkscape:isstock="true"
+       inkscape:collect="always"
+       preserveAspectRatio="xMidYMid">
+      <path
+         transform="scale(0.5)"
+         style="fill:context-stroke;fill-rule:evenodd;stroke:context-stroke;stroke-width:1pt"
+         d="M 5.77,0 -2.88,5 V -5 Z"
+         id="path229" />
+    </marker>
+    <marker
+       style="overflow:visible"
+       id="marker227"
+       refX="0"
+       refY="0"
+       orient="auto-start-reverse"
+       inkscape:stockid="Triangle arrow"
+       markerWidth="1"
+       markerHeight="1"
+       viewBox="0 0 1 1"
+       inkscape:isstock="true"
+       inkscape:collect="always"
+       preserveAspectRatio="xMidYMid">
+      <path
+         transform="scale(0.5)"
+         style="fill:context-stroke;fill-rule:evenodd;stroke:context-stroke;stroke-width:1pt"
+         d="M 5.77,0 -2.88,5 V -5 Z"
+         id="path227" />
+    </marker>
+    <marker
+       style="overflow:visible"
+       id="marker223"
+       refX="0"
+       refY="0"
+       orient="auto-start-reverse"
+       inkscape:stockid="Triangle arrow"
+       markerWidth="1"
+       markerHeight="1"
+       viewBox="0 0 1 1"
+       inkscape:isstock="true"
+       inkscape:collect="always"
+       preserveAspectRatio="xMidYMid">
+      <path
+         transform="scale(0.5)"
+         style="fill:context-stroke;fill-rule:evenodd;stroke:context-stroke;stroke-width:1pt"
+         d="M 5.77,0 -2.88,5 V -5 Z"
+         id="path223" />
+    </marker>
+    <marker
+       style="overflow:visible"
+       id="marker219"
+       refX="0"
+       refY="0"
+       orient="auto-start-reverse"
+       inkscape:stockid="Triangle arrow"
+       markerWidth="1"
+       markerHeight="1"
+       viewBox="0 0 1 1"
+       inkscape:isstock="true"
+       inkscape:collect="always"
+       preserveAspectRatio="xMidYMid">
+      <path
+         transform="scale(0.5)"
+         style="fill:context-stroke;fill-rule:evenodd;stroke:context-stroke;stroke-width:1pt"
+         d="M 5.77,0 -2.88,5 V -5 Z"
+         id="path219" />
+    </marker>
+    <marker
+       style="overflow:visible"
+       id="marker218"
+       refX="0"
+       refY="0"
+       orient="auto-start-reverse"
+       inkscape:stockid="Triangle arrow"
+       markerWidth="1"
+       markerHeight="1"
+       viewBox="0 0 1 1"
+       inkscape:isstock="true"
+       inkscape:collect="always"
+       preserveAspectRatio="xMidYMid">
+      <path
+         transform="scale(0.5)"
+         style="fill:context-stroke;fill-rule:evenodd;stroke:context-stroke;stroke-width:1pt"
+         d="M 5.77,0 -2.88,5 V -5 Z"
+         id="path218" />
+    </marker>
+    <marker
+       style="overflow:visible"
+       id="marker215"
+       refX="0"
+       refY="0"
+       orient="auto-start-reverse"
+       inkscape:stockid="Triangle arrow"
+       markerWidth="0.9"
+       markerHeight="0.9"
+       viewBox="0 0 1 1"
+       inkscape:isstock="true"
+       inkscape:collect="always"
+       preserveAspectRatio="xMidYMid">
+      <path
+         transform="scale(0.5)"
+         style="fill:context-stroke;fill-rule:evenodd;stroke:context-stroke;stroke-width:1pt"
+         d="M 5.77,0 -2.88,5 V -5 Z"
+         id="path215" />
+    </marker>
+    <marker
+       style="overflow:visible"
+       id="Triangle"
+       refX="0"
+       refY="0"
+       orient="auto-start-reverse"
+       inkscape:stockid="Triangle arrow"
+       markerWidth="1"
+       markerHeight="1"
+       viewBox="0 0 1 1"
+       inkscape:isstock="true"
+       inkscape:collect="always"
+       preserveAspectRatio="xMidYMid">
+      <path
+         transform="scale(0.5)"
+         style="fill:context-stroke;fill-rule:evenodd;stroke:context-stroke;stroke-width:1pt"
+         d="M 5.77,0 -2.88,5 V -5 Z"
+         id="path212" />
+    </marker>
+    <marker
+       style="overflow:visible"
+       id="marker200"
+       refX="0"
+       refY="0"
+       orient="auto-start-reverse"
+       inkscape:stockid="Triangle arrow"
+       markerWidth="1"
+       markerHeight="1"
+       viewBox="0 0 1 1"
+       inkscape:isstock="true"
+       inkscape:collect="always"
+       preserveAspectRatio="xMidYMid">
+      <path
+         transform="scale(0.5)"
+         style="fill:context-stroke;fill-rule:evenodd;stroke:context-stroke;stroke-width:1pt"
+         d="M 5.77,0 -2.88,5 V -5 Z"
+         id="path200" />
+    </marker>
+    <marker
+       style="overflow:visible"
+       id="marker197"
+       refX="0"
+       refY="0"
+       orient="auto-start-reverse"
+       inkscape:stockid="Triangle arrow"
+       markerWidth="1"
+       markerHeight="1"
+       viewBox="0 0 1 1"
+       inkscape:isstock="true"
+       inkscape:collect="always"
+       preserveAspectRatio="xMidYMid">
+      <path
+         transform="scale(0.5)"
+         style="fill:context-stroke;fill-rule:evenodd;stroke:context-stroke;stroke-width:1pt"
+         d="M 5.77,0 -2.88,5 V -5 Z"
+         id="path197" />
+    </marker>
+    <marker
+       style="overflow:visible"
+       id="marker196"
+       refX="0"
+       refY="0"
+       orient="auto-start-reverse"
+       inkscape:stockid="Triangle arrow"
+       markerWidth="1"
+       markerHeight="1"
+       viewBox="0 0 1 1"
+       inkscape:isstock="true"
+       inkscape:collect="always"
+       preserveAspectRatio="xMidYMid">
+      <path
+         transform="scale(0.5)"
+         style="fill:context-stroke;fill-rule:evenodd;stroke:context-stroke;stroke-width:1pt"
+         d="M 5.77,0 -2.88,5 V -5 Z"
+         id="path196" />
+    </marker>
+    <linearGradient
+       id="swatch185">
+      <stop
+         style="stop-color:#f11e1e;stop-opacity:1;"
+         offset="0"
+         id="stop185" />
+    </linearGradient>
+    <style
+       id="style1">
+      .box-norm { fill: #fff2cc; stroke: #d6b656; stroke-width: 1.5; rx: 4px; }
+      .box-mlp { fill: #dae8fc; stroke: #6c8ebf; stroke-width: 1.5; rx: 4px; }
+      .box-attn { fill: #ffe6cc; stroke: #d79b00; stroke-width: 1.5; rx: 4px; }
+      .box-embed { fill: #f8cecc; stroke: #b85450; stroke-width: 1.5; rx: 4px; }
+      .box-linear { fill: #e1d5e7; stroke: #9673a6; stroke-width: 1.5; rx: 4px; }
+      .box-act { fill: #d5e8d4; stroke: #82b366; stroke-width: 1.5; rx: 4px; }
+      .box-op { fill: #ffffff; stroke: #444444; stroke-width: 1.5; rx: 4px; }
+      .box-head-out { fill: #e1f5fe; stroke: #0288d1; stroke-width: 1.5; rx: 4px; }
+      
+      .container-section { fill: #fafafa; stroke: #d0d0d0; stroke-width: 1.5; rx: 8px; }
+      .container-header { fill: #e8e8e8; stroke: #d0d0d0; stroke-width: 1; }
+      .sub-container { fill: #ffffff; stroke: #b0b0b0; stroke-width: 1.2; stroke-dasharray: 4 4; rx: 6px; }
+
+      .wire { fill: none; stroke: #222222; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+      .wire-shared { fill: none; stroke: #d81b60; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+      .arrowhead { fill: #222222; }
+      .arrowhead-shared { fill: #d81b60; }
+
+      .txt { font-family: Arial, Helvetica, sans-serif; font-size: 11px; fill: #111111; text-anchor: middle; dominant-baseline: middle; }
+      .txt-bold { font-weight: bold; }
+      .txt-header { font-family: Arial, Helvetica, sans-serif; font-size: 13px; font-weight: bold; fill: #111111; text-anchor: middle; dominant-baseline: middle; }
+      .txt-sub { font-family: Arial, Helvetica, sans-serif; font-size: 10px; fill: #555555; text-anchor: middle; dominant-baseline: middle; }
+      .txt-title { font-family: Arial, Helvetica, sans-serif; font-size: 13px; font-weight: bold; fill: #000000; text-anchor: middle; dominant-baseline: middle; }
+    </style>
+    <marker
+       id="arr"
+       viewBox="0 0 6 6"
+       refX="6"
+       refY="3"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse"
+       preserveAspectRatio="xMidYMid">
+      <path
+         d="M 0 0 L 6 3 L 0 6 z"
+         class="arrowhead"
+         id="path1" />
+    </marker>
+    <marker
+       id="arr-shared"
+       viewBox="0 0 6 6"
+       refX="6"
+       refY="3"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse"
+       preserveAspectRatio="xMidYMid">
+      <path
+         d="M 0 0 L 6 3 L 0 6 z"
+         class="arrowhead-shared"
+         id="path2" />
+    </marker>
+    <marker
+       id="arr-9"
+       viewBox="0 0 6 6"
+       refX="6"
+       refY="3"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse"
+       preserveAspectRatio="xMidYMid">
+      <path
+         d="M 0,0 6,3 0,6 Z"
+         class="arrowhead"
+         id="path1-9" />
+    </marker>
+    <marker
+       id="marker2"
+       viewBox="0 0 6 6"
+       refX="6"
+       refY="3"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse"
+       preserveAspectRatio="xMidYMid">
+      <path
+         d="M 0,0 6,3 0,6 Z"
+         class="arrowhead"
+         id="path2-1" />
+    </marker>
+    <marker
+       id="marker3"
+       viewBox="0 0 6 6"
+       refX="6"
+       refY="3"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse"
+       preserveAspectRatio="xMidYMid">
+      <path
+         d="M 0,0 6,3 0,6 Z"
+         class="arrowhead"
+         id="path3" />
+    </marker>
+    <marker
+       id="marker4"
+       viewBox="0 0 6 6"
+       refX="6"
+       refY="3"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse"
+       preserveAspectRatio="xMidYMid">
+      <path
+         d="M 0,0 6,3 0,6 Z"
+         class="arrowhead"
+         id="path4" />
+    </marker>
+    <marker
+       id="marker5"
+       viewBox="0 0 6 6"
+       refX="6"
+       refY="3"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse"
+       preserveAspectRatio="xMidYMid">
+      <path
+         d="M 0,0 6,3 0,6 Z"
+         class="arrowhead"
+         id="path5" />
+    </marker>
+    <marker
+       id="marker6"
+       viewBox="0 0 6 6"
+       refX="6"
+       refY="3"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse"
+       preserveAspectRatio="xMidYMid">
+      <path
+         d="M 0,0 6,3 0,6 Z"
+         class="arrowhead"
+         id="path6" />
+    </marker>
+    <marker
+       id="marker7"
+       viewBox="0 0 6 6"
+       refX="6"
+       refY="3"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse"
+       preserveAspectRatio="xMidYMid">
+      <path
+         d="M 0,0 6,3 0,6 Z"
+         class="arrowhead"
+         id="path7" />
+    </marker>
+    <marker
+       id="marker8"
+       viewBox="0 0 6 6"
+       refX="6"
+       refY="3"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse"
+       preserveAspectRatio="xMidYMid">
+      <path
+         d="M 0,0 6,3 0,6 Z"
+         class="arrowhead"
+         id="path8" />
+    </marker>
+    <marker
+       id="marker9"
+       viewBox="0 0 6 6"
+       refX="6"
+       refY="3"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse"
+       preserveAspectRatio="xMidYMid">
+      <path
+         d="M 0,0 6,3 0,6 Z"
+         class="arrowhead"
+         id="path9" />
+    </marker>
+    <marker
+       id="marker10"
+       viewBox="0 0 6 6"
+       refX="6"
+       refY="3"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse"
+       preserveAspectRatio="xMidYMid">
+      <path
+         d="M 0,0 6,3 0,6 Z"
+         class="arrowhead"
+         id="path10" />
+    </marker>
+    <marker
+       id="marker11"
+       viewBox="0 0 6 6"
+       refX="6"
+       refY="3"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse"
+       preserveAspectRatio="xMidYMid">
+      <path
+         d="M 0,0 6,3 0,6 Z"
+         class="arrowhead"
+         id="path11" />
+    </marker>
+    <marker
+       id="marker12"
+       viewBox="0 0 6 6"
+       refX="6"
+       refY="3"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse"
+       preserveAspectRatio="xMidYMid">
+      <path
+         d="M 0,0 6,3 0,6 Z"
+         class="arrowhead"
+         id="path12" />
+    </marker>
+    <marker
+       id="marker13"
+       viewBox="0 0 6 6"
+       refX="6"
+       refY="3"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse"
+       preserveAspectRatio="xMidYMid">
+      <path
+         d="M 0,0 6,3 0,6 Z"
+         class="arrowhead"
+         id="path13" />
+    </marker>
+    <marker
+       id="marker14"
+       viewBox="0 0 6 6"
+       refX="6"
+       refY="3"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse"
+       preserveAspectRatio="xMidYMid">
+      <path
+         d="M 0,0 6,3 0,6 Z"
+         class="arrowhead"
+         id="path14" />
+    </marker>
+  </defs>
+  <!-- BACKGROUND -->
+  <rect
+     width="100%"
+     height="100%"
+     fill="#ffffff"
+     id="rect2" />
+  <!-- ============================================================ -->
+  <!-- COLUMN 1: INPUT & EMBEDDING PIPELINE                         -->
+  <!-- ============================================================ -->
+  <g
+     id="col1-input"
+     transform="translate(-443.45097,1141.4439)">
+    <rect
+       x="20"
+       y="20"
+       width="310"
+       height="740"
+       class="container-section"
+       id="rect3" />
+    <rect
+       x="20"
+       y="20"
+       width="310"
+       height="35"
+       class="container-header"
+       id="rect4" />
+    <text
+       x="175"
+       y="38"
+       class="txt-header"
+       id="text4">1. Input &amp; Embedding Pipeline</text>
+    <!-- State Input -->
+    <rect
+       x="55"
+       y="70"
+       width="240"
+       height="30"
+       class="box-op"
+       id="rect5" />
+    <text
+       x="175"
+       y="85"
+       class="txt txt-bold"
+       id="text5">Chess State Vector (dim=27)</text>
+    <!-- Split Input -->
+    <rect
+       x="55"
+       y="125"
+       width="240"
+       height="50"
+       class="sub-container"
+       id="rect6" />
+    <text
+       x="175"
+       y="138"
+       class="txt-sub txt-bold"
+       id="text6">Split Input</text>
+    <text
+       x="95"
+       y="158"
+       class="txt-sub"
+       id="text7">board_flat (25)</text>
+    <text
+       x="175"
+       y="158"
+       class="txt-sub"
+       id="text8">rep (1)</text>
+    <text
+       x="245"
+       y="158"
+       class="txt-sub"
+       id="text9">halfmove (1)</text>
+    <!-- Clamping & Shifting -->
+    <rect
+       x="140"
+       y="195"
+       width="70"
+       height="30"
+       class="box-op"
+       id="rect9" />
+    <text
+       x="175"
+       y="205"
+       class="txt-sub"
+       id="text10">Clamp [0,2]</text>
+    <text
+       x="175"
+       y="217"
+       class="txt-sub"
+       id="text11">&amp; Shift +13</text>
+    <rect
+       x="220"
+       y="195"
+       width="70"
+       height="30"
+       class="box-op"
+       id="rect11" />
+    <text
+       x="255"
+       y="205"
+       class="txt-sub"
+       id="text12">Clamp [0,51]</text>
+    <text
+       x="255"
+       y="217"
+       class="txt-sub"
+       id="text13">&amp; Shift +16</text>
+    <!-- Concat Tokens -->
+    <rect
+       x="55"
+       y="245"
+       width="240"
+       height="25"
+       class="box-op"
+       id="rect13" />
+    <text
+       x="175"
+       y="257"
+       class="txt"
+       id="text14">Concat Tokens (dim=27)</text>
+    <!-- Token Embeddings -->
+    <rect
+       x="55"
+       y="290"
+       width="240"
+       height="35"
+       class="box-embed"
+       id="rect14" />
+    <text
+       x="175"
+       y="302"
+       class="txt txt-bold"
+       id="text15">w_embed: ChessEmbeddingSimple</text>
+    <text
+       x="175"
+       y="316"
+       class="txt-sub"
+       id="text16">(vocab=68 → embed_dim)</text>
+    <!-- CLS Token Addition -->
+    <rect
+       x="35"
+       y="345"
+       width="105"
+       height="35"
+       class="box-embed"
+       id="rect16" />
+    <text
+       x="87"
+       y="356"
+       class="txt"
+       id="text17">cls_token Param</text>
+    <text
+       x="87"
+       y="369"
+       class="txt-sub"
+       id="text18">(1, 1, embed_dim)</text>
+    <rect
+       x="155"
+       y="345"
+       width="150"
+       height="35"
+       class="box-op"
+       id="rect18" />
+    <text
+       x="230"
+       y="356"
+       class="txt"
+       id="text19">Concat CLS + Board</text>
+    <text
+       x="230"
+       y="369"
+       class="txt-sub"
+       id="text20">(B, 28, embed_dim)</text>
+    <!-- Positional Embeddings -->
+    <rect
+       x="35"
+       y="400"
+       width="105"
+       height="35"
+       class="box-embed"
+       id="rect20" />
+    <text
+       x="87"
+       y="411"
+       class="txt"
+       id="text21">w_pos_embed</text>
+    <text
+       x="87"
+       y="424"
+       class="txt-sub"
+       id="text22">(28 → embed_dim)</text>
+    <rect
+       x="155"
+       y="400"
+       width="150"
+       height="35"
+       class="box-op"
+       id="rect22" />
+    <text
+       x="230"
+       y="417"
+       class="txt"
+       id="text23">Add Positional Embeddings</text>
+    <!-- Embedding Dropout -->
+    <rect
+       x="85"
+       y="455"
+       width="180"
+       height="30"
+       class="box-embed"
+       id="rect23" />
+    <text
+       x="175"
+       y="470"
+       class="txt"
+       id="text24">embed_dropout: Dropout (p=0.1)</text>
+    <!-- Column 1 Wires -->
+    <path
+       d="m 175,100 v 25"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path24" />
+    <path
+       d="m 95,175 v 70"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path25" />
+    <path
+       d="m 175,175 v 20"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path26" />
+    <path
+       d="m 255,175 v 20"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path27" />
+    <path
+       d="m 175,225 v 20"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path28" />
+    <path
+       d="m 255,225 v 20"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path29" />
+    <path
+       d="m 175,270 v 20"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path30" />
+    <path
+       d="m 175,325 h 55 v 20"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path31" />
+    <path
+       d="m 87,380 v 12 h 143 v -47"
+       stroke="#000000"
+       fill="none"
+       id="path32" />
+    <path
+       d="m 87,380 v 20"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path33" />
+    <path
+       d="m 230,380 v 20"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path34" />
+    <path
+       d="m 87,435 v 10 h 88 v -45"
+       stroke="#000000"
+       fill="none"
+       id="path35" />
+    <path
+       d="m 230,435 v 10 h -55 v 10"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path36" />
+    <!-- Route to Column 2 -->
+    <path
+       d="m 175,485 v 35 h 175"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path37" />
+  </g>
+  <!-- ============================================================ -->
+  <!-- COLUMN 2: PRE-NORM TRANSFORMER BACKBONE                      -->
+  <!-- ============================================================ -->
+  <g
+     id="col2-backbone"
+     transform="translate(-975.74439,91.277418)">
+    <rect
+       x="350"
+       y="20"
+       width="350"
+       height="740"
+       class="container-section"
+       id="rect37" />
+    <rect
+       x="350"
+       y="20"
+       width="350"
+       height="35"
+       class="container-header"
+       id="rect38" />
+    <text
+       x="525"
+       y="38"
+       class="txt-header"
+       id="text38">2. Pre-Norm Transformer Encoder</text>
+    <!-- Block 0 Container -->
+    <rect
+       x="365"
+       y="70"
+       width="320"
+       height="500"
+       class="sub-container"
+       id="rect39" />
+    <text
+       x="525"
+       y="88"
+       class="txt-title"
+       id="text39">Transformer Block 0 (Detailed)</text>
+    <!-- Residual 1 Split & Pre-Norm -->
+    <circle
+       cx="525"
+       cy="115"
+       r="3.5"
+       fill="#000000"
+       id="circle39" />
+    <rect
+       x="460"
+       y="135"
+       width="130"
+       height="28"
+       class="box-norm"
+       id="rect40" />
+    <text
+       x="525"
+       y="149"
+       class="txt txt-bold"
+       id="text40">norm1: RMSNorm</text>
+    <!-- Multi-Head Self Attention -->
+    <rect
+       x="430"
+       y="180"
+       width="190"
+       height="35"
+       class="box-attn"
+       id="rect41" />
+    <text
+       x="525"
+       y="192"
+       class="txt txt-bold"
+       id="text41">mha: MultiheadAttention</text>
+    <text
+       x="525"
+       y="205"
+       class="txt-sub"
+       id="text42">(Self-Attention, No Masking)</text>
+    <!-- Addition Node 1 -->
+    <circle
+       cx="525"
+       cy="240"
+       r="10"
+       fill="#ffffff"
+       stroke="#000000"
+       stroke-width="1.5"
+       id="circle42" />
+    <path
+       d="m 520,240 h 10 m -5,-5 v 10"
+       stroke="#000000"
+       stroke-width="1.5"
+       id="path42" />
+    <!-- Residual 2 Split & Pre-Norm -->
+    <circle
+       cx="525"
+       cy="270"
+       r="3.5"
+       fill="#000000"
+       id="circle43" />
+    <rect
+       x="460"
+       y="290"
+       width="130"
+       height="28"
+       class="box-norm"
+       id="rect43" />
+    <text
+       x="525"
+       y="304"
+       class="txt txt-bold"
+       id="text43">norm2: RMSNorm</text>
+    <!-- Custom FeedForward (MLP) Subgraph -->
+    <rect
+       x="395"
+       y="330"
+       width="260"
+       height="175"
+       class="box-mlp"
+       fill-opacity="0.15"
+       id="rect44" />
+    <text
+       x="525"
+       y="345"
+       class="txt-bold txt-sub"
+       id="text44">mlp: Feed Forward (Custom MLP)</text>
+    <rect
+       x="415"
+       y="360"
+       width="220"
+       height="25"
+       class="box-linear"
+       id="rect45" />
+    <text
+       x="525"
+       y="372"
+       class="txt"
+       id="text45">Linear (embed_dim → expand * embed)</text>
+    <rect
+       x="475"
+       y="395"
+       width="100"
+       height="22"
+       class="box-act"
+       id="rect46" />
+    <text
+       x="525"
+       y="406"
+       class="txt txt-bold"
+       id="text46">GELU</text>
+    <rect
+       x="415"
+       y="427"
+       width="220"
+       height="25"
+       class="box-linear"
+       id="rect47" />
+    <text
+       x="525"
+       y="439"
+       class="txt"
+       id="text47">Linear (expand * embed → embed_dim)</text>
+    <rect
+       x="455"
+       y="462"
+       width="140"
+       height="22"
+       class="box-mlp"
+       id="rect48" />
+    <text
+       x="525"
+       y="473"
+       class="txt"
+       id="text48">Dropout (mlp_dropout)</text>
+    <!-- Addition Node 2 -->
+    <circle
+       cx="525"
+       cy="535"
+       r="10"
+       fill="#ffffff"
+       stroke="#000000"
+       stroke-width="1.5"
+       id="circle48" />
+    <path
+       d="m 520,535 h 10 m -5,-5 v 10"
+       stroke="#000000"
+       stroke-width="1.5"
+       id="path48" />
+    <!-- Backbone Remaining Blocks -->
+    <rect
+       x="415"
+       y="590"
+       width="220"
+       height="45"
+       class="sub-container"
+       id="rect49" />
+    <text
+       x="525"
+       y="605"
+       class="txt-title"
+       id="text49">Backbone (N-1 Blocks)</text>
+    <text
+       x="525"
+       y="622"
+       class="txt-sub"
+       id="text50">Transformer Block 1 ... Block N-1</text>
+    <!-- Final RMSNorm -->
+    <rect
+       x="460"
+       y="655"
+       width="130"
+       height="28"
+       class="box-norm"
+       id="rect50" />
+    <text
+       x="525"
+       y="669"
+       class="txt txt-bold"
+       id="text51">final_norm: RMSNorm</text>
+    <!-- Column 2 Wires -->
+    <path
+       d="m 525,115 v 20"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path51" />
+    <path
+       d="m 525,163 v 17"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path52" />
+    <path
+       d="m 525,215 v 15"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path53" />
+    <!-- Residual 1 Bypass Wire -->
+    <path
+       d="M 525,115 H 380 v 125 h 135"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path54" />
+    <path
+       d="m 525,250 v 40"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path55" />
+    <path
+       d="m 525,318 v 42"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path56" />
+    <path
+       d="m 525,385 v 10"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path57" />
+    <path
+       d="m 525,417 v 10"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path58" />
+    <path
+       d="m 525,452 v 10"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path59" />
+    <path
+       d="m 525,484 v 41"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path60" />
+    <!-- Residual 2 Bypass Wire -->
+    <path
+       d="M 525,270 H 380 v 265 h 135"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path61" />
+    <path
+       d="m 525,545 v 45"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path62" />
+    <path
+       d="m 525,635 v 20"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path63" />
+    <path
+       d="m 525,683 v 27 h 195"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path64" />
+  </g>
+  <!-- ============================================================ -->
+  <!-- COLUMN 3: SLICING & DUAL HEADS                               -->
+  <!-- ============================================================ -->
+  <g
+     id="g137"
+     transform="translate(-296.64965,1163.055)">
+    <rect
+       x="350"
+       y="20"
+       width="350"
+       height="740"
+       class="container-section"
+       id="rect110" />
+    <rect
+       x="350"
+       y="20"
+       width="350"
+       height="35"
+       class="container-header"
+       id="rect111" />
+    <text
+       x="525"
+       y="38"
+       class="txt-header"
+       id="text111">2. Pre-Norm Transformer Encoder</text>
+    <!-- Block 0 Container -->
+    <rect
+       x="365"
+       y="70"
+       width="320"
+       height="500"
+       class="sub-container"
+       id="rect112" />
+    <text
+       x="525"
+       y="88"
+       class="txt-title"
+       id="text112">Transformer Block 0 (Detailed)</text>
+    <!-- Residual 1 Split & Pre-Norm -->
+    <circle
+       cx="525"
+       cy="115"
+       r="3.5"
+       fill="#000000"
+       id="circle112" />
+    <rect
+       x="460"
+       y="135"
+       width="130"
+       height="28"
+       class="box-norm"
+       id="rect113" />
+    <text
+       x="525"
+       y="149"
+       class="txt txt-bold"
+       id="text113">norm1: RMSNorm</text>
+    <!-- Multi-Head Self Attention -->
+    <rect
+       x="430"
+       y="180"
+       width="190"
+       height="35"
+       class="box-attn"
+       id="rect114" />
+    <text
+       x="525"
+       y="192"
+       class="txt txt-bold"
+       id="text114">mha: MultiheadAttention</text>
+    <text
+       x="525"
+       y="205"
+       class="txt-sub"
+       id="text115">(Self-Attention, No Masking)</text>
+    <!-- Addition Node 1 -->
+    <circle
+       cx="525"
+       cy="240"
+       r="10"
+       fill="#ffffff"
+       stroke="#000000"
+       stroke-width="1.5"
+       id="circle115" />
+    <path
+       d="m 520,240 h 10 m -5,-5 v 10"
+       stroke="#000000"
+       stroke-width="1.5"
+       id="path115" />
+    <!-- Residual 2 Split & Pre-Norm -->
+    <circle
+       cx="525"
+       cy="270"
+       r="3.5"
+       fill="#000000"
+       id="circle116" />
+    <rect
+       x="460"
+       y="290"
+       width="130"
+       height="28"
+       class="box-norm"
+       id="rect116" />
+    <text
+       x="525"
+       y="304"
+       class="txt txt-bold"
+       id="text116">norm2: RMSNorm</text>
+    <!-- Custom FeedForward (MLP) Subgraph -->
+    <rect
+       x="395"
+       y="330"
+       width="260"
+       height="175"
+       class="box-mlp"
+       fill-opacity="0.15"
+       id="rect117" />
+    <text
+       x="525"
+       y="345"
+       class="txt-bold txt-sub"
+       id="text117">mlp: Feed Forward (Custom MLP)</text>
+    <rect
+       x="415"
+       y="360"
+       width="220"
+       height="25"
+       class="box-linear"
+       id="rect118" />
+    <text
+       x="525"
+       y="372"
+       class="txt"
+       id="text118">Linear (embed_dim → expand * embed)</text>
+    <rect
+       x="475"
+       y="395"
+       width="100"
+       height="22"
+       class="box-act"
+       id="rect119" />
+    <text
+       x="525"
+       y="406"
+       class="txt txt-bold"
+       id="text119">GELU</text>
+    <rect
+       x="415"
+       y="427"
+       width="220"
+       height="25"
+       class="box-linear"
+       id="rect120" />
+    <text
+       x="525"
+       y="439"
+       class="txt"
+       id="text120">Linear (expand * embed → embed_dim)</text>
+    <rect
+       x="455"
+       y="462"
+       width="140"
+       height="22"
+       class="box-mlp"
+       id="rect121" />
+    <text
+       x="525"
+       y="473"
+       class="txt"
+       id="text121">Dropout (mlp_dropout)</text>
+    <!-- Addition Node 2 -->
+    <circle
+       cx="525"
+       cy="535"
+       r="10"
+       fill="#ffffff"
+       stroke="#000000"
+       stroke-width="1.5"
+       id="circle121" />
+    <path
+       d="m 520,535 h 10 m -5,-5 v 10"
+       stroke="#000000"
+       stroke-width="1.5"
+       id="path121" />
+    <!-- Backbone Remaining Blocks -->
+    <rect
+       x="415"
+       y="590"
+       width="220"
+       height="45"
+       class="sub-container"
+       id="rect122" />
+    <text
+       x="525"
+       y="605"
+       class="txt-title"
+       id="text122">Backbone (N-1 Blocks)</text>
+    <text
+       x="525"
+       y="622"
+       class="txt-sub"
+       id="text123">Transformer Block 1 ... Block N-1</text>
+    <!-- Final RMSNorm -->
+    <rect
+       x="460"
+       y="655"
+       width="130"
+       height="28"
+       class="box-norm"
+       id="rect123" />
+    <text
+       x="525"
+       y="669"
+       class="txt txt-bold"
+       id="text124">final_norm: RMSNorm</text>
+    <!-- Column 2 Wires -->
+    <path
+       d="m 525,115 v 20"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path124" />
+    <path
+       d="m 525,163 v 17"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path125" />
+    <path
+       d="m 525,215 v 15"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path126" />
+    <!-- Residual 1 Bypass Wire -->
+    <path
+       d="M 525,115 H 380 v 125 h 135"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path127" />
+    <path
+       d="m 525,250 v 40"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path128" />
+    <path
+       d="m 525,318 v 42"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path129" />
+    <path
+       d="m 525,385 v 10"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path130" />
+    <path
+       d="m 525,417 v 10"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path131" />
+    <path
+       d="m 525,452 v 10"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path132" />
+    <path
+       d="m 525,484 v 41"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path133" />
+    <!-- Residual 2 Bypass Wire -->
+    <path
+       d="M 525,270 H 380 v 265 h 135"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path134" />
+    <path
+       d="m 525,545 v 45"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path135" />
+    <path
+       d="m 525,635 v 20"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path136" />
+    <path
+       d="m 525,683 v 27 h 195"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path137" />
+  </g>
+  <g
+     id="g183"
+     transform="translate(-242.02845,1163.9967)">
+    <rect
+       x="720"
+       y="20"
+       width="440"
+       height="740"
+       class="container-section"
+       id="rect137" />
+    <rect
+       x="720"
+       y="20"
+       width="440"
+       height="35"
+       class="container-header"
+       id="rect138" />
+    <text
+       x="940"
+       y="38"
+       class="txt-header"
+       id="text138">3. Output Slicing &amp; Dual Prediction Heads</text>
+    <!-- Slicing Block -->
+    <rect
+       x="735"
+       y="70"
+       width="410"
+       height="60"
+       class="sub-container"
+       id="rect139" />
+    <text
+       x="940"
+       y="83"
+       class="txt-sub txt-bold"
+       id="text139">Output Slicing</text>
+    <rect
+       x="745"
+       y="92"
+       width="185"
+       height="30"
+       class="box-op"
+       id="rect140" />
+    <text
+       x="837"
+       y="101"
+       class="txt txt-bold"
+       fill="#d81b60"
+       id="text140">CLS Output</text>
+    <text
+       x="837"
+       y="113"
+       class="txt-sub"
+       id="text141">x[:, 0, :] (B, embed_dim)</text>
+    <rect
+       x="950"
+       y="92"
+       width="185"
+       height="30"
+       class="box-op"
+       id="rect141" />
+    <text
+       x="1042"
+       y="101"
+       class="txt txt-bold"
+       fill="#0288d1"
+       id="text142">Board Tokens</text>
+    <text
+       x="1042"
+       y="113"
+       class="txt-sub"
+       id="text143">x[:, 1:26, :] (B, 25, embed_dim)</text>
+    <!-- VALUE HEAD -->
+    <rect
+       x="735"
+       y="145"
+       width="200"
+       height="280"
+       class="sub-container"
+       id="rect143" />
+    <text
+       x="835"
+       y="160"
+       class="txt-title"
+       id="text144">value: ValueHead</text>
+    <rect
+       x="750"
+       y="180"
+       width="170"
+       height="25"
+       class="box-linear"
+       id="rect144" />
+    <text
+       x="835"
+       y="192"
+       class="txt"
+       id="text145">Linear (embed → expand)</text>
+    <rect
+       x="785"
+       y="215"
+       width="100"
+       height="22"
+       class="box-act"
+       id="rect145" />
+    <text
+       x="835"
+       y="226"
+       class="txt txt-bold"
+       id="text146">GELU</text>
+    <rect
+       x="765"
+       y="247"
+       width="140"
+       height="22"
+       class="box-mlp"
+       id="rect146" />
+    <text
+       x="835"
+       y="258"
+       class="txt"
+       id="text147">Dropout (p=0.1)</text>
+    <rect
+       x="750"
+       y="279"
+       width="170"
+       height="25"
+       class="box-linear"
+       id="rect147" />
+    <text
+       x="835"
+       y="291"
+       class="txt"
+       id="text148">Linear (expand → 1)</text>
+    <rect
+       x="785"
+       y="314"
+       width="100"
+       height="22"
+       class="box-act"
+       id="rect148" />
+    <text
+       x="835"
+       y="325"
+       class="txt txt-bold"
+       id="text149">Tanh</text>
+    <rect
+       x="750"
+       y="350"
+       width="170"
+       height="30"
+       class="box-head-out"
+       id="rect149" />
+    <text
+       x="835"
+       y="360"
+       class="txt txt-bold"
+       id="text150">OUT_VALUE</text>
+    <text
+       x="835"
+       y="372"
+       class="txt-sub"
+       id="text151">value_pred (B, 1)</text>
+    <!-- POLICY HEAD -->
+    <rect
+       x="945"
+       y="145"
+       width="200"
+       height="595"
+       class="sub-container"
+       id="rect151" />
+    <text
+       x="1045"
+       y="160"
+       class="txt-title"
+       id="text152">policy: MatrixPolicyHead</text>
+    <rect
+       x="955"
+       y="185"
+       width="85"
+       height="40"
+       class="box-linear"
+       id="rect152" />
+    <text
+       x="997"
+       y="198"
+       class="txt txt-bold"
+       id="text153">proj_from</text>
+    <text
+       x="997"
+       y="212"
+       class="txt-sub"
+       id="text154">Seq. Linear</text>
+    <rect
+       x="1050"
+       y="185"
+       width="85"
+       height="40"
+       class="box-linear"
+       id="rect154" />
+    <text
+       x="1092"
+       y="198"
+       class="txt txt-bold"
+       id="text155">proj_to</text>
+    <text
+       x="1092"
+       y="212"
+       class="txt-sub"
+       id="text156">Seq. Linear</text>
+    <rect
+       x="955"
+       y="250"
+       width="180"
+       height="30"
+       class="box-op"
+       id="rect156" />
+    <text
+       x="1045"
+       y="261"
+       class="txt txt-bold"
+       id="text157">Outer Product (einsum)</text>
+    <text
+       x="1045"
+       y="273"
+       class="txt-sub"
+       id="text158">(B, 25, 25)</text>
+    <rect
+       x="955"
+       y="300"
+       width="180"
+       height="35"
+       class="box-op"
+       id="rect158" />
+    <text
+       x="1045"
+       y="312"
+       class="txt"
+       id="text159">Flatten &amp; Apply eye_mask</text>
+    <text
+       x="1045"
+       y="325"
+       class="txt-sub"
+       id="text160">(diagonal removal → B, 600)</text>
+    <!-- Shared CLS Promo Branch in Policy Head -->
+    <rect
+       x="955"
+       y="360"
+       width="180"
+       height="35"
+       class="box-linear"
+       stroke="#d81b60"
+       stroke-width="1.5"
+       id="rect160" />
+    <text
+       x="1045"
+       y="372"
+       class="txt txt-bold"
+       id="text161">proj_promo</text>
+    <text
+       x="1045"
+       y="385"
+       class="txt-sub"
+       id="text162">Linear (embed_dim → 104)</text>
+    <rect
+       x="955"
+       y="420"
+       width="180"
+       height="35"
+       class="box-op"
+       id="rect162" />
+    <text
+       x="1045"
+       y="432"
+       class="txt txt-bold"
+       id="text163">Concat Policy Logits</text>
+    <text
+       x="1045"
+       y="445"
+       class="txt-sub"
+       id="text164">(600 base + 104 promo = 704)</text>
+    <rect
+       x="960"
+       y="475"
+       width="170"
+       height="30"
+       class="box-head-out"
+       id="rect164" />
+    <text
+       x="1045"
+       y="485"
+       class="txt txt-bold"
+       id="text165">OUT_POLICY</text>
+    <text
+       x="1045"
+       y="497"
+       class="txt-sub"
+       id="text166">policy_logits (B, 704)</text>
+    <!-- Legend / Note on Shared Token -->
+    <rect
+       x="735"
+       y="670"
+       width="200"
+       height="70"
+       class="sub-container"
+       fill="#fce4ec"
+       stroke="#f48fb1"
+       id="rect166" />
+    <text
+       x="835"
+       y="688"
+       class="txt-sub txt-bold"
+       fill="#c2185b"
+       id="text167">Shared Input Highlight:</text>
+    <text
+       x="835"
+       y="705"
+       class="txt-sub"
+       id="text168">The CLS Output is the ONLY tensor</text>
+    <text
+       x="835"
+       y="720"
+       class="txt-sub"
+       id="text169">shared between Value &amp; Policy heads.</text>
+    <!-- ================= ROUTING WIRES ================= -->
+    <!-- CLS Token Wires (Highlighted Pink) -->
+    <!-- 1. CLS to Value Head -->
+    <path
+       d="m 837,122 v 58"
+       class="wire-shared"
+       marker-end="url(#arr-shared)"
+       id="path169" />
+    <!-- 2. CLS to Policy Head (proj_promo) -->
+    <path
+       d="m 837,122 v 13 H 725 v 270 h 215 v -28 h 15"
+       class="wire-shared"
+       marker-end="url(#arr-shared)"
+       id="path170" />
+    <!-- Value Head Inner Wires -->
+    <path
+       d="m 835,205 v 10"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path171" />
+    <path
+       d="m 835,237 v 10"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path172" />
+    <path
+       d="m 835,269 v 10"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path173" />
+    <path
+       d="m 835,304 v 10"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path174" />
+    <path
+       d="m 835,336 v 14"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path175" />
+    <!-- Board Tokens Wires (Blue/Standard) -->
+    <path
+       d="m 1042,122 v 48 h -45 v 15"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path176" />
+    <path
+       d="m 1042,170 h 50 v 15"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path177" />
+    <!-- Policy Head Inner Wires -->
+    <path
+       d="m 997,225 v 25"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path178" />
+    <path
+       d="m 1092,225 v 25"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path179" />
+    <path
+       d="m 1045,280 v 20"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path180" />
+    <path
+       d="m 1045,335 v 85"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path181" />
+    <path
+       d="m 1045,395 v 25"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path182" />
+    <path
+       d="m 1045,455 v 20"
+       class="wire"
+       marker-end="url(#arr)"
+       id="path183" />
+  </g>
+  <rect
+     x="597.4953"
+     y="20.000004"
+     width="485.34634"
+     height="537.98553"
+     class="container-section"
+     id="rect64" />
+  <rect
+     x="597.60565"
+     y="20.11034"
+     width="485.12567"
+     height="34.996307"
+     class="container-header"
+     id="rect65" />
+  <text
+     x="862.77045"
+     y="38.071308"
+     class="txt-header"
+     id="text65">3. Output Slicing &amp; Dual Prediction Heads</text>
+  <rect
+     x="618.25372"
+     y="68.39019"
+     width="449.48004"
+     height="61.691319"
+     class="sub-container"
+     id="rect66" />
+  <text
+     x="846.77045"
+     y="81.071312"
+     class="txt-sub txt-bold"
+     id="text66">Output Slicing</text>
+  <g
+     id="g205"
+     transform="translate(31.90601,-16.88011)">
+    <rect
+       x="617.86444"
+       y="108.95141"
+       width="185"
+       height="30"
+       class="box-op"
+       id="rect67" />
+    <text
+       x="709.86444"
+       y="117.95141"
+       class="txt txt-bold"
+       fill="#d81b60"
+       id="text67">CLS Output</text>
+    <text
+       x="709.86444"
+       y="129.95142"
+       class="txt-sub"
+       id="text68">x[:, 0, :] (B, embed_dim)</text>
+  </g>
+  <g
+     id="g204"
+     transform="translate(33.90601,-16.88011)">
+    <rect
+       x="822.86444"
+       y="108.95141"
+       width="185"
+       height="30"
+       class="box-op"
+       id="rect68" />
+    <text
+       x="914.86444"
+       y="117.95141"
+       class="txt txt-bold"
+       fill="#0288d1"
+       id="text69">Board Tokens</text>
+    <text
+       x="914.86444"
+       y="129.95142"
+       class="txt-sub"
+       id="text70">x[:, 1:26, :] (B, 25, embed_dim)</text>
+  </g>
+  <rect
+     x="618.25458"
+     y="150.33359"
+     width="219.24825"
+     height="288.70026"
+     class="sub-container"
+     id="rect70" />
+  <text
+     x="662.78741"
+     y="166.2946"
+     class="txt-title"
+     id="text71">ValueHead</text>
+  <g
+     id="g190"
+     transform="translate(47.41737,-0.99662)">
+    <rect
+       x="596.86444"
+       y="196.95142"
+       width="170"
+       height="25"
+       class="box-linear"
+       id="rect71" />
+    <text
+       x="681.86444"
+       y="208.95142"
+       class="txt"
+       id="text72">Linear (embed → expand)</text>
+  </g>
+  <g
+     id="g189"
+     transform="translate(47.41737,5.16746)">
+    <rect
+       x="631.86444"
+       y="231.95142"
+       width="100"
+       height="22"
+       class="box-act"
+       id="rect72" />
+    <text
+       x="681.86444"
+       y="242.95142"
+       class="txt txt-bold"
+       id="text73">GELU</text>
+  </g>
+  <g
+     id="g188"
+     transform="translate(47.41737,11.33154)">
+    <rect
+       x="611.86444"
+       y="263.95142"
+       width="140"
+       height="22"
+       class="box-mlp"
+       id="rect73" />
+    <text
+       x="681.86444"
+       y="274.95142"
+       class="txt"
+       id="text74">Dropout (p=0.1)</text>
+  </g>
+  <g
+     id="g187"
+     transform="translate(47.41737,17.49562)">
+    <rect
+       x="596.86444"
+       y="295.95142"
+       width="170"
+       height="25"
+       class="box-linear"
+       id="rect74" />
+    <text
+       x="681.86444"
+       y="307.95142"
+       class="txt"
+       id="text75">Linear (expand → 1)</text>
+  </g>
+  <g
+     id="g186"
+     transform="translate(47.41737,5.6597)">
+    <rect
+       x="631.86444"
+       y="348.95142"
+       width="100"
+       height="22"
+       class="box-act"
+       id="rect75" />
+    <text
+       x="681.86444"
+       y="359.95142"
+       class="txt txt-bold"
+       id="text76">Tanh</text>
+  </g>
+  <g
+     id="g185"
+     transform="translate(47.41737,3.82378)">
+    <rect
+       x="596.86444"
+       y="388.95142"
+       width="170"
+       height="30"
+       class="box-head-out"
+       id="rect76" />
+    <text
+       x="681.86444"
+       y="398.95142"
+       class="txt txt-bold"
+       id="text77">OUT_VALUE</text>
+    <text
+       x="681.86444"
+       y="410.95142"
+       class="txt-sub"
+       id="text78">value_pred (B, 1)</text>
+  </g>
+  <rect
+     x="857.96082"
+     y="150.3311"
+     width="209.91292"
+     height="386.55176"
+     class="sub-container"
+     id="rect78" />
+  <text
+     x="923.81561"
+     y="166.07356"
+     class="txt-title"
+     id="text79">MatrixPolicyHead</text>
+  <rect
+     x="877.77045"
+     y="199.0713"
+     width="85"
+     height="40"
+     class="box-linear"
+     id="rect79" />
+  <text
+     x="919.77045"
+     y="212.0713"
+     class="txt txt-bold"
+     id="text80">proj_from</text>
+  <text
+     x="919.77045"
+     y="226.0713"
+     class="txt-sub"
+     id="text81">Seq. Linear</text>
+  <rect
+     x="972.77045"
+     y="199.0713"
+     width="85"
+     height="40"
+     class="box-linear"
+     id="rect81" />
+  <text
+     x="1014.7704"
+     y="212.0713"
+     class="txt txt-bold"
+     id="text82">proj_to</text>
+  <text
+     x="1014.7704"
+     y="226.0713"
+     class="txt-sub"
+     id="text83">Seq. Linear</text>
+  <rect
+     x="877.77045"
+     y="264.07129"
+     width="180"
+     height="30"
+     class="box-op"
+     id="rect83" />
+  <text
+     x="967.77045"
+     y="275.07132"
+     class="txt txt-bold"
+     id="text84">Outer Product (einsum)</text>
+  <text
+     x="967.77045"
+     y="287.07132"
+     class="txt-sub"
+     id="text85">(B, 25, 25)</text>
+  <rect
+     x="877.77045"
+     y="314.07132"
+     width="180"
+     height="35"
+     class="box-op"
+     id="rect85" />
+  <text
+     x="967.77045"
+     y="326.07132"
+     class="txt"
+     id="text86">Flatten &amp; Apply eye_mask</text>
+  <text
+     x="967.77045"
+     y="339.07132"
+     class="txt-sub"
+     id="text87">(diagonal removal → B, 600)</text>
+  <rect
+     x="877.6712"
+     y="373.97208"
+     width="134.7493"
+     height="35.198498"
+     class="box-linear"
+     stroke="#d81b60"
+     stroke-width="1.5"
+     id="rect87" />
+  <text
+     x="945.77045"
+     y="386.07132"
+     class="txt txt-bold"
+     id="text88">proj_promo</text>
+  <text
+     x="945.77045"
+     y="399.07132"
+     class="txt-sub"
+     id="text89">Linear (embed_dim → 104)</text>
+  <rect
+     x="877.77045"
+     y="434.07132"
+     width="180"
+     height="35"
+     class="box-op"
+     id="rect89" />
+  <text
+     x="967.77045"
+     y="446.07132"
+     class="txt txt-bold"
+     id="text90">Concat Policy Logits</text>
+  <text
+     x="967.77045"
+     y="459.07132"
+     class="txt-sub"
+     id="text91">(600 base + 104 promo = 704)</text>
+  <rect
+     x="882.77045"
+     y="489.07132"
+     width="170"
+     height="30"
+     class="box-head-out"
+     id="rect91" />
+  <text
+     x="967.77045"
+     y="499.07132"
+     class="txt txt-bold"
+     id="text92">OUT_POLICY</text>
+  <text
+     x="967.77045"
+     y="511.07129"
+     class="txt-sub"
+     id="text93">policy_logits (B, 704)</text>
+  <path
+     d="m 993.46934,122.0713 v 62.01588 h -43.0977 v 15.01444"
+     class="wire"
+     marker-end="url(#arr)"
+     id="path103"
+     sodipodi:nodetypes="cccc"
+     style="stroke-width:1.6;stroke-dasharray:none" />
+  <path
+     d="m 994.11584,184.0713 h 49.99996 v 15"
+     class="wire"
+     marker-end="url(#arr)"
+     id="path104"
+     style="stroke-width:1.6;stroke-dasharray:none" />
+  <path
+     d="m 919.77044,239.0713 v 25"
+     class="wire"
+     marker-end="url(#arr)"
+     id="path105" />
+  <path
+     d="m 1014.7704,239.0713 v 25"
+     class="wire"
+     marker-end="url(#arr)"
+     id="path106" />
+  <path
+     d="m 967.77044,294.0713 v 20"
+     class="wire"
+     marker-end="url(#arr)"
+     id="path107" />
+  <path
+     d="m 1027.7704,349.0713 v 85"
+     class="wire"
+     marker-end="url(#arr)"
+     id="path108" />
+  <path
+     d="m 967.77044,409.0713 v 25"
+     class="wire"
+     marker-end="url(#arr)"
+     id="path109" />
+  <path
+     d="m 967.77044,469.0713 v 20"
+     class="wire"
+     marker-end="url(#arr)"
+     id="path110" />
+  <path
+     style="fill:none;fill-opacity:1;stroke:#f11e1e;stroke-width:1.8;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker197)"
+     d="m 729.39194,140.02968 117.24911,0 0.48079,258.74513 23.5916,0.23544"
+     id="path185"
+     sodipodi:nodetypes="cccc" />
+  <path
+     style="fill:none;fill-opacity:1;stroke:#f11e1e;stroke-width:1.70025;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker196);paint-order:markers fill stroke"
+     d="m 729.39194,122.0713 v 67.8464"
+     id="path195"
+     sodipodi:nodetypes="cc" />
+  <path
+     style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:1.23539;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker200);paint-order:markers fill stroke"
+     d="m 729.28184,220.9548 v 10.90146"
+     id="path198" />
+  <path
+     style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:1.23539;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker200);paint-order:markers fill stroke"
+     d="m 729.28184,259.57782 v 10.90146"
+     id="path201" />
+  <path
+     style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:1.23539;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker200);paint-order:markers fill stroke"
+     d="m 729.39194,297.82321 v 10.90146"
+     id="path202" />
+  <path
+     style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:1.23539;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker200);paint-order:markers fill stroke"
+     d="M 729.00254,338.78244 V 349.6839"
+     id="path203" />
+  <path
+     style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:1.23539;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker200);paint-order:markers fill stroke"
+     d="m 729.00254,376.73678 v 10.90146"
+     id="path204" />
+  <rect
+     x="213.87286"
+     y="20"
+     width="350"
+     height="740"
+     class="container-section"
+     id="rect1"
+     style="fill:#fafafa;stroke:#d0d0d0;stroke-width:1.5" />
+  <g
+     id="g229"
+     transform="translate(0,-6)">
+    <circle
+       cx="388.63742"
+       cy="662.27606"
+       r="10"
+       fill="#ffffff"
+       stroke="#000000"
+       stroke-width="1.5"
+       id="circle44-4" />
+    <path
+       d="m 383.63745,662.27607 h 10 m -5,-5 v 10"
+       stroke="#000000"
+       stroke-width="1.5"
+       id="path44-0" />
+  </g>
+  <rect
+     x="213.63742"
+     y="20"
+     width="350"
+     height="35"
+     class="container-header"
+     id="rect7"
+     style="fill:#e8e8e8;stroke:#d0d0d0;stroke-width:1" />
+  <text
+     x="388.63739"
+     y="38.000004"
+     class="txt-header"
+     id="text25"
+     style="font-weight:bold;font-size:13px;font-family:Arial, Helvetica, sans-serif;dominant-baseline:middle;text-anchor:middle;fill:#111111">2. Pre-Norm Transformer Encoder</text>
+  <rect
+     x="323.63742"
+     y="77.999992"
+     width="130"
+     height="28"
+     class="box-norm"
+     id="rect25"
+     style="fill:#fff2cc;stroke:#d6b656;stroke-width:1.5" />
+  <text
+     x="388.63739"
+     y="91.999992"
+     class="txt txt-bold"
+     id="text26"
+     style="font-weight:bold;font-size:11px;font-family:Arial, Helvetica, sans-serif;dominant-baseline:middle;text-anchor:middle;fill:#111111">final_norm: RMSNorm</text>
+  <rect
+     x="278.63742"
+     y="123"
+     width="220"
+     height="45"
+     class="sub-container"
+     id="rect26"
+     style="fill:#ffffff;stroke:#b0b0b0;stroke-width:1.2;stroke-dasharray:4, 4" />
+  <text
+     x="388.63739"
+     y="137.99998"
+     class="txt-title"
+     id="text27"
+     style="font-weight:bold;font-size:13px;font-family:Arial, Helvetica, sans-serif;dominant-baseline:middle;text-anchor:middle;fill:#000000">Backbone (N-1 Blocks)</text>
+  <text
+     x="388.63739"
+     y="154.99998"
+     class="txt-sub"
+     id="text28"
+     style="font-size:10px;font-family:Arial, Helvetica, sans-serif;dominant-baseline:middle;text-anchor:middle;fill:#555555">Transformer Block 1 ... Block N-1</text>
+  <rect
+     x="228.62758"
+     y="182.99014"
+     width="320.01968"
+     height="451.18271"
+     class="sub-container"
+     id="rect28"
+     style="fill:#ffffff;stroke:#b0b0b0;stroke-width:1.18033;stroke-dasharray:3.93443, 3.93443" />
+  <text
+     x="538.73785"
+     y="204.44064"
+     class="txt-title"
+     id="text29"
+     style="font-weight:bold;font-size:13px;font-family:Arial, Helvetica, sans-serif;text-align:end;dominant-baseline:middle;text-anchor:end;fill:#000000"><tspan
+       sodipodi:role="line"
+       id="tspan221"
+       x="538.73785"
+       y="204.44064">Transformer</tspan><tspan
+       sodipodi:role="line"
+       id="tspan222"
+       x="538.73785"
+       y="220.69064">Block 0</tspan></text>
+  <circle
+     cx="388.63739"
+     cy="208.99997"
+     r="10"
+     fill="#ffffff"
+     stroke="#000000"
+     stroke-width="1.5"
+     id="circle29" />
+  <path
+     d="m 383.63742,208.99999 h 10 m -5,-5 v 10"
+     stroke="#000000"
+     stroke-width="1.5"
+     id="path38" />
+  <rect
+     x="258.63742"
+     y="233.99997"
+     width="260"
+     height="175"
+     class="box-mlp"
+     fill-opacity="0.15"
+     id="rect38-9"
+     style="fill:#dae8fc;stroke:#6c8ebf;stroke-width:1.5" />
+  <text
+     x="514.20508"
+     y="245.70956"
+     class="txt-bold txt-sub"
+     id="text38-1"
+     style="font-weight:bold;font-size:10px;font-family:Arial, Helvetica, sans-serif;text-align:end;dominant-baseline:middle;text-anchor:end;fill:#555555"><tspan
+       sodipodi:role="line"
+       id="tspan211"
+       x="514.20508"
+       y="245.70956">Feed</tspan><tspan
+       sodipodi:role="line"
+       x="514.20508"
+       y="258.20956"
+       id="tspan219">Forward</tspan><tspan
+       sodipodi:role="line"
+       id="tspan212"
+       x="514.20508"
+       y="270.70956">Network</tspan></text>
+  <g
+     id="g211"
+     transform="translate(0,-22)">
+    <rect
+       x="318.63742"
+       y="285"
+       width="140"
+       height="22"
+       class="box-mlp"
+       id="rect39-0"
+       style="fill:#dae8fc;stroke:#6c8ebf;stroke-width:1.5" />
+    <text
+       x="388.63739"
+       y="296"
+       class="txt"
+       id="text39-7"
+       style="font-size:11px;font-family:Arial, Helvetica, sans-serif;dominant-baseline:middle;text-anchor:middle;fill:#111111">Dropout (mlp_dropout)</text>
+  </g>
+  <g
+     id="g210"
+     transform="translate(0,-22.666667)">
+    <rect
+       x="278.63742"
+       y="318"
+       width="220"
+       height="25"
+       class="box-linear"
+       id="rect40-5"
+       style="fill:#e1d5e7;stroke:#9673a6;stroke-width:1.5" />
+    <text
+       x="388.63739"
+       y="330"
+       class="txt"
+       id="text40-8"
+       style="font-size:11px;font-family:Arial, Helvetica, sans-serif;dominant-baseline:middle;text-anchor:middle;fill:#111111">Linear (expand * embed → embed_dim)</text>
+  </g>
+  <g
+     id="g209"
+     transform="translate(0,-22.333333)">
+    <rect
+       x="338.63742"
+       y="353"
+       width="100"
+       height="22"
+       class="box-act"
+       id="rect41-7"
+       style="fill:#d5e8d4;stroke:#82b366;stroke-width:1.5" />
+    <text
+       x="388.63739"
+       y="364"
+       class="txt txt-bold"
+       id="text41-0"
+       style="font-weight:bold;font-size:11px;font-family:Arial, Helvetica, sans-serif;dominant-baseline:middle;text-anchor:middle;fill:#111111">GELU</text>
+  </g>
+  <g
+     id="g208"
+     transform="translate(0,-22)">
+    <rect
+       x="278.63742"
+       y="385"
+       width="220"
+       height="25"
+       class="box-linear"
+       id="rect42"
+       style="fill:#e1d5e7;stroke:#9673a6;stroke-width:1.5" />
+    <text
+       x="388.63739"
+       y="397"
+       class="txt"
+       id="text42-4"
+       style="font-size:11px;font-family:Arial, Helvetica, sans-serif;dominant-baseline:middle;text-anchor:middle;fill:#111111">Linear (embed_dim → expand * embed)</text>
+  </g>
+  <rect
+     x="323.63742"
+     y="424"
+     width="130"
+     height="28"
+     class="box-norm"
+     id="rect43-8"
+     style="fill:#fff2cc;stroke:#d6b656;stroke-width:1.5" />
+  <text
+     x="388.63739"
+     y="438"
+     class="txt txt-bold"
+     id="text43-0"
+     style="font-weight:bold;font-size:11px;font-family:Arial, Helvetica, sans-serif;dominant-baseline:middle;text-anchor:middle;fill:#111111">norm2: RMSNorm</text>
+  <circle
+     cx="388.63739"
+     cy="469"
+     r="3.5"
+     fill="#000000"
+     id="circle43-4" />
+  <circle
+     cx="388.63739"
+     cy="499"
+     r="10"
+     fill="#ffffff"
+     stroke="#000000"
+     stroke-width="1.5"
+     id="circle44" />
+  <path
+     d="m 383.63742,498.99999 h 10 m -5,-5 v 10"
+     stroke="#000000"
+     stroke-width="1.5"
+     id="path44" />
+  <rect
+     x="293.63742"
+     y="524"
+     width="190"
+     height="35"
+     class="box-attn"
+     id="rect44-2"
+     style="fill:#ffe6cc;stroke:#d79b00;stroke-width:1.5" />
+  <text
+     x="388.63739"
+     y="536"
+     class="txt txt-bold"
+     id="text44-9"
+     style="font-weight:bold;font-size:11px;font-family:Arial, Helvetica, sans-serif;dominant-baseline:middle;text-anchor:middle;fill:#111111">mha: MultiheadAttention</text>
+  <text
+     x="388.63739"
+     y="549"
+     class="txt-sub"
+     id="text45-6"
+     style="font-size:10px;font-family:Arial, Helvetica, sans-serif;dominant-baseline:middle;text-anchor:middle;fill:#555555">(Self-Attention, No Masking)</text>
+  <rect
+     x="323.63742"
+     y="574"
+     width="130"
+     height="28"
+     class="box-norm"
+     id="rect45-1"
+     style="fill:#fff2cc;stroke:#d6b656;stroke-width:1.5" />
+  <text
+     x="388.63739"
+     y="588"
+     class="txt txt-bold"
+     id="text46-0"
+     style="font-weight:bold;font-size:11px;font-family:Arial, Helvetica, sans-serif;dominant-baseline:middle;text-anchor:middle;fill:#111111">norm1: RMSNorm</text>
+  <circle
+     cx="388.63739"
+     cy="624"
+     r="3.5"
+     fill="#000000"
+     id="circle46" />
+  <path
+     d="m 388.63742,623.99999 v -22"
+     class="wire"
+     marker-end="url(#arr-9)"
+     id="path46"
+     style="fill:none;stroke:#000000;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#arr-9);stroke-opacity:1" />
+  <path
+     d="m 388.63742,573.99999 v -15"
+     class="wire"
+     marker-end="url(#arr-9)"
+     id="path47"
+     style="fill:none;stroke:#000000;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#arr-9);stroke-opacity:1" />
+  <path
+     d="m 388.63742,523.99999 v -15"
+     class="wire"
+     marker-end="url(#arr-9)"
+     id="path48-4"
+     style="fill:none;stroke:#000000;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#arr-9);stroke-opacity:1" />
+  <path
+     d="m 388.63742,623.99999 h -145 v -125 h 135"
+     class="wire"
+     marker-end="url(#arr-9)"
+     id="path49"
+     style="fill:none;stroke:#000000;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1;marker-end:url(#arr-9)" />
+  <path
+     d="m 388.63742,488.99999 v -20"
+     class="wire"
+     id="path50"
+     style="fill:none;stroke:#000000;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1" />
+  <path
+     d="m 388.63742,468.99999 v -17"
+     class="wire"
+     marker-end="url(#arr-9)"
+     id="path51-2"
+     style="fill:none;stroke:#000000;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1;marker-end:url(#arr-9)" />
+  <path
+     d="M 388.63742,424 V 393.56256"
+     class="wire"
+     marker-end="url(#arr-9)"
+     id="path52-2"
+     style="fill:none;stroke:#000000;stroke-width:1.39707;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1;marker-end:url(#Triangle)"
+     sodipodi:nodetypes="cc" />
+  <path
+     d="M 388.25396,261.91895 V 224.70551"
+     class="wire"
+     marker-end="url(#arr-9)"
+     id="path56-5"
+     style="fill:none;stroke:#000000;stroke-width:1.44681;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1;marker-mid:url(#marker218);marker-end:url(#marker219)" />
+  <path
+     d="m 388.63742,468.99999 h -145 v -260 h 135"
+     class="wire"
+     marker-end="url(#arr-9)"
+     id="path57-2"
+     style="fill:none;stroke:#000000;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1;marker-end:url(#arr-9)" />
+  <path
+     d="M 388.63742,198.99997 V 167.99999"
+     class="wire"
+     marker-end="url(#arr-9)"
+     id="path58-9"
+     style="fill:none;stroke:#000000;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1;marker-end:url(#arr-9)" />
+  <path
+     d="m 388.63742,122.99999 v -17"
+     class="wire"
+     marker-end="url(#arr-9)"
+     id="path59-0"
+     style="fill:none;stroke:#000000;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1;marker-end:url(#arr-9)" />
+  <path
+     style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:1.29512;stroke-miterlimit:3.7;stroke-dasharray:none;stroke-opacity:1;marker-start:url(#marker215);paint-order:markers fill stroke"
+     d="m 388.63742,357.31537 v 5.15258"
+     id="path213" />
+  <path
+     style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:1.29512;stroke-miterlimit:3.7;stroke-dasharray:none;stroke-opacity:1;marker-start:url(#marker215);paint-order:markers fill stroke"
+     d="m 388.63742,325.00454 v 5.15258"
+     id="path216" />
+  <path
+     style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:1.29512;stroke-miterlimit:3.7;stroke-dasharray:none;stroke-opacity:1;marker-start:url(#marker215);paint-order:markers fill stroke"
+     d="m 388.63742,289.57139 v 5.15258"
+     id="path217" />
+  <text
+     xml:space="preserve"
+     style="writing-mode:lr-tb;direction:ltr;fill:none;fill-opacity:1;stroke:#000000;stroke-width:1.375;stroke-miterlimit:3.7;stroke-dasharray:none;stroke-opacity:1;paint-order:markers fill stroke"
+     x="156.48984"
+     y="237.13206"
+     id="text220"><tspan
+       sodipodi:role="line"
+       id="tspan220"></tspan></text>
+  <path
+     style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:1.54608;stroke-miterlimit:3.7;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker223);paint-order:markers fill stroke"
+     d="M 453.63742,91.999992 H 612.26429"
+     id="path222" />
+  <path
+     style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:1.39602;stroke-miterlimit:3.7;stroke-dasharray:none;stroke-opacity:1;paint-order:markers fill stroke"
+     d="m 388.63742,623.99999 v 21.52607"
+     id="path224" />
+  <g
+     id="g225"
+     transform="matrix(1.481823,0,0,1.481823,-270.07726,-325.09984)">
+    <circle
+       cx="388.63742"
+       cy="662.27606"
+       r="10"
+       fill="#ffffff"
+       stroke="#000000"
+       stroke-width="1.5"
+       id="circle44-3" />
+    <path
+       style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:1.6;stroke-miterlimit:3.7;stroke-dasharray:none;stroke-opacity:1;paint-order:markers fill stroke"
+       d="m 378.63742,662.27606 c 3.20824,-4.89427 7.20439,-6.24411 10,0 2.14898,4.93783 6.50971,7.29852 10,0"
+       id="path225"
+       sodipodi:nodetypes="ccc" />
+  </g>
+  <path
+     style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:1.63528;stroke-miterlimit:3.7;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker227);paint-order:markers fill stroke"
+     d="m 320.62801,656.27606 h 52.23392"
+     id="path226" />
+  <path
+     style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:1.33734;stroke-miterlimit:3.7;stroke-dasharray:none;stroke-opacity:1;marker-start:url(#marker229);paint-order:markers fill stroke"
+     d="m 388.63742,671.15331 4e-5,10.39202"
+     id="path228" />
+</svg>
