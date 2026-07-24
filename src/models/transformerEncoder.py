@@ -26,6 +26,7 @@ class EncoderConfig:
     mlp_dropout: float = 0.1
     mha_dropout: float = 0.1
     embed_dropout: float = 0.1
+    value_head_dropout : float = 0.1
     mlp_expand_factor: int = 4
 
     policy_head_hidden_dim : int = 64 # TODO important to tune this to not compress too much
@@ -344,7 +345,7 @@ class ValueHead(nn.Module):
                 config.embed_dim, config.mlp_expand_factor * config.embed_dim
             ),
             nn.GELU(),
-            nn.Dropout(config.mlp_dropout), # TODO CAREFUL WITH THIS DURING PPO, SET TO model.eval() !!!!
+            nn.Dropout(config.value_head_dropout),
             nn.Linear(
                 config.mlp_expand_factor * config.embed_dim, config.value_size
             ),
@@ -573,10 +574,31 @@ class MiniChessTransformerEncoder(nn.Module):
         return n_params
 
     @classmethod
-    def from_pretrained():
-        # TODO once it's trained we'll need to load the
-        # weights back in for use in PPO
-        ...
+    def from_pretrained(cls, checkpoint_path: str, config: EncoderConfig = None, device: str = "cpu"):
+        """
+        Load a MiniChessTransformerEncoder from a checkpoint file.
+        
+        Args:
+            checkpoint_path (str): Path to the saved weights .pth file.
+            config (EncoderConfig, optional): Config object. If None, instantiates a default config.
+            device (str): Device to map the loaded model weights onto.
+            
+        Returns:
+            MiniChessTransformerEncoder: Loaded model instance.
+        """
+        if config is None:
+            raise ValueError("config is required to load a MiniChessTransformerEncoder")
+            
+        model = cls(config).to(device)
+        state_dict = torch.load(checkpoint_path, map_location=device)
+        clean_state_dict = {}
+        for k, v in state_dict.items():
+            if k.startswith("_orig_mod."):  # Handle compiled models
+                clean_state_dict[k[10:]] = v
+            else:
+                clean_state_dict[k] = v
+        model.load_state_dict(clean_state_dict)
+        return model
 
 
 if __name__ == "__main__":

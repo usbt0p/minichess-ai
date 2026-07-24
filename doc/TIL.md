@@ -73,4 +73,45 @@ TODO write...
 TODO write...
 
 ## 0307
-Using `git info/exclude` lets you exclude files locally without using a `.gitignore` , in case you want some local stuff to stay in your repo untracked, but not commit them
+Using `git info/exclude` lets you exclude files locally without using a `.gitignore`, in case you want some local stuff to stay in your repo untracked, but not commit them
+
+## 1207
+
+just learned about shell brace expansion... this is so useful!
+```bash
+scp -r lucas@1.2.3.4:~/tfg/minichess-ai/results/hypothesis3/tabula_rasa_seed_{1,32,999} results/hypothesis3/
+```
+also, wildcard works there too!
+
+## 1307
+
+find the latest edited files in a directory (recursively) using
+```bash
+find /path -printf '%T+ %p\n' | sort -r | head
+```
+
+## 2107
+
+This is some bread and butter stuff. I already know this but I have to note it because i use it so much, but always forget the syntax and end up looking it up.
+
+This is how to connect two computers trough ethernet to transfer files.
+
+1. This is a temporal setup. It will only last until the next reboot. For both computers to see each other, they must be on the same subnet. For this just set them up so that the first two octets of their IPs are the same, and the mask is 24. For example, `192.168.100.x/24` and `192.168.100.y/24`. 
+
+2. You can do this two ways:
+ - `nmtui`, edit the cable connection and set IPv4 to manual, put the address you want in. Then save, deactivate the connection, and reactivate it. 
+ - The command line one, with `sudo ip addr add 192.168.100.1/24 dev enp3s0`. This assumes your cable connection is named enp3s0, you can check it with `ip a`. You might also want to check if it's up if you are having problems.
+
+3. Always ping to make sure the connection is working: `ping 192.168.100.y`, or the other way around.
+
+4. Now you are connected. You can go a couple ways for file transfer / computer access:
+  - Just ssh into the other computer with `ssh user@ip`
+  - Use scp to bring or send files:
+    - Bring: `scp user@ip:/path/to/file .`
+    - Send: `scp /path/to/file user@ip:/path/to/destination`
+    - For recursive, just `scp -r ...`
+  - Use rsync for more complicated stuff, filtering, excluding files, etc... Works similar to scp but with more options. `rsync -ahP /path/to/file user@ip:/path/to/destination`. For filtering and stuff: 
+    - exclude files: `rsync -ahP --exclude 'file1' --exclude 'file2' /path/to/file user@ip:/path/to/destination`
+    - include only specific files: `rsync -ahP --include 'file1' --include 'file2' /path/to/file user@ip:/path/to/destination`
+    - Wildcard and expansions: `rsync -ahP --include='*.py' --exclude='*' /path/to/file user@ip:/path/to/destination`. Note the order. 
+  - Another goated one is the good ol' python server: `python3 -m http.server 8000` on the host computer, and then you can just `wget http://ip:8000/file` or just download by right-clicking, like any other website.

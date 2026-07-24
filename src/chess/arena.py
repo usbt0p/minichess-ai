@@ -125,11 +125,17 @@ def play_game(agent_white: ChessAgent, agent_black: ChessAgent, max_moves=100, t
         active_player = parts[1]
         
         if active_player == 'w':
-            move, ent, top_6 = agent_white.select_move(current_fen, legal, temperature, repetition=current_repetition)
+            try:
+                move, ent, top_6 = agent_white.select_move(current_fen, legal, temperature, repetition=current_repetition)
+            except TypeError:
+                move, ent, top_6 = agent_white.select_move(current_fen, legal, temperature)
             entropies_white.append(ent)
             move_history.append({"move": move, "player": "white", "entropy": ent, "top_6": top_6})
         else:
-            move, ent, top_6 = agent_black.select_move(current_fen, legal, temperature, repetition=current_repetition)
+            try:
+                move, ent, top_6 = agent_black.select_move(current_fen, legal, temperature, repetition=current_repetition)
+            except TypeError:
+                move, ent, top_6 = agent_black.select_move(current_fen, legal, temperature)
             entropies_black.append(ent)
             move_history.append({"move": move, "player": "black", "entropy": ent, "top_6": top_6})
             
@@ -300,7 +306,8 @@ def play_matchup(agent1: ChessAgent, agent2: ChessAgent, num_games=20, max_moves
         "avg_entropy1": avg_entropy1,
         "avg_entropy2": avg_entropy2,
         "reasons": reasons_count,
-        "color_stats": color_stats
+        "color_stats": color_stats,
+        "avg_game_length": float(np.mean([g["num_moves"] for g in games_log])) if games_log else 0.0
     }
     
     if save_log:

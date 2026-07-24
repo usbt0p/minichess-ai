@@ -1,15 +1,38 @@
-
 # ORDEN DEL DIA
 
-- is it fine to have non-terminal states have a reward of 0 and also draw states? isnt sharing that signal a problem...?
-- the collecting loop you provided is assuming i have a "MinichessEnvironment()". But i don't. What is essential about it? Could it be substituted with something else? If the env is needed, give me the requirements to create it. I'll provide you with the "chess board api" that i've put up surrounding pyffish + the test for what it can do.
+- bruh... run the tournaments with the policy+value strategy
+- mover las leyendas de las graficas si tapan algo importante
+- revisar resultados torneo temp 0.225
+- analyze results of the dk128 model after ppo
+- find out if a hyp3 models checkpoint tournament is doable
+- results are here for hypotheses 3, analyze them
 
-- luego hacer diseño experimental de la fase de PPO. decidir que gráficas y tablas quiero, que quiero observar exactamente.
+- complete the docs:
+  - escribir sección 4, resumen de la solución propuesta
+  - completar números placeholder en la estimación del tamaño del arbol de juego
+  - redactar conclusiones hipótesis 3
+  - redactar conclusiones hipótesis 1. pensar como puede esta justificarse: es más bien una hipótesis informal...
+  - meter citas graciosas de hikaru 
 
 - updates in the docs:  
   - update the transformer architecture
   - explain separately the backbone of the transformer and the head(s). 
   - explain the encoding of the inputs for each model (mlp and transformer w/ and w/out inductive bias)
+  - explain the ppo rollout collection and the training. use an image, something like this: https://images.ctfassets.net/kftzwdyauwt9/b9a42f6d-61d2-41e5-5944d3219032/6d7917466ddaffdaf7e8cda48a77aeba/rapid-architecture2x--1-.png?w=1920&q=90&fm=webp 
+  also explain the environment parallelization
+  - comprobar si el algoritmo que tengo en la docu para PPO se corresponde con el algoritmo real
+
+- maybe: a ridgeline chart that shows some sort of evolution of policy distribution over each saved checkpoint (for the same position for example), of the evolution of tha distrib over a game for the same model
+- run a final tournament after ppo, something like: [random, heuristic, tabularasa0%steps, tabularasa50%steps, tabularasa100%steps, pretrained0%steps (the pretrained transformer), pretrained50%steps, pretrained100%steps], and then run this trouhgh something like trueskill
+- how do i save the "best" model in a self play loop? best elo?
+- see if a slight negative reward for draws pushes the model to win more
+- get a stacked area graph of: the termination reasons over steps for the evaluation tournaments(all of them sgould sum to the number of games played in each tournament), and for the final tournaments maybe? (against each of the other models...)
+- some way of measuring perplexity? as in: Entropy / log(Num_Legal_Moves), for example, for cases like a position with only 4 legal moves where an entropy of 1.5 means the policy is nearly uniform (random selection) (number of equally likely moves is $e^{1.5} \approx 4.48$)
+- check how randomness (temperature) and entropy behave together
+
+- see if the average reward calculation is right, or if it can be better
+- figure out how to play with the ppo hyperparams wihtout need to tune them. for example higher lambda for approaching TD error, lower clip_eps for more stability (or higher if its stagnating)? also : c1 and c2 weights, and figure out regularization if i remove dropouts...
+
 
 # (BRAINDUMP): ideas no tan urgentes 
 
@@ -200,3 +223,25 @@ while they train:
 - add repetition count to arena and agents
 - add info about the dataset. annex holds figures with stats (escribir en la docu sobre el dataset. dar un sample. estadisticas en el anexo. explicar profundidades)
   - explain the test holdout strategy and why it's important to separate games using plies.
+- implement RL env from arena functions
+- mod transformer to use policy and reeturn log prob in ppo
+- test env and troughput
+- make a simple ppo loop with a dummy model. small (16dk and 1 depth), and pit it against a random agent
+- change uci_to_idx and idx_to_uci for a literal enumeration in a dictionary. O(1) access
+- run tests with checkpointed model and without against random openent. expect average reward improvement quickly
+
+# 5/07
+- check if dropouts or norms are affecting rl
+- save the model with the best reward, and also the last one
+- not to prematurely optimize, but try to parallelize environments...
+
+# 6/07
+- currently agent plays against random oponent. figure out how to make it play against itself, setting up an opponent pool to prevent stagnation and reward hacking. do something like 80/20 for current model / previous pools
+- hacer diseño experimental de la fase de PPO. decidir que gráficas y tablas quiero, que quiero observar exactamente.
+
+# 9-10/07
+- ruin experiments with the oponent pool. rewards stay stable since the policy changes when updating the weights in self play, but the elo and checkmate/draw ratio goes up signaling good learning
+
+# 11/07
+- refactor all the trash AI code into something usable.
+- understand why lower gae lambda of 0.8 works better than 0.95, and why 0.95 > 1.0. Isn't a lambda of 1.0 supposed to give the same importance to all the steps regardless of how far they are from the end of the game, and a lower one to discount more distant steps (so essentially the opening of the game)? (update: that is gamma not lambda. lambda is bias-variance trade-off. lambda = 1 is Monte Carlo estimate (trust the reward from the trajectory more). lambda = 0 is TD (trust the critic in its estimation))

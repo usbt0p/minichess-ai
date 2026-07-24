@@ -20,7 +20,7 @@ class IllegalMoveError(Exception):
 @dataclass
 class FenParts:
     """
-    Parses the FEN string into its components.
+    Parses the FEN string into its components. If unpacked, returns (board, player, halfmove, fullmove).
     fen_full: full FEN string
     fen_board: board representation by rows
     active_player: w for white to move, b for black to move
@@ -41,6 +41,10 @@ class FenParts:
         # intermediate attributes like castling and en passant not useful for us
         self.halfmove = int(parts[4]) if len(parts) > 4 else 0
         self.fullmove = int(parts[5]) if len(parts) > 5 else 0
+
+    def __iter__(self):
+        '''Shorthand to unpack the fen parts'''
+        return iter((self.fen_board, self.active_player, self.halfmove, self.fullmove))
 
 class ChessAgent(ABC):
     """Abstract base class for a chess agent"""

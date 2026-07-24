@@ -251,6 +251,28 @@ def run_stats_on_metric(results_data, metric_key, metric_display_name):
     plt.close()
     print(f"[*] Boxplot saved to {boxplot_path}")
     
+    # Generate Violin Plot
+    plt.figure(figsize=(8, 6), dpi=150)
+    violin = plt.violinplot(box_data, showmedians=True, showextrema=True)
+    
+    for i, pc in enumerate(violin['bodies']):
+        pc.set_facecolor(colors_box[i])
+        pc.set_edgecolor('black')
+        pc.set_alpha(0.7)
+        
+    for partname in ['cbars', 'cmins', 'cmaxes', 'cmedians']:
+        violin[partname].set_edgecolor('black')
+        violin[partname].set_linewidth(1.5)
+        
+    plt.xticks(np.arange(1, len(labels_display) + 1), labels_display)
+    plt.ylabel(metric_display_name, fontsize=12)
+    plt.title(f"Test Set {metric_display_name} Distribution across 10 Seeds", fontsize=14, pad=15)
+    plt.tight_layout()
+    violin_path = os.path.join(OUTPUT_DIR, f"test_{metric_key}_violin.png")
+    plt.savefig(violin_path)
+    plt.close()
+    print(f"[*] Violin plot saved to {violin_path}")
+    
     return {
         "descriptive": {model: {"mean": float(np.mean(model_data[model])), "std": float(np.std(model_data[model]))} for model in models},
         "shapiro_p": float(p_norm),
@@ -383,12 +405,13 @@ def main():
         "learning_curves_val_move_acc.png",
         "learning_curves_val_res_acc.png",
         "test_move_accuracy_boxplot.png",
+        "test_move_accuracy_violin.png",
         "test_result_accuracy_boxplot.png",
+        "test_result_accuracy_violin.png",
         "statistical_analysis_summary.txt"
     ]
     
     os.makedirs(ABLATION_ROOT, exist_ok=True)
-    os.makedirs("doc/figures", exist_ok=True)
     
     for fname in filenames:
         src_path = os.path.join(OUTPUT_DIR, fname)
@@ -396,8 +419,7 @@ def main():
             dest_ablation = os.path.join(ABLATION_ROOT, fname)
             if os.path.abspath(src_path) != os.path.abspath(dest_ablation):
                 shutil.copy(src_path, dest_ablation)
-            shutil.copy(src_path, os.path.join("doc/figures", fname))
-            print(f"[*] Copied {fname} to doc/figures/ (and {ABLATION_ROOT} if not already there)")
+            print(f"[*] Copied {fname} to {ABLATION_ROOT} if not already there")
 
 if __name__ == "__main__":
     main()
