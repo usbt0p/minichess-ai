@@ -12,6 +12,7 @@
 % paquetes para estilo
 % Ajuste de márgenes: 2.5cm es el estándar pero es mucho
 \usepackage{fancyhdr}
+\setlength{\headheight}{14.49998pt}
 \usepackage[top=2.5cm, bottom=2.5cm, left=2.2cm, right=2.2cm]{geometry} 
 \usepackage{parskip} % Elimina el sangrado por defecto y añade espacio entre párrafos
 \usepackage[style=ieee]{biblatex}
@@ -26,6 +27,44 @@
 \usepackage{algorithm}
 \usepackage{algpseudocode}
 \addbibresource{doc/referencias.bib}
+
+% paquetes para código y syntax highlighting
+\usepackage{listings}
+\usepackage{xcolor}
+
+% Configuración de listings para bash
+\lstset{
+    language=bash,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue}\bfseries,
+    commentstyle=\color{gray}\itshape,
+    stringstyle=\color{red},
+    showstringspaces=false,
+    breaklines=true,
+    breakatwhitespace=true,
+    columns=fullflexible,
+    prebreak=\raisebox{0ex}[0ex][0ex]{\ensuremath{\hookleftarrow}},
+    postbreak=\raisebox{0ex}[0ex][0ex]{\ensuremath{\hookrightarrow\ }},
+    tabsize=4,
+    frame=leftline,
+    framesep=8pt,
+    framerule=1pt,
+    rulecolor=\color{gray!30},
+    backgroundcolor=\color{gray!5},
+    xleftmargin=15pt,
+    xrightmargin=5pt
+}
+
+% Comando para código bash inline
+\newcommand{\bashinline}[1]{\lstinline[language=bash, basicstyle=\ttfamily\small, breaklines=true]|#1|}
+
+% Comando genérico para código inline (sin resalte de syntax)
+\newcommand{\codeinline}[1]{\lstinline[language=, basicstyle=\ttfamily\small, breaklines=true]|#1|}
+
+% - Para código bash inline: \bashinline{comando bash}
+% - Para código genérico inline: \codeinline{código genérico}
+% - Para bloques de código con syntax highlighting bash: \begin{lstlisting} ... \end{lstlisting}
+% - Para bloques de código sin syntax highlighting: \begin{lstlisting}[language=] ... \end{lstlisting}
 
 % Comando para generar placeholders de figuras fácilmente
 \newcommand{\placeholderfig}[3]{
@@ -212,9 +251,9 @@ Esta variante mantiene la naturaleza estratégica y la profundidad del ajedrez, 
 Para interactuar con el entorno de ajedrez y proporcionar datos a los modelos de aprendizaje, se utiliza la notación FEN (\textit{Forsyth-Edwards Notation}). Esta notación describe una posición particular del tablero mediante una cadena de texto que codifica la ubicación de las piezas, el jugador al que le toca mover y las disponibilidades de reglas especiales. En el contexto del ajedrez 5x5, el FEN se simplifica ya que cierta información no es aplicable a la variante de Gardner (como los enroques o las capturas al paso).
 
 El FEN inicial de la variante Gardner se representa como:
-\begin{verbatim}
+\begin{lstlisting}[language=]
     rnbqk/ppppp/5/PPPPP/RNBQK w - - 0 1
-\end{verbatim}
+\end{lstlisting}
 
 La Figura~\ref{fig:minichess} ilustra la disposición física y la colocación de las piezas en el tablero Gardner al inicio de la partida.
 
@@ -409,7 +448,7 @@ La figura ~\ref{fig:encoder_arch} ilustra la arquitectura propuesta, mostrando e
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=1\textwidth]{figures/Gemini_Diagram_small.png}
+    \includegraphics[width=1\textwidth]{figures/architecture-diagram.png}
     \caption[Diagrama de la arquitectura Transformer propuesta]{Diagrama de la arquitectura utilizada transformer propuesta}
     \label{fig:encoder_arch}
 \end{figure}
@@ -495,7 +534,7 @@ Asimismo, el conjunto de datos cuenta con particularidades estructurales importa
 \begin{figure}[htbp]
     \centering
     \begin{minipage}{0.8\textwidth}
-\begin{verbatim}
+\begin{lstlisting}[language=]
 fen rnb1k/1p1qp/pPp2/P1PP1/RNBQK w - - 0 4
 move d1e2
 score 272
@@ -508,7 +547,7 @@ score 31
 ply 9
 result 0
 [...]
-\end{verbatim}
+\end{lstlisting}
     \end{minipage}
     \caption[Ejemplo del conjunto de datos]{Fragmento de ejemplo del conjunto de datos de entrenamiento. Cada muestra está delimitada por la letra \texttt{e} y contiene el estado en notación FEN, el movimiento seleccionado, la puntuación heurística del motor, el número de ply y el resultado relativo.}
     \label{fig:dataset_example}
@@ -1238,8 +1277,6 @@ Finalmente, me gustaría dejar algunas ideas adicionales que podrían llevar la 
 \appendix
 \section{Anexos}\label{sec:anexos}
 
-- TODO instrucciones reproducibilidad: configuración del entorno, los comandos de consola para lanzar los scripts de
-
 \subsection{Hiperparámetros del entrenamiento y estudio de ablación}\label{sec:hiperparametros_ablacion}
 
 En esta sección se detallan los hiperparámetros fijos empleados en las fases de entrenamiento y, en particular, en el estudio de ablación de arquitectura diseñado para responder a la Hipótesis 2. Este estudio sistemático varía la representación del tablero (\textit{simple} vs. \textit{spatial}) y la utilización o no de la cabeza de política factorizada, repitiéndose bajo un conjunto de semillas aleatorias distintas para evaluar la estabilidad del aprendizaje y mitigar efectos del ruido estocástico.
@@ -1788,5 +1825,104 @@ La Tabla~\ref{tab:hiperparam_ppo} especifica la configuración del búfer de rec
     \caption[Hiperparámetros del algoritmo PPO]{Hiperparámetros empleados en el entrenamiento y recolección de trayectorias de PPO.}
     \label{tab:hiperparam_ppo}
 \end{table}
+
+\rule{\textwidth}{0.2pt}
+\subsection{Instrucciones de ejecución y reproducibilidad}\label{sec:anexo_reproducibilidad}
+
+Esta sección resume el flujo completo para reproducir los experimentos: generación de datos, entrenamiento supervisado, estudio de ablación, PPO y análisis de PPO.
+
+\subsubsection*{Dependencias y entorno}
+
+\rule{\textwidth}{0.2pt}
+Todos los comandos ejecutados a continuación se lanzan desde la raíz del repositorio.
+
+\textbf{Software mínimo:}
+Se requiere Python con entorno virtual activo. El proyecto usa \texttt{pyproject.toml} y las dependencias presentes.
+Se espera también un binario de \texttt{stockfish}, presente en \href{https://github.com/fairy-stockfish/variant-nnue-tools}{\texttt{variant-nnue-tools}}, para generar/convertir/extraer estadísticas.
+
+\textbf{Hardware recomendado:}
+GPU NVIDIA con CUDA para entrenamiento (en CPU es funcional pero muy lento). Para batches grandes como los utilizados, (p.ej. \texttt{batch\_size=16384}) se requiere VRAM alta, un mínimo recomendado de 16GB.
+En generación de datos, se requiere RAM suficiente para hash de Stockfish (si \texttt{-m auto}, el script reserva RAM disponible liberando 2GB).
+
+
+\subsubsection*{Supuestos importantes de los scripts}
+Los scripts de generación de datos, entrenamiento y evaluación asumen ciertas rutas y formatos de dataset. Si se cumplen estas asnunciones, la ejecución y reproducción será mucho más rápida:
+\begin{itemize}
+    \item \texttt{src/dataUtils/run\_gen.sh} usa ruta fija a \texttt{stockfish}: \\
+    \texttt{/home/usbt0p/TFG/variant-nnue-tools/src/stockfish}. Se debe ajustar a la ruta apropiada.
+    \item \texttt{src/dataUtils/convert.sh} y \texttt{src/dataUtils/stats.sh} asumen la presencia \\ de \texttt{./variant-nnue-tools/src/stockfish}.
+    \item \texttt{create\_static\_splits.py} asume dataset en bloques de 6 líneas y guarda test en \texttt{data/test\_splits/}. Esto no debería cambiar, pero si se modifica la estructura de dataset, se debe ajustar el script.
+    \item \texttt{train\_transformer.py} asume un dataset de texto con formato parseable por \\ \texttt{parse\_minichess\_text\_file}, consultar el script para conocer el funcionamiento exacto. Este script crea cachés \texttt{.pt} en la misma ruta por defecto o si se le especifica.
+    \item Los modelos utilizados en PPO asumen representación espacial de 28 tokens y usan \texttt{pyffish} en las ejecuciones de entorno.
+\end{itemize}
+
+\subsubsection*{Ejecución recomendada}
+Asumiendo que se cumplen los requisitos de entorno y dependencias y los supuestos anteriores, la ejecución de scripts y experimentos puede realizarse siguiendo esta guía:
+
+\begin{enumerate}
+    \item \textbf{Preparar entorno}
+
+\begin{lstlisting}
+uv sync; source setup.sh
+\end{lstlisting}
+
+    \item \textbf{Generar datos supervisados (.bin)}
+\begin{lstlisting}
+./src/dataUtils/run_gen.sh -v gardner -d 4 -t 16 -m auto
+\end{lstlisting}
+
+    \item \textbf{(Opcional) unir profundidades y deduplicar}
+    (si se usan varias profundidades, editar entradas en \texttt{merge\_datasets\_bin.py})
+\begin{lstlisting}
+python3 src/dataUtils/merge_datasets_bin.py
+\end{lstlisting}
+
+    \item \textbf{Extraer estadísticas y convertir a texto}
+\begin{lstlisting}
+./src/dataUtils/stats.sh data/gardner_depth4/gen_gardner_d4.bin data/gardner_depth4/stats.txt
+./src/dataUtils/convert.sh data/gardner_depth4/gen_gardner_d4.bin data/gardner_depth4/gen_gardner_d4.txt
+\end{lstlisting}
+
+    \item \textbf{Crear split estático train/holdout test}
+\begin{lstlisting}
+python3 src/dataUtils/create_static_splits.py data/gardner_depth4/gen_gardner_d4.txt
+\end{lstlisting}
+    Esto genera los archivos: \verb|data/gardner_depth4/d4_val.txt| y \verb|data/test_splits/d4_test.txt|.
+
+    \item \textbf{Entrenamiento supervisado base (Transformer)}
+\begin{lstlisting}
+python3 src/training/train_transformer.py data/gardner_depth4/d4_val.txt 64 \
+  --num_blocks 3 --epochs 30 --batch_size 512 \
+  --attn_backend math --autocast none --lr 0.0030 \
+  --representation simple --run_name h2_base --save_dir experiments/h2
+\end{lstlisting}
+
+    \item \textbf{Estudio de ablación supervisado (Hipótesis 2)}
+\begin{lstlisting}
+bash src/experiment_scripts/h2_small.sh
+bash src/experiment_scripts/h2_big.sh
+bash src/experiment_scripts/h2_ablation_seeds.sh
+\end{lstlisting}
+    (cada script fija representación/cabezas/semillas y guarda logs/checkpoints en \texttt{experiments/}).
+
+    \item \textbf{Entrenamiento PPO (Hipótesis 3)}
+\begin{lstlisting}
+python3 src/ppo/run_hypothesis3_experiments.py \
+  --variant all \
+  --seeds 42,100,2026,999,12345 \
+  --iterations 60 \
+  --supervised_checkpoint <ruta_al_best_model_supervisado>
+\end{lstlisting}
+    Este script ejecuta \texttt{tabula\_rasa} y \texttt{pretrained}, y guarda resultados en \texttt{results/hypothesis3/}.
+
+    \item \textbf{Análisis y ablaciones de PPO}
+\begin{lstlisting}
+python3 src/evalsAndTournaments/hypothesis3/analyze_hypothesis3.py \
+  --results_dir results/hypothesis3
+
+python3 src/evalsAndTournaments/hypothesis3/run_ppo_pool_tournament.py \
+  --results_dir results/hypothesis3 --variant both --num_games 100
+\end{lstlisting}
+\end{enumerate}
 
 \end{document}
